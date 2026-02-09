@@ -1,0 +1,921 @@
+.invoices-page {
+    padding: 2rem;
+    font-family: 'Cairo', sans-serif;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-h);
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+.tab-switcher {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-input);
+    padding: 4px;
+    border-radius: 12px;
+    margin-top: 1rem;
+    width: fit-content;
+}
+
+.tab-switcher button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-p);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-switcher button.active {
+    background: var(--bg-card);
+    color: var(--p-600);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Create Layout */
+.invoice-create-layout {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 24px;
+    margin-top: 2rem;
+}
+
+.invoice-form-card,
+.invoice-summary-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-h);
+}
+
+.customer-quick-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.customer-select-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.customer-search-select {
+    flex: 1;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    padding: 0.8rem;
+    border-radius: 12px;
+    color: var(--text-h);
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.quick-add-cust-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--p-600);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.quick-add-cust-btn:hover {
+    background: var(--p-50);
+    border-color: var(--p-500);
+}
+
+.selected-cust-details {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    background: var(--p-50);
+    color: var(--p-600);
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+[data-theme='dark'] .badge {
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.packages-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.pkg-select-card {
+    background: var(--bg-app);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.pkg-select-card:hover {
+    border-color: var(--p-400);
+    transform: translateY(-2px);
+}
+
+.add-pkg-icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    color: var(--border);
+}
+
+[dir='rtl'] .add-pkg-icon {
+    right: auto;
+    left: 12px;
+}
+
+.participants-input {
+    width: 100%;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem;
+    color: var(--text-h);
+    font-family: inherit;
+    min-height: 80px;
+}
+
+/* Summary Card */
+.invoice-summary-card {
+    position: sticky;
+    top: 96px;
+    height: fit-content;
+}
+
+.summary-items-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+}
+
+.remove-item-btn {
+    background: #fee2e2;
+    color: #ef4444;
+    border: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.invoice-payment-fields {
+    background: var(--bg-app);
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.total {
+    color: var(--p-600);
+    font-weight: 800;
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.payment-input-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.payment-input-group input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    padding: 10px;
+    border-radius: 10px;
+    color: var(--text-h);
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.payment-input-group input:focus {
+    border-color: var(--p-500);
+    outline: none;
+}
+
+.remaining.highlight {
+    background: rgba(239, 68, 68, 0.05);
+    padding: 8px;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.remaining.highlight span:last-child {
+    color: #ef4444;
+    font-weight: 900;
+}
+
+.create-invoice-btn {
+    width: 100%;
+    background: var(--p-600);
+    color: white;
+    border: none;
+    padding: 1.25rem;
+    border-radius: 16px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+/* History Table */
+.customers-table th {
+    color: var(--text-muted);
+    padding: 1rem;
+    text-align: start;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.customers-table td {
+    padding: 1.2rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.status-paid {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.status-partial {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.status-pending {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.action-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-p);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: var(--p-50);
+    color: var(--p-600);
+    border-color: var(--p-300);
+}
+
+.action-btn.delete {
+    color: #ef4444;
+}
+
+.action-btn.delete:hover {
+    background: #fee2e2;
+    border-color: #fecaca;
+}
+
+/* Modals */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 2100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content.large {
+    width: 95%;
+    max-width: 600px;
+    border-radius: 28px;
+    background: var(--bg-card);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.modal-field label {
+    font-weight: 700;
+    color: var(--text-h);
+    margin-bottom: 8px;
+    display: block;
+}
+
+.modal-field input,
+.modal-field textarea {
+    width: 100%;
+    background: var(--bg-app);
+    border: 2px solid var(--border);
+    padding: 12px 16px;
+    border-radius: 14px;
+    color: var(--text-h);
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--p-600) !important;
+    color: white !important;
+    padding: 1rem 2rem !important;
+    font-weight: 700 !important;
+    cursor: pointer;
+    border-radius: 14px !important;
+    border: none !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s;
+}
+
+.btn-primary:active {
+    transform: scale(0.96);
+}
+
+.modal-cancel-btn {
+    background: var(--bg-input);
+    border: none;
+    padding: 1rem 1.5rem;
+    border-radius: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ========== Professional Receipt Print Styling ========== */
+.invoice-printable.receipt-80mm {
+    width: 80mm;
+    margin: 0 auto;
+    padding: 16px 14px;
+    background: white;
+    color: #1a1a1a;
+    font-family: 'Cairo', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* Top & Bottom decorative borders */
+.print-top-border {
+    height: 4px;
+    background: repeating-linear-gradient(90deg, #000 0px, #000 8px, transparent 8px, transparent 12px);
+    margin-bottom: 14px;
+    border-radius: 2px;
+}
+
+.print-bottom-border {
+    height: 4px;
+    background: repeating-linear-gradient(90deg, #000 0px, #000 8px, transparent 8px, transparent 12px);
+    margin-top: 14px;
+    border-radius: 2px;
+}
+
+/* Brand center */
+.print-brand-center {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.print-logo-circle {
+    width: 48px;
+    height: 48px;
+    background: #000;
+    color: #fff;
+    font-size: 22px;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-bottom: 6px;
+    letter-spacing: -1px;
+}
+
+.print-studio-name {
+    font-size: 18px;
+    font-weight: 900;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.print-studio-info {
+    font-size: 9px;
+    color: #666;
+    margin: 1px 0 0 0;
+}
+
+/* Dividers */
+.print-divider {
+    margin: 10px 0;
+}
+
+.print-divider.dashed {
+    border-top: 1.5px dashed #ccc;
+}
+
+.print-divider.solid {
+    border-top: 1.5px solid #ddd;
+}
+
+.print-divider.double {
+    border-top: 3px double #222;
+}
+
+/* Invoice badge */
+.print-invoice-badge {
+    text-align: center;
+    margin: 8px 0;
+}
+
+.print-inv-label {
+    display: block;
+    font-size: 9px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.print-inv-no {
+    display: block;
+    font-size: 18px;
+    font-weight: 900;
+    margin-top: 2px;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+}
+
+/* Date row */
+.print-date-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 6px 0;
+}
+
+.print-date-row > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.print-meta-label {
+    font-size: 8px;
+    color: #999;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.print-meta-value {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* Customer section */
+.print-customer-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0;
+}
+
+.print-customer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.print-cust-label {
+    font-size: 9px;
+    color: #777;
+    font-weight: 700;
+}
+
+.print-cust-value {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+/* Participants */
+.print-participants-section {
+    margin: 4px 0;
+}
+
+.print-participants-text {
+    font-size: 11px;
+    margin: 3px 0 0 0;
+    font-weight: 600;
+    background: #f5f5f5;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border-right: 3px solid #333;
+}
+
+/* Items table */
+.print-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0;
+}
+
+.print-items-table th {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #555;
+    padding: 6px 4px;
+    border-bottom: 2px solid #333;
+    text-align: start;
+    letter-spacing: 0.5px;
+}
+
+.print-items-table th:first-child {
+    width: 24px;
+    text-align: center;
+}
+
+.print-items-table th:last-child {
+    text-align: end;
+}
+
+.print-items-table td {
+    padding: 7px 4px;
+    border-bottom: 1px dotted #ddd;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.print-items-table td.print-item-num {
+    text-align: center;
+    color: #999;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.print-items-table td.print-item-price {
+    text-align: end;
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+}
+
+.print-items-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Payment summary */
+.print-payment-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 6px 0;
+}
+
+.print-pay-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 2px 0;
+}
+
+.print-pay-row span {
+    color: #555;
+    font-weight: 600;
+}
+
+.print-pay-row strong {
+    font-weight: 800;
+    font-family: 'Courier New', monospace;
+}
+
+.print-pay-row.paid-row {
+    color: #16a34a;
+}
+
+.print-pay-row.paid-row span {
+    color: #16a34a;
+}
+
+.print-pay-row.remaining-box {
+    background: #111;
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-top: 4px;
+    font-size: 14px;
+}
+
+.print-pay-row.remaining-box span {
+    color: #fff;
+    font-weight: 700;
+}
+
+.print-pay-row.remaining-box strong {
+    font-size: 16px;
+    letter-spacing: 0.5px;
+}
+
+/* Status badge */
+.print-status-line {
+    text-align: center;
+    margin: 10px 0 4px;
+}
+
+.print-status-badge {
+    display: inline-block;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+.print-status-badge.ps-paid {
+    background: #dcfce7;
+    color: #166534;
+    border: 1.5px solid #86efac;
+}
+
+.print-status-badge.ps-partial {
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1.5px solid #fde047;
+}
+
+.print-status-badge.ps-pending {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1.5px solid #fca5a5;
+}
+
+/* Footer */
+.print-receipt-footer {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.print-manager-line {
+    font-size: 10px;
+    color: #555;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.print-manager-line strong {
+    color: #000;
+}
+
+.print-thank-you {
+    font-size: 13px;
+    font-weight: 900;
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+}
+
+.print-footer-brand {
+    font-size: 8px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+/* Print modal */
+.print-modal-content.wide {
+    width: 95%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 28px;
+    background: var(--bg-card);
+    box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.5);
+}
+
+.print-modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.print-modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-h);
+    margin: 0;
+}
+
+.print-modal-header .close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg-app);
+    color: var(--text-b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.print-modal-header .close-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+
+.print-modal-actions {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.print-exec-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.75rem 1.75rem;
+    background: var(--p-600);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.print-exec-btn:hover {
+    background: var(--p-700);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.print-exec-btn:active {
+    transform: scale(0.97);
+}
+
+.print-cancel-btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-app);
+    color: var(--text-b);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.print-cancel-btn:hover {
+    background: var(--bg-input);
+    border-color: var(--text-b);
+}
+
+@media print {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body * {
+        visibility: hidden;
+    }
+
+    #invoice-print,
+    #invoice-print * {
+        visibility: visible;
+    }
+
+    #invoice-print {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 80mm;
+        margin: 0;
+        padding: 10px;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .print-pay-row.remaining-box {
+        background: #111 !important;
+        color: #fff !important;
+    }
+
+    .print-pay-row.remaining-box span,
+    .print-pay-row.remaining-box strong {
+        color: #fff !important;
+    }
+
+    .print-status-badge.ps-paid {
+        background: #dcfce7 !important;
+        border-color: #86efac !important;
+    }
+
+    .print-status-badge.ps-partial {
+        background: #fef9c3 !important;
+        border-color: #fde047 !important;
+    }
+
+    .print-status-badge.ps-pending {
+        background: #fee2e2 !important;
+        border-color: #fca5a5 !important;
+    }
+}

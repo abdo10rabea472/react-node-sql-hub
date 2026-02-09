@@ -1,0 +1,67 @@
+import axios from "axios";
+
+const API_URL = "http://localhost:3000";
+
+const api = axios.create({
+  baseURL: API_URL,
+});
+
+// Attach token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Auth
+export const login = (email: string, password: string) =>
+  api.post("/auth/login", { email, password });
+
+export const verifyToken = () => api.get("/auth/verify");
+
+// Users
+export const getUsers = () => api.get("/users");
+export const getStats = () => api.get("/users/stats");
+export const createUser = (data: { name: string; email: string; password: string; role?: string }) =>
+  api.post("/users", data);
+export const updateUser = (id: number, data: Record<string, string>) =>
+  api.put(`/users/${id}`, data);
+export const deleteUser = (id: number) => api.delete(`/users/${id}`);
+
+// Pricing
+export const getPackages = () => api.get("/pricing");
+export const createPackage = (data: any) => api.post("/pricing", data);
+export const updatePackage = (id: number, data: any) => api.put(`/pricing/${id}`, data);
+export const deletePackage = (id: number) => api.delete(`/pricing/${id}`);
+
+// Settings
+export const getStudioSettings = () => api.get("/settings");
+export const updateStudioSettings = (data: any) => api.put("/settings", data);
+
+// Customers
+export const getCustomers = () => api.get("/customers");
+export const addCustomer = (data: any) => api.post("/customers", data);
+export const deleteCustomer = (id: number) => api.delete(`/customers/${id}`);
+
+// Invoices
+export const getInvoices = () => api.get("/invoices");
+export const getInvoiceDetails = (id: number) => api.get(`/invoices/${id}`);
+export const createInvoice = (data: {
+  customer_id: number;
+  items: any[];
+  total_amount: number;
+  paid_amount: number;
+  created_by: string;
+  participants?: string;
+}) => api.post("/invoices", data);
+
+export const updateInvoice = (id: number, data: any) => api.put(`/invoices/${id}`, data);
+export const deleteInvoice = (id: number) => api.delete(`/invoices/${id}`);
+
+
+
+export default api;
+
+

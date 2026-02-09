@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+
+/* Using global variables from Dashboard.css */
+
+
+.customers-page {
+    padding: 2rem;
+    font-family: 'Cairo', sans-serif;
+}
+
+/* Header */
+.customers-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.customers-page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-h);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.customers-page-subtitle {
+    color: var(--text-p);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+}
+
+.customers-add-btn {
+    background: var(--p-600);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+.customers-add-btn:hover {
+    background: var(--p-500);
+    transform: translateY(-2px);
+}
+
+/* Filters */
+.customers-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.customers-search-box {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 0.75rem;
+    color: var(--text-muted);
+}
+
+.customers-search-box input {
+    background: none;
+    border: none;
+    padding: 0.8rem 0;
+    width: 100%;
+    color: var(--text-h);
+    font-family: inherit;
+    outline: none;
+}
+
+/* Table */
+.customers-table-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.customers-table-wrapper {
+    overflow-x: auto;
+}
+
+.customers-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+}
+
+[dir='ltr'] .customers-table {
+    text-align: left;
+}
+
+.customers-table th {
+    background: rgba(0, 0, 0, 0.02);
+    padding: 1rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+}
+
+.customers-table td {
+    padding: 1rem 1.5rem;
+    color: var(--text-h);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+}
+
+.customer-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.customer-avatar-sm {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--p-500), var(--p-700));
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.action-btns {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-app);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn.delete:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+/* Modal Styling */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    width: 100%;
+    max-width: 500px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    color: var(--text-h);
+    box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.modal-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-p);
+}
+
+.modal-field input,
+.modal-field textarea {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    color: var(--text-h);
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.modal-field input:focus {
+    border-color: var(--p-500);
+    background: var(--bg-card);
+}
+
+.modal-footer {
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    background: var(--bg-app);
+}
+
+.modal-save-btn {
+    background: var(--p-600);
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-save-btn:hover {
+    background: var(--p-500);
+}
+
+.modal-cancel-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    color: var(--text-p);
+    cursor: pointer;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.customers-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-p);
+    gap: 1rem;
+}
