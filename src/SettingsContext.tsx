@@ -8,6 +8,7 @@ interface Settings {
     theme: 'light' | 'dark';
     address: string;
     phone: string;
+    countryCode: string;
 }
 
 
@@ -24,6 +25,7 @@ const defaultSettings: Settings = {
     theme: 'light',
     address: '',
     phone: '',
+    countryCode: '966',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -44,6 +46,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     theme: (data.theme as 'light' | 'dark') || 'light',
                     address: data.address || '',
                     phone: data.phone || '',
+                    countryCode: data.country_code || '966',
                 };
                 setSettings(mapped);
                 setIsLoaded(true);
@@ -80,7 +83,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 studio_name: updated.studioName,
                 currency: updated.currency,
                 language: updated.lang,
-                theme: updated.theme
+                theme: updated.theme,
+                country_code: updated.countryCode
             });
         } catch (err) {
             console.error("Failed to sync settings to DB:", err);
@@ -106,6 +110,7 @@ export const useSettings = () => {
                 theme: 'light' as const,
                 address: '',
                 phone: '',
+                countryCode: '966',
             },
             updateSettings: async () => {},
             refreshSettings: async () => {},

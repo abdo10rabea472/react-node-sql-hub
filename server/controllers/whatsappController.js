@@ -133,19 +133,38 @@ exports.stopSession = async (req, res) => {
 // Helper: format and validate phone number
 const formatPhone = async (phone) => {
   let cleaned = phone.replace(/[^0-9]/g, "");
-  // Try the number as-is
+  console.log(`[formatPhone] Input: ${phone} → Cleaned: ${cleaned}`);
+  
+  // Try the number as-is (should already have country code from frontend)
   try {
+    console.log(`[formatPhone] Trying as-is: ${cleaned}@c.us`);
     const numberId = await client.getNumberId(cleaned + "@c.us");
-    if (numberId) return numberId._serialized;
-  } catch (e) {}
-  // Try with country code prefixed (Egypt: 20)
-  if (cleaned.startsWith("0")) {
-    try {
-      const withCode = "20" + cleaned.substring(1);
-      const numberId = await client.getNumberId(withCode + "@c.us");
-      if (numberId) return numberId._serialized;
-    } catch (e) {}
+    if (numberId) {
+      console.log(`[formatPhone] ✅ Found with as-is format: ${numberId._serialized}`);
+      return numberId._serialized;
+    }
+  } catch (e) {
+    console.log(`[formatPhone] ❌ As-is failed: ${e.message}`);
   }
+  
+  // If it starts with 0 (local format), try common country codes
+  if (cleaned.startsWith("0")) {
+    const countryCodes = ["20", "966", "971", "212", "213"];
+    for (const code of countryCodes) {
+      try {
+        const withCode = code + cleaned.substring(1);
+        console.log(`[formatPhone] Trying with country code ${code}: ${withCode}@c.us`);
+        const numberId = await client.getNumberId(withCode + "@c.us");
+        if (numberId) {
+          console.log(`[formatPhone] ✅ Found with country code ${code}: ${numberId._serialized}`);
+          return numberId._serialized;
+        }
+      } catch (e) {
+        console.log(`[formatPhone] ❌ Country code ${code} failed: ${e.message}`);
+      }
+    }
+  }
+  console.log(`[formatPhone] ⚠️ No valid WhatsApp number found for: ${phone}`);
   return null; // Not found on WhatsApp
 };
 
@@ -209,15 +228,19 @@ exports.sendInvoicePDF = async (req, res) => {
   }
 
   try {
+    console.log(`[sendInvoicePDF] Starting invoice send to: ${phone}`);
     const chatId = await formatPhone(phone);
     if (!chatId) {
+      console.log(`[sendInvoicePDF] ❌ Failed to format phone number: ${phone}`);
       return res.status(400).json({ message: "This number is not registered on WhatsApp: " + phone });
     }
+    console.log(`[sendInvoicePDF] ✅ ChatId obtained: ${chatId}, preparing media...`);
     const media = new MessageMedia("application/pdf", pdfBase64, fileName || "invoice.pdf");
     await client.sendMessage(chatId, media, { caption: caption || "" });
-    res.json({ success: true, message: "Invoice PDF sent via WhatsApp" });
+    console.log(`[sendInvoicePDF] ✅ Invoice PDF sent successfully to ${phone}`);
+    res.json({ success: true, message: "Invoice sent via WhatsApp" });
   } catch (err) {
-    console.error("Error sending PDF:", err.message || err);
-    res.status(500).json({ message: "Error sending PDF: " + (err.message || "Unknown error") });
+    console.error(`[sendInvoicePDF] ❌ Error sending invoice:`, err.message || err);
+    res.status(500).json({ message: "Error sending invoice: " + (err.message || "Unknown error") });
   }
 };

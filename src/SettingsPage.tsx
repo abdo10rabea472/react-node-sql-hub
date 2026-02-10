@@ -12,9 +12,25 @@ const currencies = [
   { code: 'EUR', label: { ar: 'يورو', en: 'Euro' }, symbol: '€' },
 ];
 
+const countries = [
+  { code: '20', label: { ar: 'مصر', en: 'Egypt' } },
+  { code: '966', label: { ar: 'المملكة العربية السعودية', en: 'Saudi Arabia' } },
+  { code: '971', label: { ar: 'الإمارات', en: 'UAE' } },
+  { code: '212', label: { ar: 'المغرب', en: 'Morocco' } },
+  { code: '213', label: { ar: 'الجزائر', en: 'Algeria' } },
+  { code: '216', label: { ar: 'تونس', en: 'Tunisia' } },
+  { code: '218', label: { ar: 'ليبيا', en: 'Libya' } },
+  { code: '249', label: { ar: 'السودان', en: 'Sudan' } },
+  { code: '970', label: { ar: 'فلسطين', en: 'Palestine' } },
+  { code: '972', label: { ar: 'إسرائيل', en: 'Israel' } },
+  { code: '962', label: { ar: 'الأردن', en: 'Jordan' } },
+  { code: '963', label: { ar: 'سوريا', en: 'Syria' } },
+  { code: '961', label: { ar: 'لبنان', en: 'Lebanon' } },
+];
+
 const translations = {
-  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟' },
-  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?' },
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟', country: 'البلد', countryHint: 'سيتم إضافة رمز الدولة تلقائياً لأرقام العملاء عند الإرسال' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending' },
 };
 
 const SettingsPage: React.FC = () => {
@@ -23,12 +39,13 @@ const SettingsPage: React.FC = () => {
   const t = translations[lang];
   const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp'>('studio');
   const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
+  const [selectedCountry, setSelectedCountry] = useState(settings.countryCode);
   const [showToast, setShowToast] = useState(false);
   const [studioName, setStudioName] = useState(settings.studioName);
   const [adminName, setAdminName] = useState('Admin Studio');
   const [email, setEmail] = useState('contact@stodio.com');
 
-  useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); }, [settings]);
+  useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); setSelectedCountry(settings.countryCode); }, [settings]);
 
   const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'qr' | 'connected'>('disconnected');
   const [waLoading, setWaLoading] = useState(false);
@@ -41,7 +58,7 @@ const SettingsPage: React.FC = () => {
   const handleStartWa = async () => { setWaLoading(true); try { await startWhatsAppSession(); setWaStatus('starting'); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
   const handleStopWa = async () => { if (!window.confirm(t.waDisconnectConfirm)) return; setWaLoading(true); try { await stopWhatsAppSession(); setWaStatus('disconnected'); setQrCode(null); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
 
-  const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
+  const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme, countryCode: selectedCountry }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
@@ -107,6 +124,13 @@ const SettingsPage: React.FC = () => {
                         </button>
                       ))}
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">{t.country}</label>
+                    <p className="text-xs text-muted-foreground mb-3">{t.countryHint}</p>
+                    <select value={selectedCountry} onChange={e => setSelectedCountry(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo cursor-pointer">
+                      {countries.map(c => <option key={c.code} value={c.code}>{c.label[lang]} (+{c.code})</option>)}
+                    </select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div><label className="block text-xs font-semibold text-foreground mb-2">{t.language}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50"><Globe size={16} className="text-muted-foreground" /><select value={settings.lang} onChange={e => updateSettings({ lang: e.target.value as 'ar' | 'en' })} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo cursor-pointer"><option value="ar">العربية (Arabic)</option><option value="en">English</option></select></div></div>

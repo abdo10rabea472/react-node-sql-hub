@@ -1,5 +1,18 @@
 const db = require("../config/db");
 
+// Check and add columns if missing
+const ensureColumnExists = (table, column, definition) => {
+    db.query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`, (err, results) => {
+        if (err) return console.error(`Error checking ${column} in ${table}:`, err);
+        if (results && results.length === 0) {
+            db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err) => {
+                if (err) console.error(`Error adding ${column} to ${table}:`, err);
+                else console.log(`✅ Column '${column}' added to table '${table}'`);
+            });
+        }
+    });
+};
+
 // Ensure wedding tables exist
 db.query(`CREATE TABLE IF NOT EXISTS wedding_invoices (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -15,7 +28,15 @@ db.query(`CREATE TABLE IF NOT EXISTS wedding_invoices (
     status ENUM('pending', 'partial', 'paid') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id)
-)`, (err) => { if (err) console.error("Error creating wedding_invoices table:", err); });
+)`, (err) => {
+    if (err) console.error("Error creating wedding_invoices table:", err);
+    else {
+        // Run column checks after table creation
+        ensureColumnExists('wedding_invoices', 'created_by', 'VARCHAR(255)');
+        ensureColumnExists('wedding_invoices', 'venue', 'VARCHAR(255)');
+        ensureColumnExists('wedding_invoices', 'notes', 'TEXT');
+    }
+});
 
 db.query(`CREATE TABLE IF NOT EXISTS wedding_invoice_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -27,12 +48,14 @@ db.query(`CREATE TABLE IF NOT EXISTS wedding_invoice_items (
     unit_price DECIMAL(10, 2),
     price DECIMAL(10, 2),
     FOREIGN KEY (invoice_id) REFERENCES wedding_invoices(id) ON DELETE CASCADE
-)`, (err) => { if (err) console.error("Error creating wedding_invoice_items table:", err); });
-
-// Add missing columns if table already exists
-db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS item_type VARCHAR(50) DEFAULT 'album'`, () => {});
-db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1`, () => {});
-db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS unit_price DECIMAL(10, 2)`, () => {});
+)`, (err) => {
+    if (err) console.error("Error creating wedding_invoice_items table:", err);
+    else {
+        ensureColumnExists('wedding_invoice_items', 'item_type', "VARCHAR(50) DEFAULT 'album'");
+        ensureColumnExists('wedding_invoice_items', 'quantity', "INT DEFAULT 1");
+        ensureColumnExists('wedding_invoice_items', 'unit_price', "DECIMAL(10, 2)");
+    }
+});
 
 // Get all wedding invoices
 exports.getInvoices = (req, res) => {
@@ -65,12 +88,19 @@ exports.getInvoiceDetails = (req, res) => {
 // Create wedding invoice
 exports.createInvoice = (req, res) => {
     const { customer_id, items, total_amount, paid_amount, created_by, wedding_date, venue, notes } = req.body;
-    const remaining_amount = total_amount - (parseFloat(paid_amount) || 0);
+
+    // Robust numeric handling
+    const total = parseFloat(total_amount) || 0;
+    const paid = parseFloat(paid_amount) || 0;
+    const remaining_amount = total - paid;
     const invoice_no = `WED-${Date.now()}`;
 
+    // Date handling: MySQL DATE column rejects empty strings
+    const cleanWeddingDate = wedding_date && wedding_date.trim() !== '' ? wedding_date : null;
+
     let status = 'pending';
-    if (parseFloat(paid_amount) >= parseFloat(total_amount)) status = 'paid';
-    else if (parseFloat(paid_amount) > 0) status = 'partial';
+    if (paid >= total) status = 'paid';
+    else if (paid > 0) status = 'partial';
 
     db.getConnection((err, connection) => {
         if (err) return res.status(500).json({ message: "DB Connection Error" });
@@ -79,8 +109,9 @@ exports.createInvoice = (req, res) => {
             if (err) { connection.release(); return res.status(500).json({ message: "Transaction Error" }); }
 
             const invQuery = "INSERT INTO wedding_invoices (customer_id, invoice_no, total_amount, paid_amount, remaining_amount, created_by, wedding_date, venue, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            connection.query(invQuery, [customer_id, invoice_no, total_amount, paid_amount, remaining_amount, created_by, wedding_date, venue, notes, status], (err, result) => {
+            connection.query(invQuery, [customer_id, invoice_no, total, paid, remaining_amount, created_by, cleanWeddingDate, venue, notes, status], (err, result) => {
                 if (err) {
+                    console.error("❌ Wedding Invoice Master Insert Error:", err);
                     return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Error creating wedding invoice", error: err }); });
                 }
 
@@ -88,22 +119,24 @@ exports.createInvoice = (req, res) => {
                 const itemData = items.map(item => [
                     invoice_id,
                     item.id || null,
-                    item.name,
-                    item.item_type || 'album',
+                    item.package_name || item.description || 'Item',
+                    item.type || item.item_type || 'album',
                     item.quantity || 1,
-                    item.unit_price || item.price,
-                    item.price
+                    parseFloat(item.unit_price || item.price) || 0,
+                    parseFloat(item.price) || 0
                 ]);
                 const itemQuery = "INSERT INTO wedding_invoice_items (invoice_id, package_id, package_name, item_type, quantity, unit_price, price) VALUES ?";
 
                 connection.query(itemQuery, [itemData], (err) => {
                     if (err) {
+                        console.error("❌ Wedding Invoice Items Insert Error:", err);
                         return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Error adding wedding invoice items", error: err }); });
                     }
 
                     connection.commit(err => {
                         if (err) { return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Commit Error" }); }); }
                         connection.release();
+                        console.log("✅ Wedding Invoice Created:", invoice_no);
                         res.json({ id: invoice_id, invoice_no, message: "Wedding invoice created successfully" });
                     });
                 });
@@ -116,14 +149,18 @@ exports.createInvoice = (req, res) => {
 exports.updateInvoice = (req, res) => {
     const { id } = req.params;
     const { paid_amount, total_amount, wedding_date, venue, notes } = req.body;
-    const remaining_amount = parseFloat(total_amount) - (parseFloat(paid_amount) || 0);
+
+    const total = parseFloat(total_amount) || 0;
+    const paid = parseFloat(paid_amount) || 0;
+    const remaining_amount = total - paid;
+    const cleanWeddingDate = wedding_date && wedding_date.trim() !== '' ? wedding_date : null;
 
     let status = 'pending';
-    if (parseFloat(paid_amount) >= parseFloat(total_amount)) status = 'paid';
-    else if (parseFloat(paid_amount) > 0) status = 'partial';
+    if (paid >= total) status = 'paid';
+    else if (paid > 0) status = 'partial';
 
     const query = "UPDATE wedding_invoices SET paid_amount = ?, remaining_amount = ?, status = ?, wedding_date = ?, venue = ?, notes = ? WHERE id = ?";
-    db.query(query, [paid_amount, remaining_amount, status, wedding_date, venue, notes, id], (err) => {
+    db.query(query, [paid, remaining_amount, status, cleanWeddingDate, venue, notes, id], (err) => {
         if (err) return res.status(500).json({ message: "Error updating wedding invoice", error: err });
         res.json({ message: "Wedding invoice updated successfully" });
     });

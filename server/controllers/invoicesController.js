@@ -1,15 +1,28 @@
 const db = require("../config/db");
 
-// Update schema to ensure participants column exists
-db.query("SHOW COLUMNS FROM invoices LIKE 'participants'", (err, results) => {
-    if (err) console.error("Error checking columns:", err);
-    if (results && results.length === 0) {
-        db.query("ALTER TABLE invoices ADD COLUMN participants TEXT", (err) => {
-            if (err) console.error("Error adding participants column:", err);
-            else console.log("Participants column added successfully");
-        });
-    }
-});
+// Basic error handling for database queries
+const handleSqlError = (err, res, msg) => {
+    console.error(`[SQL Error] ${msg}:`, err);
+    if (res) res.status(500).json({ message: msg, error: err });
+};
+
+// Check and add columns if missing
+const ensureColumnExists = (table, column, definition) => {
+    db.query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`, (err, results) => {
+        if (err) return console.error(`Error checking ${column} in ${table}:`, err);
+        if (results && results.length === 0) {
+            db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err) => {
+                if (err) console.error(`Error adding ${column} to ${table}:`, err);
+                else console.log(`✅ Column '${column}' added to table '${table}'`);
+            });
+        }
+    });
+};
+
+// Initialize schema columns
+ensureColumnExists('invoices', 'participants', 'TEXT');
+ensureColumnExists('invoices', 'created_by', 'VARCHAR(255)');
+ensureColumnExists('invoices', 'status', "ENUM('pending', 'partial', 'paid') DEFAULT 'pending'");
 
 // Get all invoices with customer details
 exports.getInvoices = (req, res) => {
