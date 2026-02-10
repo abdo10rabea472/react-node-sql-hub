@@ -102,33 +102,33 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="dashboard">
-        <div className="mb-7">
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{lang === 'ar' ? `مرحباً، ${user.name}` : `Welcome, ${user.name}`} <span className="inline-block animate-bounce">👋</span></h1>
-          <p className="text-sm text-muted-foreground mt-1">{t.stats}</p>
+        <div className="mb-5 sm:mb-7">
+          <h1 className="text-lg sm:text-2xl font-extrabold text-foreground tracking-tight">{lang === 'ar' ? `مرحباً، ${user.name}` : `Welcome, ${user.name}`} <span className="inline-block animate-bounce">👋</span></h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t.stats}</p>
         </div>
 
         <AnimatePresence mode="wait">
           {statsLoading ? (
             <div className="flex items-center justify-center min-h-[120px]"><Loader size={24} className="animate-spin text-primary" /></div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-6">
               {statCards.map((stat, idx) => {
                 const Icon = stat.icon;
                 return (
                   <motion.div key={idx} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}
-                    className="bg-card border border-border rounded-xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group relative overflow-hidden">
+                    className="bg-card border border-border rounded-xl p-3 sm:p-5 hover:shadow-md hover:-translate-y-0.5 transition-all group relative overflow-hidden">
                     <div className="absolute top-0 inset-x-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `linear-gradient(90deg, ${stat.color}, ${stat.color}88)` }} />
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${stat.color}15`, color: stat.color }}><Icon size={20} /></div>
-                      <button className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><MoreHorizontal size={16} /></button>
+                    <div className="flex justify-between items-start mb-2 sm:mb-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center" style={{ background: `${stat.color}15`, color: stat.color }}><Icon size={18} /></div>
+                      <button className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all hidden sm:block"><MoreHorizontal size={16} /></button>
                     </div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{stat.title}</p>
-                    <div className="flex items-end justify-between gap-3 mb-2.5">
-                      <h3 className="text-2xl font-extrabold text-foreground tracking-tight leading-none">{stat.value}</h3>
-                      <MiniChart data={stat.data} color={stat.color} />
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 sm:mb-1.5 truncate">{stat.title}</p>
+                    <div className="flex items-end justify-between gap-2 sm:gap-3 mb-1.5 sm:mb-2.5">
+                      <h3 className="text-lg sm:text-2xl font-extrabold text-foreground tracking-tight leading-none">{stat.value}</h3>
+                      <div className="hidden sm:block"><MiniChart data={stat.data} color={stat.color} /></div>
                     </div>
-                    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${stat.positive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                      {stat.positive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}{stat.change}
+                    <span className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full ${stat.positive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                      {stat.positive ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}{stat.change}
                     </span>
                   </motion.div>
                 );
@@ -137,7 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 mb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px] gap-4 sm:gap-5 mb-5">
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
               <div><h3 className="font-bold text-foreground text-sm">{t.salesOverview}</h3><p className="text-xs text-muted-foreground mt-0.5">{lang === 'ar' ? 'مقارنة المبيعات والزوار' : 'Sales vs Visitors comparison'}</p></div>
@@ -238,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 lg:ms-[260px] min-h-screen flex flex-col">
+      <main className="flex-1 lg:ms-[260px] min-h-screen flex flex-col w-full overflow-x-hidden">
         <header className="h-16 bg-card/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-5 lg:px-7 sticky top-0 z-[900]">
           <div className="flex items-center gap-3">
             <button className="lg:hidden w-9 h-9 rounded-lg border border-border bg-card flex items-center justify-center text-foreground hover:bg-muted transition-all" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
@@ -254,7 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           </div>
         </header>
 
-        <div className="flex-1 p-5 lg:p-7 max-w-[1400px] w-full mx-auto">
+        <div className="flex-1 p-3 sm:p-5 lg:p-7 max-w-[1400px] w-full mx-auto overflow-x-hidden">
           {renderContent()}
         </div>
       </main>

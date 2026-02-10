@@ -30,21 +30,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 fixed inset-0 overflow-hidden p-5 font-cairo" dir="rtl">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 fixed inset-0 overflow-hidden p-4 sm:p-5 font-cairo" dir="rtl">
       {/* Ambient glows */}
-      <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full bg-amber-500/8 blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -right-40 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] rounded-full bg-sky-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] rounded-full bg-amber-500/8 blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-[420px] animate-slide-up relative z-10">
         {/* Card */}
-        <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-10 shadow-2xl">
+        <div className="bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] rounded-2xl sm:rounded-3xl p-6 sm:p-10 shadow-2xl">
           {/* Header */}
-          <div className="text-center mb-9">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30">
-              <Aperture size={30} className="text-white" />
+          <div className="text-center mb-6 sm:mb-9">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3 sm:mb-4 rounded-2xl flex items-center justify-center bg-gradient-to-br from-sky-500 to-cyan-400 shadow-lg shadow-sky-500/30">
+              <Aperture size={26} className="text-white sm:hidden" />
+              <Aperture size={30} className="text-white hidden sm:block" />
             </div>
-            <h1 className="text-white text-[28px] font-extrabold tracking-tight mb-2">تسجيل الدخول</h1>
-            <p className="text-slate-400 text-sm">أهلاً بك مجدداً! يرجى إدخال بياناتك</p>
+            <h1 className="text-white text-2xl sm:text-[28px] font-extrabold tracking-tight mb-1.5 sm:mb-2">تسجيل الدخول</h1>
+            <p className="text-slate-400 text-xs sm:text-sm">أهلاً بك مجدداً! يرجى إدخال بياناتك</p>
           </div>
 
           {error && (
