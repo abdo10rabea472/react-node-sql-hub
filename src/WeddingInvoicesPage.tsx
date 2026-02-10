@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin } from 'lucide-react';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice } from './api';
+import { Heart, User as UserIcon, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin, Video, BookOpen, Image as ImageIcon } from 'lucide-react';
+import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
+interface VideoPricing { id: number; camera_type: string; quality: string; price_per_hour: number; }
 interface WeddingInvoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; wedding_date: string; venue: string; notes: string; status: string; created_at: string; }
-interface InvoiceItem { package_name: string; item_price: number; }
+interface SelectedItem { tempId: number; id: number; name: string; item_type: 'album' | 'video'; quantity: number; unit_price: number; price: number; }
+interface InvoiceItem { package_name: string; item_price: number; item_type?: string; quantity?: number; unit_price?: number; }
 
 const translations = {
-  ar: { title: 'فواتير الزفاف', createTab: 'إنشاء فاتورة زفاف', listTab: 'سجل فواتير الزفاف', selectCustomer: 'بيانات العميل', selectPackages: 'اختر الألبوم', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار ألبومات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', createBtn: 'إصدار فاتورة الزفاف', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المجموع', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', multiplePackagesHint: 'يمكنك إضافة أكثر من ألبوم', pending: 'معلق', paid_label: 'مدفوع بالكامل', partial: 'مدفوع جزئياً', actions: 'إجراءات', createdBy: 'المسؤول', print: 'طباعة الفاتورة', close: 'إغلاق', studioName: 'استوديو التصوير', weddingDate: 'تاريخ الزفاف', venue: 'مكان الحفل', notes: 'ملاحظات', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات' },
-  en: { title: 'Wedding Invoices', createTab: 'Create Wedding Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Album', invoiceSummary: 'Invoice Summary', noItems: 'No albums selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Wedding Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Total', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', multiplePackagesHint: 'You can add multiple albums', pending: 'Pending', paid_label: 'Fully Paid', partial: 'Partial Payment', actions: 'Actions', createdBy: 'Manager', print: 'Print Invoice', close: 'Close', studioName: 'Photography Studio', weddingDate: 'Wedding Date', venue: 'Venue', notes: 'Notes', deleteConfirm: 'Are you sure you want to delete this invoice?', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes' },
+  ar: { title: 'فواتير الزفاف', createTab: 'إنشاء فاتورة زفاف', listTab: 'سجل فواتير الزفاف', selectCustomer: 'بيانات العميل', selectAlbums: 'اختر الألبوم', selectVideos: 'اختر خدمة الفيديو', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار عناصر بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', createBtn: 'إصدار فاتورة الزفاف', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المجموع', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', multipleHint: 'يمكنك إضافة أكثر من عنصر', pending: 'معلق', paid_label: 'مدفوع بالكامل', partial: 'مدفوع جزئياً', actions: 'إجراءات', createdBy: 'المسؤول', print: 'طباعة الفاتورة', close: 'إغلاق', studioName: 'استوديو التصوير', weddingDate: 'تاريخ الزفاف', venue: 'مكان الحفل', notes: 'ملاحظات', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات', hours: 'ساعة', hour: 'ساعة', photos: 'صورة', perHour: '/ ساعة', videoHours: 'عدد الساعات', addVideo: 'إضافة', album: 'ألبوم', video: 'فيديو' },
+  en: { title: 'Wedding Invoices', createTab: 'Create Wedding Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectAlbums: 'Select Album', selectVideos: 'Select Video Service', invoiceSummary: 'Invoice Summary', noItems: 'No items selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Wedding Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Total', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', multipleHint: 'You can add multiple items', pending: 'Pending', paid_label: 'Fully Paid', partial: 'Partial Payment', actions: 'Actions', createdBy: 'Manager', print: 'Print Invoice', close: 'Close', studioName: 'Photography Studio', weddingDate: 'Wedding Date', venue: 'Venue', notes: 'Notes', deleteConfirm: 'Are you sure you want to delete this invoice?', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes', hours: 'hours', hour: 'hour', photos: 'photos', perHour: '/ hour', videoHours: 'Hours', addVideo: 'Add', album: 'Album', video: 'Video' },
 };
 
 const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -19,10 +21,11 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const lang = settings.lang; const t = translations[lang];
   const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [packages, setPackages] = useState<Album[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [videos, setVideos] = useState<VideoPricing[]>([]);
   const [invoices, setInvoices] = useState<WeddingInvoice[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
-  const [selectedPackages, setSelectedPackages] = useState<Album[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [weddingDate, setWeddingDate] = useState('');
   const [venue, setVenue] = useState('');
   const [notes, setNotes] = useState('');
@@ -41,21 +44,38 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const [editVenue, setEditVenue] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editWeddingDate, setEditWeddingDate] = useState('');
+  // Video hours input per video
+  const [videoHours, setVideoHours] = useState<Record<number, number>>({});
 
-  const fetchData = async () => { setIsLoading(true); try { const [c, p, i] = await Promise.all([getCustomers(), getWeddingAlbums(), getWeddingInvoices()]); setCustomers(c.data); setPackages(p.data); setInvoices(i.data); } catch (err) { console.error(err); } finally { setIsLoading(false); } };
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [c, a, v, i] = await Promise.all([getCustomers(), getWeddingAlbums(), getWeddingVideos(), getWeddingInvoices()]);
+      setCustomers(c.data); setAlbums(a.data); setVideos(v.data); setInvoices(i.data);
+    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+  };
   useEffect(() => { fetchData(); }, []);
 
-  const addPkg = (pkg: Album) => setSelectedPackages(prev => [...prev, { ...pkg, tempId: Date.now() + Math.random() } as any]);
-  const removePkg = (tempId: number) => setSelectedPackages(prev => (prev as any).filter((p: any) => p.tempId !== tempId));
-  const totalAmount = selectedPackages.reduce((sum, pkg) => sum + Number(pkg.price), 0);
+  const addAlbumItem = (album: Album) => {
+    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: album.id, name: album.description, item_type: 'album', quantity: 1, unit_price: album.price, price: album.price }]);
+  };
+
+  const addVideoItem = (vid: VideoPricing) => {
+    const hours = videoHours[vid.id] || 1;
+    const total = vid.price_per_hour * hours;
+    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: vid.id, name: `${vid.camera_type} - ${vid.quality}`, item_type: 'video', quantity: hours, unit_price: vid.price_per_hour, price: total }]);
+  };
+
+  const removeItem = (tempId: number) => setSelectedItems(prev => prev.filter(p => p.tempId !== tempId));
+  const totalAmount = selectedItems.reduce((sum, item) => sum + item.price, 0);
   const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
 
   const handleCreateInvoice = async () => {
-    if (!selectedCustomerId || selectedPackages.length === 0) return;
+    if (!selectedCustomerId || selectedItems.length === 0) return;
     setIsSaving(true);
     try {
-      const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: selectedPackages, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
-      setSelectedCustomerId(''); setSelectedPackages([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes(''); setActiveTab('list');
+      const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: selectedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
+      setSelectedCustomerId(''); setSelectedItems([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes(''); setActiveTab('list');
       const invRes = await getWeddingInvoices(); setInvoices(invRes.data);
       if (res.data?.id) handlePrint(res.data.id, invRes.data);
     } catch (err) { console.error(err); } finally { setIsSaving(false); }
@@ -85,6 +105,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       {activeTab === 'create' ? (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] gap-4 sm:gap-5 mt-4 sm:mt-6">
           <div className="space-y-4">
+            {/* Customer Section */}
             <section className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><UserIcon size={18} />{t.selectCustomer}</h3>
               <div className="flex gap-2 items-center">
@@ -95,13 +116,44 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               </div>
             </section>
 
+            {/* Albums Section */}
             <section className="bg-card border border-border rounded-xl p-5">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Package size={18} />{t.selectPackages}<span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span></h3>
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><BookOpen size={18} className="text-pink-500" />{t.selectAlbums}<span className="ms-auto text-xs text-muted-foreground font-normal">{t.multipleHint}</span></h3>
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {packages.map(pkg => <div key={pkg.id} onClick={() => addPkg(pkg)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-pink-500/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative"><span className="text-sm font-semibold text-foreground">{pkg.description}</span><span className="block text-xs text-muted-foreground mt-1">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'} • {pkg.size || ''}</span><Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" /></div>)}
+                {albums.map(album => (
+                  <div key={album.id} onClick={() => addAlbumItem(album)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-pink-500/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative">
+                    <span className="text-sm font-semibold text-foreground">{album.description}</span>
+                    <span className="block text-xs text-muted-foreground mt-1"><ImageIcon size={12} className="inline me-1" />{album.photo_count} {t.photos} {album.size ? `• ${album.size}` : ''}</span>
+                    <span className="block text-sm font-bold text-pink-500 mt-1.5">{album.price} {settings.currency}</span>
+                    <Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" />
+                  </div>
+                ))}
               </div>
             </section>
 
+            {/* Videos Section */}
+            <section className="bg-card border border-border rounded-xl p-5">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Video size={18} className="text-purple-500" />{t.selectVideos}</h3>
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {videos.map(vid => (
+                  <div key={vid.id} className="bg-muted border-2 border-transparent rounded-lg p-3.5 hover:border-purple-500/50 transition-all relative">
+                    <span className="text-sm font-semibold text-foreground">{vid.camera_type}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">{vid.quality}</span>
+                    <span className="block text-sm font-bold text-purple-500 mt-1.5">{vid.price_per_hour} {settings.currency} {t.perHour}</span>
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <Clock size={14} className="text-muted-foreground shrink-0" />
+                        <input type="number" min={1} value={videoHours[vid.id] || 1} onChange={e => setVideoHours(prev => ({ ...prev, [vid.id]: Math.max(1, Number(e.target.value)) }))} className="w-full bg-card border border-border rounded-md px-2 py-1.5 text-foreground text-sm outline-none focus:border-purple-500/50 text-center" />
+                        <span className="text-xs text-muted-foreground shrink-0">{t.hour}</span>
+                      </div>
+                      <button onClick={() => addVideoItem(vid)} className="shrink-0 px-3 py-1.5 bg-purple-500 text-white rounded-md text-xs font-semibold hover:bg-purple-600 transition-all flex items-center gap-1"><Plus size={14} />{t.addVideo}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Wedding Details */}
             <section className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Calendar size={18} />{t.weddingDate}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -112,11 +164,26 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
             </section>
           </div>
 
+          {/* Invoice Summary Sidebar */}
           <aside className="bg-card border border-border rounded-xl p-5 sticky top-24 h-fit">
             <h3 className="font-bold text-sm text-foreground mb-4 flex items-center gap-2"><Heart size={16} className="text-pink-500" />{t.invoiceSummary}</h3>
-            <div className="max-h-[200px] overflow-y-auto mb-3">
-              {selectedPackages.length === 0 ? <p className="text-center text-muted-foreground text-sm py-5">{t.noItems}</p> :
-                selectedPackages.map((p: any) => <div key={p.tempId} className="flex justify-between items-center py-2 border-b border-dashed border-border text-sm"><span>{p.description}</span><div className="flex items-center gap-2"><strong>{p.price} {settings.currency}</strong><button onClick={() => removePkg(p.tempId)} className="w-5 h-5 rounded bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-all"><X size={12} /></button></div></div>)}
+            <div className="max-h-[250px] overflow-y-auto mb-3 space-y-0.5">
+              {selectedItems.length === 0 ? <p className="text-center text-muted-foreground text-sm py-5">{t.noItems}</p> :
+                selectedItems.map(item => (
+                  <div key={item.tempId} className="flex justify-between items-center py-2 border-b border-dashed border-border text-sm">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {item.item_type === 'album' ? <BookOpen size={14} className="text-pink-500 shrink-0" /> : <Video size={14} className="text-purple-500 shrink-0" />}
+                      <div className="min-w-0">
+                        <span className="block truncate text-foreground">{item.name}</span>
+                        {item.item_type === 'video' && <span className="text-xs text-muted-foreground">{item.quantity} {t.hours} × {item.unit_price} {settings.currency}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <strong>{item.price} {settings.currency}</strong>
+                      <button onClick={() => removeItem(item.tempId)} className="w-5 h-5 rounded bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-all"><X size={12} /></button>
+                    </div>
+                  </div>
+                ))}
             </div>
             <div className="bg-muted rounded-lg p-3.5 mb-4 space-y-2.5">
               <div className="flex justify-between font-extrabold text-lg text-pink-500 border-b border-border pb-2.5">{t.total}<span>{totalAmount} {settings.currency}</span></div>
@@ -128,7 +195,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               <div className="flex items-center gap-1.5"><Calendar size={12} />{new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</div>
               <div className="flex items-center gap-1.5"><UserIcon size={12} />{t.createdBy}: {currentUserName}</div>
             </div>
-            <button onClick={handleCreateInvoice} disabled={!selectedCustomerId || selectedPackages.length === 0 || isSaving} className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-pink-500/20">
+            <button onClick={handleCreateInvoice} disabled={!selectedCustomerId || selectedItems.length === 0 || isSaving} className="w-full py-3 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-pink-500/20">
               {isSaving ? <Loader className="animate-spin" size={18} /> : <CheckCircle size={18} />}{t.createBtn}
             </button>
           </aside>
@@ -180,7 +247,19 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 {printingInvoice.wedding_date && <div className="flex justify-between my-1.5"><span className="text-[9px] text-gray-500 font-bold">{t.weddingDate}</span><span className="text-xs font-extrabold">{new Date(printingInvoice.wedding_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span></div>}
                 {printingInvoice.venue && <div className="flex justify-between my-1.5"><span className="text-[9px] text-gray-500 font-bold">{t.venue}</span><span className="text-xs font-extrabold">{printingInvoice.venue}</span></div>}
                 <div className="border-t-[3px] border-double border-gray-800 my-2.5" />
-                <table className="w-full border-collapse my-1.5"><thead><tr className="border-b-2 border-gray-800"><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-center w-6">#</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-start">{t.selectPackages}</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-end">{t.amount}</th></tr></thead><tbody>{printingItems.map((item, i) => <tr key={i} className="border-b border-dotted border-gray-200"><td className="py-1.5 text-center text-[10px] text-gray-400 font-bold">{i + 1}</td><td className="py-1.5 text-[11px] font-semibold">{item.package_name}</td><td className="py-1.5 text-end font-extrabold font-mono whitespace-nowrap">{item.item_price} {settings.currency}</td></tr>)}</tbody></table>
+                <table className="w-full border-collapse my-1.5">
+                  <thead><tr className="border-b-2 border-gray-800"><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-center w-6">#</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-start">{lang === 'ar' ? 'البند' : 'Item'}</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-end">{t.amount}</th></tr></thead>
+                  <tbody>{printingItems.map((item, i) => (
+                    <tr key={i} className="border-b border-dotted border-gray-200">
+                      <td className="py-1.5 text-center text-[10px] text-gray-400 font-bold">{i + 1}</td>
+                      <td className="py-1.5 text-[11px] font-semibold">
+                        {item.package_name}
+                        {item.item_type === 'video' && item.quantity && <span className="text-[9px] text-gray-400 ms-1">({item.quantity} {t.hours})</span>}
+                      </td>
+                      <td className="py-1.5 text-end font-extrabold font-mono whitespace-nowrap">{item.item_price} {settings.currency}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
                 <div className="border-t-[3px] border-double border-gray-800 my-2.5" />
                 <div className="space-y-1 my-1.5"><div className="flex justify-between text-xs"><span className="text-gray-500 font-semibold">{t.total}</span><strong className="font-mono">{printingInvoice.total_amount} {settings.currency}</strong></div><div className="flex justify-between text-xs text-green-600"><span className="font-semibold">{t.paid}</span><strong className="font-mono">{printingInvoice.paid_amount} {settings.currency}</strong></div><div className="flex justify-between text-sm bg-gray-900 text-white p-2 rounded-md mt-1"><span className="font-bold">{t.remaining}</span><strong className="font-mono text-base">{printingInvoice.remaining_amount} {settings.currency}</strong></div></div>
                 <div className="text-center my-2.5"><span className={`inline-block px-4 py-1 rounded-full text-[11px] font-extrabold ${printingInvoice.status === 'paid' ? 'bg-green-100 text-green-800 border border-green-300' : printingInvoice.status === 'partial' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>{printingInvoice.status === 'paid' ? '✓ ' : printingInvoice.status === 'partial' ? '◐ ' : '○ '}{getStatusLabel(printingInvoice.status)}</span></div>

@@ -22,9 +22,17 @@ db.query(`CREATE TABLE IF NOT EXISTS wedding_invoice_items (
     invoice_id INT NOT NULL,
     package_id INT,
     package_name VARCHAR(255),
+    item_type VARCHAR(50) DEFAULT 'album',
+    quantity INT DEFAULT 1,
+    unit_price DECIMAL(10, 2),
     price DECIMAL(10, 2),
     FOREIGN KEY (invoice_id) REFERENCES wedding_invoices(id) ON DELETE CASCADE
 )`, (err) => { if (err) console.error("Error creating wedding_invoice_items table:", err); });
+
+// Add missing columns if table already exists
+db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS item_type VARCHAR(50) DEFAULT 'album'`, () => {});
+db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 1`, () => {});
+db.query(`ALTER TABLE wedding_invoice_items ADD COLUMN IF NOT EXISTS unit_price DECIMAL(10, 2)`, () => {});
 
 // Get all wedding invoices
 exports.getInvoices = (req, res) => {
@@ -44,10 +52,9 @@ exports.getInvoices = (req, res) => {
 exports.getInvoiceDetails = (req, res) => {
     const { id } = req.params;
     const query = `
-        SELECT wi.*, wit.package_name, wit.price as item_price 
-        FROM wedding_invoices wi
-        JOIN wedding_invoice_items wit ON wi.id = wit.invoice_id
-        WHERE wi.id = ?
+        SELECT wit.package_name, wit.price as item_price, wit.item_type, wit.quantity, wit.unit_price
+        FROM wedding_invoice_items wit
+        WHERE wit.invoice_id = ?
     `;
     db.query(query, [id], (err, results) => {
         if (err) return res.status(500).json({ message: "Error fetching wedding invoice details", error: err });
@@ -78,8 +85,16 @@ exports.createInvoice = (req, res) => {
                 }
 
                 const invoice_id = result.insertId;
-                const itemData = items.map(item => [invoice_id, item.id, item.type, item.price]);
-                const itemQuery = "INSERT INTO wedding_invoice_items (invoice_id, package_id, package_name, price) VALUES ?";
+                const itemData = items.map(item => [
+                    invoice_id,
+                    item.id || null,
+                    item.name,
+                    item.item_type || 'album',
+                    item.quantity || 1,
+                    item.unit_price || item.price,
+                    item.price
+                ]);
+                const itemQuery = "INSERT INTO wedding_invoice_items (invoice_id, package_id, package_name, item_type, quantity, unit_price, price) VALUES ?";
 
                 connection.query(itemQuery, [itemData], (err) => {
                     if (err) {
