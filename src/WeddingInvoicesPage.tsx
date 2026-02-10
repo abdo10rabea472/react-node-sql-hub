@@ -63,7 +63,8 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const addVideoItem = (vid: VideoPricing) => {
     const hours = videoHours[vid.id] || 1;
     const total = vid.price_per_hour * hours;
-    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: vid.id, name: `${vid.camera_type} - ${vid.quality}`, item_type: 'video', quantity: hours, unit_price: vid.price_per_hour, price: total }]);
+    const videoLabel = lang === 'ar' ? `${hours} ساعة فيديو` : `${hours} hour${hours > 1 ? 's' : ''} video`;
+    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: vid.id, name: videoLabel, item_type: 'video', quantity: hours, unit_price: vid.price_per_hour, price: total }]);
   };
 
   const removeItem = (tempId: number) => setSelectedItems(prev => prev.filter(p => p.tempId !== tempId));
