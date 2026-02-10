@@ -11,8 +11,8 @@ app.use("/pricing", require("./routes/pricing"));
 app.use("/settings", require("./routes/settings"));
 app.use("/customers", require("./routes/customers"));
 app.use("/invoices", require("./routes/invoices"));
-
-
+app.use("/wedding-pricing", require("./routes/weddingPricing"));
+app.use("/wedding-invoices", require("./routes/weddingInvoices"));
 
 app.get("/", (req, res) => {
   res.send("Server is running!");

@@ -60,8 +60,20 @@ export const createInvoice = (data: {
 export const updateInvoice = (id: number, data: any) => api.put(`/invoices/${id}`, data);
 export const deleteInvoice = (id: number) => api.delete(`/invoices/${id}`);
 
+// Wedding Pricing
+export const getWeddingPackages = () => api.get("/wedding-pricing");
+export const createWeddingPackage = (data: any) => api.post("/wedding-pricing", data);
+export const updateWeddingPackage = (id: number, data: any) => api.put(`/wedding-pricing/${id}`, data);
+export const deleteWeddingPackage = (id: number) => api.delete(`/wedding-pricing/${id}`);
 
+// Wedding Invoices
+export const getWeddingInvoices = () => api.get("/wedding-invoices");
+export const getWeddingInvoiceDetails = (id: number) => api.get(`/wedding-invoices/${id}`);
+export const createWeddingInvoice = (data: any) => api.post("/wedding-invoices", data);
+export const updateWeddingInvoice = (id: number, data: any) => api.put(`/wedding-invoices/${id}`, data);
+export const deleteWeddingInvoice = (id: number) => api.delete(`/wedding-invoices/${id}`);
 
 export default api;
+
 
 
