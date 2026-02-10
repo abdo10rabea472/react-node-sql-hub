@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin } from 'lucide-react';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingPackages, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice } from './api';
+import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
-interface WeddingPackage { id: number; type: string; price: number; }
+interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
 interface WeddingInvoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; wedding_date: string; venue: string; notes: string; status: string; created_at: string; }
 interface InvoiceItem { package_name: string; item_price: number; }
 
 const translations = {
-  ar: { title: 'فواتير الزفاف', createTab: 'إنشاء فاتورة زفاف', listTab: 'سجل فواتير الزفاف', selectCustomer: 'بيانات العميل', selectPackages: 'اختر الباقة', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار باقات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', createBtn: 'إصدار فاتورة الزفاف', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المجموع', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', multiplePackagesHint: 'يمكنك إضافة أكثر من باقة', pending: 'معلق', paid_label: 'مدفوع بالكامل', partial: 'مدفوع جزئياً', actions: 'إجراءات', createdBy: 'المسؤول', print: 'طباعة الفاتورة', close: 'إغلاق', studioName: 'استوديو التصوير', weddingDate: 'تاريخ الزفاف', venue: 'مكان الحفل', notes: 'ملاحظات', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات' },
-  en: { title: 'Wedding Invoices', createTab: 'Create Wedding Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Package', invoiceSummary: 'Invoice Summary', noItems: 'No packages selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Wedding Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Total', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', multiplePackagesHint: 'You can add multiple packages', pending: 'Pending', paid_label: 'Fully Paid', partial: 'Partial Payment', actions: 'Actions', createdBy: 'Manager', print: 'Print Invoice', close: 'Close', studioName: 'Photography Studio', weddingDate: 'Wedding Date', venue: 'Venue', notes: 'Notes', deleteConfirm: 'Are you sure you want to delete this invoice?', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes' },
+  ar: { title: 'فواتير الزفاف', createTab: 'إنشاء فاتورة زفاف', listTab: 'سجل فواتير الزفاف', selectCustomer: 'بيانات العميل', selectPackages: 'اختر الألبوم', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار ألبومات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', createBtn: 'إصدار فاتورة الزفاف', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المجموع', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', multiplePackagesHint: 'يمكنك إضافة أكثر من ألبوم', pending: 'معلق', paid_label: 'مدفوع بالكامل', partial: 'مدفوع جزئياً', actions: 'إجراءات', createdBy: 'المسؤول', print: 'طباعة الفاتورة', close: 'إغلاق', studioName: 'استوديو التصوير', weddingDate: 'تاريخ الزفاف', venue: 'مكان الحفل', notes: 'ملاحظات', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات' },
+  en: { title: 'Wedding Invoices', createTab: 'Create Wedding Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Album', invoiceSummary: 'Invoice Summary', noItems: 'No albums selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Wedding Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Total', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', multiplePackagesHint: 'You can add multiple albums', pending: 'Pending', paid_label: 'Fully Paid', partial: 'Partial Payment', actions: 'Actions', createdBy: 'Manager', print: 'Print Invoice', close: 'Close', studioName: 'Photography Studio', weddingDate: 'Wedding Date', venue: 'Venue', notes: 'Notes', deleteConfirm: 'Are you sure you want to delete this invoice?', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes' },
 };
 
 const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -19,10 +19,10 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const lang = settings.lang; const t = translations[lang];
   const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [packages, setPackages] = useState<WeddingPackage[]>([]);
+  const [packages, setPackages] = useState<Album[]>([]);
   const [invoices, setInvoices] = useState<WeddingInvoice[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
-  const [selectedPackages, setSelectedPackages] = useState<WeddingPackage[]>([]);
+  const [selectedPackages, setSelectedPackages] = useState<Album[]>([]);
   const [weddingDate, setWeddingDate] = useState('');
   const [venue, setVenue] = useState('');
   const [notes, setNotes] = useState('');
@@ -42,10 +42,10 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const [editNotes, setEditNotes] = useState('');
   const [editWeddingDate, setEditWeddingDate] = useState('');
 
-  const fetchData = async () => { setIsLoading(true); try { const [c, p, i] = await Promise.all([getCustomers(), getWeddingPackages(), getWeddingInvoices()]); setCustomers(c.data); setPackages(p.data); setInvoices(i.data); } catch (err) { console.error(err); } finally { setIsLoading(false); } };
+  const fetchData = async () => { setIsLoading(true); try { const [c, p, i] = await Promise.all([getCustomers(), getWeddingAlbums(), getWeddingInvoices()]); setCustomers(c.data); setPackages(p.data); setInvoices(i.data); } catch (err) { console.error(err); } finally { setIsLoading(false); } };
   useEffect(() => { fetchData(); }, []);
 
-  const addPkg = (pkg: WeddingPackage) => setSelectedPackages(prev => [...prev, { ...pkg, tempId: Date.now() + Math.random() } as any]);
+  const addPkg = (pkg: Album) => setSelectedPackages(prev => [...prev, { ...pkg, tempId: Date.now() + Math.random() } as any]);
   const removePkg = (tempId: number) => setSelectedPackages(prev => (prev as any).filter((p: any) => p.tempId !== tempId));
   const totalAmount = selectedPackages.reduce((sum, pkg) => sum + Number(pkg.price), 0);
   const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
@@ -98,7 +98,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
             <section className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Package size={18} />{t.selectPackages}<span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span></h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {packages.map(pkg => <div key={pkg.id} onClick={() => addPkg(pkg)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-pink-500/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative"><span className="text-sm font-semibold text-foreground">{pkg.type}</span><Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" /></div>)}
+                {packages.map(pkg => <div key={pkg.id} onClick={() => addPkg(pkg)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-pink-500/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative"><span className="text-sm font-semibold text-foreground">{pkg.description}</span><span className="block text-xs text-muted-foreground mt-1">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'} • {pkg.size || ''}</span><Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" /></div>)}
               </div>
             </section>
 
@@ -116,7 +116,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
             <h3 className="font-bold text-sm text-foreground mb-4 flex items-center gap-2"><Heart size={16} className="text-pink-500" />{t.invoiceSummary}</h3>
             <div className="max-h-[200px] overflow-y-auto mb-3">
               {selectedPackages.length === 0 ? <p className="text-center text-muted-foreground text-sm py-5">{t.noItems}</p> :
-                selectedPackages.map((p: any) => <div key={p.tempId} className="flex justify-between items-center py-2 border-b border-dashed border-border text-sm"><span>{p.type}</span><div className="flex items-center gap-2"><strong>{p.price} {settings.currency}</strong><button onClick={() => removePkg(p.tempId)} className="w-5 h-5 rounded bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-all"><X size={12} /></button></div></div>)}
+                selectedPackages.map((p: any) => <div key={p.tempId} className="flex justify-between items-center py-2 border-b border-dashed border-border text-sm"><span>{p.description}</span><div className="flex items-center gap-2"><strong>{p.price} {settings.currency}</strong><button onClick={() => removePkg(p.tempId)} className="w-5 h-5 rounded bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-all"><X size={12} /></button></div></div>)}
             </div>
             <div className="bg-muted rounded-lg p-3.5 mb-4 space-y-2.5">
               <div className="flex justify-between font-extrabold text-lg text-pink-500 border-b border-border pb-2.5">{t.total}<span>{totalAmount} {settings.currency}</span></div>
