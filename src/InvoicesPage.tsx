@@ -1,24 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
-import * as pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, sendWhatsAppPDF, getWhatsAppStatus, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
 
-// Initialize pdfMake vfs and helper
-const getPdfMake = () => {
-    try {
-        const p = (pdfMake as any).default || pdfMake;
-        const v = (pdfFonts as any).default || pdfFonts;
-        const vfs = v.pdfMake?.vfs || v.vfs || (window as any).pdfMake?.vfs;
-        if (vfs) p.vfs = vfs;
-        return p;
-    } catch (e) {
-        console.error('pdfMake init error:', e);
-        return (pdfMake as any);
-    }
-};
+// Initialize pdfMake vfs
+try {
+  (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).vfs || pdfFonts;
+} catch (e) {
+  console.error('pdfMake VFS init error:', e);
+}
+
+const getPdfMake = () => pdfMake as any;
 
 interface Customer { id: number; name: string; phone: string; }
 interface PricingPackage { id: number; type: string; price: number; }
@@ -45,7 +40,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [participants, setParticipants] = useState('');
     const [paidAmount, setPaidAmount] = useState<string>('0');
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [_isLoading, setIsLoading] = useState(true);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [newCustName, setNewCustName] = useState('');
     const [newCustPhone, setNewCustPhone] = useState('');

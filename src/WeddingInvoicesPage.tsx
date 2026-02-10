@@ -1,29 +1,19 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, CheckCircle, Printer, Loader, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
-import * as pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppPDF, getWhatsAppStatus, sendWhatsAppMessage } from './api';
+import { AnimatePresence } from 'framer-motion';
+import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppPDF, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
 
-// Initialize pdfMake vfs and helper
-const getPdfMake = () => {
-  try {
-    const p = (pdfMake as any).default || pdfMake;
-    const v = (pdfFonts as any).default || pdfFonts;
-    // Try multiple ways to find the vfs
-    const vfs = v.pdfMake?.vfs || v.vfs || (window as any).pdfMake?.vfs || (pdfMake as any).vfs;
-    if (vfs) {
-      p.vfs = vfs;
-    } else {
-      console.warn('pdfMake VFS not found in standard locations');
-    }
-    return p;
-  } catch (e) {
-    console.error('pdfMake init error:', e);
-    return (pdfMake as any);
-  }
-};
+// Initialize pdfMake vfs
+try {
+  (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).vfs || pdfFonts;
+} catch (e) {
+  console.error('pdfMake VFS init error:', e);
+}
+
+const getPdfMake = () => pdfMake as any;
 
 interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
@@ -48,11 +38,16 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const [venue, setVenue] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [newCustName, setNewCustName] = useState('');
-  const [newCustPhone, setNewCustPhone] = useState('');
-  const [isAddingCust, setIsAddingCust] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isLoading, _setIsLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_showQuickAdd, _setShowQuickAdd] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_newCustName, _setNewCustName] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_newCustPhone, _setNewCustPhone] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isAddingCust, _setIsAddingCust] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printingInvoice, setPrintingInvoice] = useState<WeddingInvoice | null>(null);
   const [printingItems, setPrintingItems] = useState<any[]>([]);
