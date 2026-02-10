@@ -1,19 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppPDF, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
-
-// Initialize pdfMake vfs
-try {
-  (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).vfs || pdfFonts;
-} catch (e) {
-  console.error('pdfMake VFS init error:', e);
-}
-
-const getPdfMake = () => pdfMake as any;
+import { generateInvoicePdfBase64 } from './pdfGenerator';
 
 interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
@@ -140,58 +130,24 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
         items = detailsRes.data;
       }
 
-      const docDefinition: any = {
-        pageSize: 'A4',
-        margins: [10, 10, 10, 10],
-        content: [
-          { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-          settings.address ? { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] } : null,
-          settings.phone ? { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] } : null,
-          { text: inv.invoice_no, fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
-          {
-            columns: [
-              [{ text: t.customerName, fontSize: 8, bold: true }, { text: inv.customer_name, fontSize: 11, bold: true }],
-              [{ text: t.customerPhone, fontSize: 8, bold: true, alignment: 'right' }, { text: inv.customer_phone, fontSize: 11, bold: true, alignment: 'right' }]
-            ], margin: [0, 0, 0, 10]
-          },
-          {
-            columns: [
-              [{ text: t.weddingDate, fontSize: 8, bold: true }, { text: inv.wedding_date || '---', fontSize: 11, bold: true }],
-              [{ text: t.venue, fontSize: 8, bold: true, alignment: 'right' }, { text: inv.venue || '---', fontSize: 11, bold: true, alignment: 'right' }]
-            ], margin: [0, 0, 0, 10]
-          },
-          { table: { widths: [30, '*', 70], body: [['#', t.items, t.amount], ...items.map((it: any, i: number) => [(i + 1).toString(), it.package_name || '---', `${parseFloat(it.item_price || it.price) || 0} ${settings.currency}`])] } },
-          { margin: [0, 10, 0, 0], columns: [[{ text: t.total, fontSize: 10, bold: true }, { text: `${inv.total_amount} ${settings.currency}`, fontSize: 14, bold: true }]] },
-          { text: `${lang === 'ar' ? 'المسؤول' : 'Manager'}: ${inv.created_by || currentUserName}`, fontSize: 9, alignment: 'center', margin: [0, 20, 0, 0] }
-        ].filter(Boolean)
-      };
-
-      const pm = getPdfMake();
-      console.log('✅ pdfMake ready, vfs status:', !!pm.vfs);
-      const pdfDoc = pm.createPdf(docDefinition);
-      console.log('✅ pdfDoc created, generating base64...');
-
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        try {
-          const timeout = setTimeout(() => {
-            console.error('❌ PDF Generation Timeout Triggered');
-            reject(new Error('PDF Timeout after 60s'));
-          }, 60000);
-
-          pdfDoc.getBase64((data: string) => {
-            clearTimeout(timeout);
-            if (!data) {
-              console.error('❌ PDF Base64 is empty');
-              return reject(new Error('Empty PDF data received'));
-            }
-            console.log('✅ PDF Base64 generated, length:', data.length);
-            resolve(data);
-          });
-        } catch (err) {
-          console.error('❌ Internal error during getBase64:', err);
-          reject(err);
-        }
+      const base64Data = generateInvoicePdfBase64({
+        studioName: settings.studioName || t.studioName,
+        address: settings.address,
+        phone: settings.phone,
+        invoiceNo: inv.invoice_no,
+        customerName: inv.customer_name,
+        customerPhone: inv.customer_phone,
+        createdBy: inv.created_by || currentUserName,
+        currency: settings.currency,
+        totalAmount: inv.total_amount,
+        paidAmount: inv.paid_amount,
+        remainingAmount: inv.remaining_amount,
+        weddingDate: inv.wedding_date,
+        venue: inv.venue,
+        items: items.map((it: any) => ({ name: it.package_name || '---', price: parseFloat(it.item_price || it.price) || 0 })),
+        lang,
       });
+      console.log('✅ PDF Base64 generated, length:', base64Data.length);
 
       await sendWhatsAppPDF({ phone: inv.customer_phone, pdfBase64: base64Data, fileName: `${inv.invoice_no}.pdf`, caption: `${settings.studioName || t.studioName} - ${inv.invoice_no}` });
       showToastMessage(lang === 'ar' ? 'تم إرسال الفاتورة' : 'Invoice sent');
@@ -219,22 +175,27 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
     try {
       const detailsRes = await getWeddingInvoiceDetails(printingInvoice.id);
       const items = detailsRes.data;
-
-      const docDefinition: any = {
-        pageSize: 'A4',
-        margins: [10, 10, 10, 10],
-        content: [
-          { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-          { text: printingInvoice.invoice_no, fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
-          { columns: [[{ text: t.customerName, fontSize: 8, bold: true }, { text: printingInvoice.customer_name, fontSize: 11, bold: true }]] },
-          { margin: [0, 10, 0, 10], table: { widths: [30, 'auto', 60], body: [['#', t.items, t.amount], ...items.map((it: any, i: number) => [(i + 1).toString(), it.package_name || '---', `${it.item_price || 0} ${settings.currency}`])] } },
-          { columns: [[{ text: t.total, fontSize: 9, bold: true }, { text: `${printingInvoice.total_amount} ${settings.currency}`, fontSize: 13, bold: true }]] }
-        ]
-      };
-
-      const pm = getPdfMake();
-      const pdfDoc = pm.createPdf(docDefinition);
-      pdfDoc.download(`${printingInvoice.invoice_no}.pdf`);
+      const base64Data = generateInvoicePdfBase64({
+        studioName: settings.studioName || t.studioName,
+        address: settings.address,
+        phone: settings.phone,
+        invoiceNo: printingInvoice.invoice_no,
+        customerName: printingInvoice.customer_name,
+        customerPhone: printingInvoice.customer_phone,
+        createdBy: printingInvoice.created_by || currentUserName,
+        currency: settings.currency,
+        totalAmount: printingInvoice.total_amount,
+        paidAmount: printingInvoice.paid_amount,
+        remainingAmount: printingInvoice.remaining_amount,
+        weddingDate: printingInvoice.wedding_date,
+        venue: printingInvoice.venue,
+        items: items.map((it: any) => ({ name: it.package_name || '---', price: parseFloat(it.item_price || it.price) || 0 })),
+        lang,
+      });
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${base64Data}`;
+      link.download = `${printingInvoice.invoice_no}.pdf`;
+      link.click();
     } catch (err) {
       console.error(err);
       showToastMessage(lang === 'ar' ? 'فشل تحميل الفاتورة PDF' : 'Failed to download PDF', 'error');

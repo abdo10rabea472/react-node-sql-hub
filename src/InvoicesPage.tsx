@@ -1,19 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, sendWhatsAppPDF, getWhatsAppStatus, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
-
-// Initialize pdfMake vfs
-try {
-  (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).vfs || pdfFonts;
-} catch (e) {
-  console.error('pdfMake VFS init error:', e);
-}
-
-const getPdfMake = () => pdfMake as any;
+import { generateInvoicePdfBase64 } from './pdfGenerator';
 
 interface Customer { id: number; name: string; phone: string; }
 interface PricingPackage { id: number; type: string; price: number; }
@@ -106,99 +96,24 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                 items = detailsRes.data;
             }
 
-            const docDefinition: any = {
-                pageSize: 'A4',
-                margins: [10, 10, 10, 10],
-                content: [
-                    // Header
-                    { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-                    settings.address ? { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] } : null,
-                    settings.phone ? { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] } : null,
-                    { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1, lineColor: '#ddd' }], margin: [0, 0, 0, 10] },
-
-                    // Invoice Info
-                    { text: t.invoiceNo, fontSize: 9, bold: true, alignment: 'center', color: '#888', margin: [0, 0, 0, 3] },
-                    { text: inv.invoice_no, fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
-
-                    {
-                        columns: [
-                            [{ text: t.date, fontSize: 8, bold: true, color: '#888' }, { text: new Date(inv.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US'), fontSize: 11, bold: true, margin: [0, 2, 0, 0] }],
-                            [{ text: t.time, fontSize: 8, bold: true, color: '#888', alignment: 'right' }, { text: new Date(inv.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' }), fontSize: 11, bold: true, alignment: 'right', margin: [0, 2, 0, 0] }]
-                        ], margin: [0, 0, 0, 10]
-                    },
-                    { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 0.5, lineColor: '#ddd' }], margin: [0, 0, 0, 10] },
-
-                    // Customer Info
-                    {
-                        columns: [
-                            [{ text: t.customerName, fontSize: 8, bold: true, color: '#888' }, { text: inv.customer_name, fontSize: 11, bold: true, margin: [0, 2, 0, 0] }],
-                            [{ text: t.customerPhone, fontSize: 8, bold: true, color: '#888', alignment: 'right' }, { text: inv.customer_phone, fontSize: 11, bold: true, alignment: 'right', margin: [0, 2, 0, 0] }]
-                        ], margin: [0, 0, 0, 10]
-                    },
-                    inv.participants ? { text: `${t.participants}:\n${inv.participants}`, fontSize: 10, margin: [10, 5, 10, 10], background: '#f5f5f5', color: '#333' } : null,
-
-                    { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 2, lineColor: '#000' }], margin: [0, 0, 0, 10] },
-
-                    // Items Table
-                    {
-                        table: {
-                            headerRows: 1,
-                            widths: [30, 'auto', 50, 60],
-                            body: [
-                                [
-                                    { text: '#', fontSize: 8, bold: true, color: '#888', alignment: 'center' },
-                                    { text: t.selectPackages, fontSize: 8, bold: true, color: '#888' },
-                                    { text: 'Qty', fontSize: 8, bold: true, color: '#888', alignment: 'center' },
-                                    { text: t.amount, fontSize: 8, bold: true, color: '#888', alignment: 'right' }
-                                ],
-                                ...items.map((item, i) => [
-                                    { text: (i + 1).toString(), fontSize: 9, alignment: 'center', color: '#999' },
-                                    { text: item.package_name || '---', fontSize: 10, bold: true },
-                                    { text: '1', fontSize: 9, alignment: 'center' },
-                                    { text: `${item.item_price || 0} ${settings.currency}`, fontSize: 10, bold: true, alignment: 'right' }
-                                ])
-                            ]
-                        },
-                        margin: [0, 0, 0, 10]
-                    },
-
-                    { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 2, lineColor: '#000' }], margin: [0, 0, 0, 10] },
-
-                    // Totals
-                    {
-                        columns: [
-                            [{ text: t.total, fontSize: 9, bold: true, color: '#666' }, { text: `${t.paid}: ${inv.paid_amount} ${settings.currency}`, fontSize: 9, bold: true, color: '#28a745', margin: [0, 3, 0, 0] }],
-                            [{ text: `${t.remaining}: ${inv.remaining_amount} ${settings.currency}`, fontSize: 11, bold: true, alignment: 'right', color: inv.remaining_amount > 0 ? '#dc3545' : '#28a745' }, { text: `${inv.total_amount} ${settings.currency}`, fontSize: 13, bold: true, alignment: 'right', margin: [0, 3, 0, 0] }]
-                        ], margin: [0, 0, 0, 10]
-                    },
-
-                    // Footer
-                    { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 0.5, lineColor: '#ddd' }], margin: [0, 0, 0, 10] },
-                    { text: `${lang === 'ar' ? 'اسم المسؤول' : 'Manager'}: ${inv.created_by || currentUserName}`, fontSize: 9, color: '#999', alignment: 'center', margin: [0, 0, 0, 5] },
-                    { text: lang === 'ar' ? 'شكراً لتعاملكم معنا ✦' : 'Thank you for choosing us ✦', fontSize: 12, bold: true, alignment: 'center' },
-                    { text: (settings.studioName || t.studioName).toUpperCase(), fontSize: 8, bold: true, alignment: 'center', color: '#999' }
-                ].filter(Boolean)
-            };
-
-            const pm = getPdfMake();
-            console.log('✅ pdfMake ready, vfs status:', !!pm.vfs);
-
-            const pdfDoc = pm.createPdf(docDefinition);
-            console.log('✅ pdfDoc created, generating base64...');
-
-            const base64Data = await new Promise<string>((resolve, reject) => {
-                try {
-                    const timeout = setTimeout(() => reject(new Error('PDF Timeout after 45s')), 45000);
-                    (pdfDoc as any).getBase64((data: string) => {
-                        clearTimeout(timeout);
-                        if (!data) return reject(new Error('Empty PDF data received'));
-                        console.log('✅ PDF Base64 generated, length:', data.length);
-                        resolve(data);
-                    });
-                } catch (err) {
-                    reject(err);
-                }
+            const base64Data = generateInvoicePdfBase64({
+                studioName: settings.studioName || t.studioName,
+                address: settings.address,
+                phone: settings.phone,
+                invoiceNo: inv.invoice_no,
+                customerName: inv.customer_name,
+                customerPhone: inv.customer_phone,
+                createdAt: inv.created_at,
+                createdBy: inv.created_by || currentUserName,
+                currency: settings.currency,
+                totalAmount: inv.total_amount,
+                paidAmount: inv.paid_amount,
+                remainingAmount: inv.remaining_amount,
+                participants: inv.participants,
+                items: items.map((item: any) => ({ name: item.package_name || '---', price: parseFloat(item.item_price) || 0 })),
+                lang,
             });
+            console.log('✅ PDF Base64 generated, length:', base64Data.length);
 
             console.log('📤 Sending PDF via WhatsApp to:', inv.customer_phone);
             await sendWhatsAppPDF({
@@ -281,22 +196,27 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
         try {
             const detailsRes = await getInvoiceDetails(printingInvoice.id);
             const items = detailsRes.data;
-
-            const docDefinition: any = {
-                pageSize: 'A4',
-                margins: [10, 10, 10, 10],
-                content: [
-                    { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-                    { text: printingInvoice.invoice_no, fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
-                    { columns: [[{ text: t.customerName, fontSize: 8, bold: true }, { text: printingInvoice.customer_name, fontSize: 11, bold: true }]] },
-                    { margin: [0, 10, 0, 10], table: { widths: [30, 'auto', 60], body: [['#', t.selectPackages, t.amount], ...items.map((item: any, i: number) => [(i + 1).toString(), item.package_name || '---', `${item.item_price || 0} ${settings.currency}`])] } },
-                    { columns: [[{ text: t.total, fontSize: 9, bold: true }, { text: `${printingInvoice.total_amount} ${settings.currency}`, fontSize: 13, bold: true }]] }
-                ]
-            };
-
-            const pm = getPdfMake();
-            const pdfDoc = pm.createPdf(docDefinition);
-            pdfDoc.download(`${printingInvoice.invoice_no}.pdf`);
+            const base64Data = generateInvoicePdfBase64({
+                studioName: settings.studioName || t.studioName,
+                address: settings.address,
+                phone: settings.phone,
+                invoiceNo: printingInvoice.invoice_no,
+                customerName: printingInvoice.customer_name,
+                customerPhone: printingInvoice.customer_phone,
+                createdAt: printingInvoice.created_at,
+                createdBy: printingInvoice.created_by || currentUserName,
+                currency: settings.currency,
+                totalAmount: printingInvoice.total_amount,
+                paidAmount: printingInvoice.paid_amount,
+                remainingAmount: printingInvoice.remaining_amount,
+                participants: printingInvoice.participants,
+                items: items.map((item: any) => ({ name: item.package_name || '---', price: parseFloat(item.item_price) || 0 })),
+                lang,
+            });
+            const link = document.createElement('a');
+            link.href = `data:application/pdf;base64,${base64Data}`;
+            link.download = `${printingInvoice.invoice_no}.pdf`;
+            link.click();
         } catch (err) {
             console.error('PDF download error:', err);
             showToastMessage(lang === 'ar' ? 'فشل تحميل الفاتورة PDF' : 'Failed to download PDF', 'error');
