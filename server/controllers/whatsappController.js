@@ -1,4 +1,4 @@
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const QRCode = require("qrcode");
 const fs = require("fs");
 const path = require("path");
@@ -194,5 +194,30 @@ exports.sendInvoice = async (req, res) => {
   } catch (err) {
     console.error("Error sending invoice:", err.message || err);
     res.status(500).json({ message: "Error sending invoice: " + (err.message || "Unknown error") });
+  }
+};
+
+// Send invoice as PDF file via WhatsApp
+exports.sendInvoicePDF = async (req, res) => {
+  if (!client || sessionStatus !== "connected") {
+    return res.status(400).json({ message: "WhatsApp not connected" });
+  }
+
+  const { phone, pdfBase64, fileName, caption } = req.body;
+  if (!phone || !pdfBase64) {
+    return res.status(400).json({ message: "Phone and PDF data are required" });
+  }
+
+  try {
+    const chatId = await formatPhone(phone);
+    if (!chatId) {
+      return res.status(400).json({ message: "This number is not registered on WhatsApp: " + phone });
+    }
+    const media = new MessageMedia("application/pdf", pdfBase64, fileName || "invoice.pdf");
+    await client.sendMessage(chatId, media, { caption: caption || "" });
+    res.json({ success: true, message: "Invoice PDF sent via WhatsApp" });
+  } catch (err) {
+    console.error("Error sending PDF:", err.message || err);
+    res.status(500).json({ message: "Error sending PDF: " + (err.message || "Unknown error") });
   }
 };
