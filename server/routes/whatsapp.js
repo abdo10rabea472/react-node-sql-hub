@@ -7,5 +7,6 @@ router.get("/status", controller.getStatus);
 router.post("/stop", controller.stopSession);
 router.post("/send-message", controller.sendMessage);
 router.post("/send-invoice", controller.sendInvoice);
+router.post("/send-invoice-pdf", controller.sendInvoicePDF);
 
 module.exports = router;
