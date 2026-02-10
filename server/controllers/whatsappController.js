@@ -1,9 +1,12 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const QRCode = require("qrcode");
+const fs = require("fs");
+const path = require("path");
 
 let client = null;
 let qrDataUrl = null;
 let sessionStatus = "disconnected"; // disconnected, qr, connected, starting
+const SESSION_PATH = path.join(__dirname, "..", "whatsapp-session");
 
 // Start WhatsApp session
 exports.startSession = async (req, res) => {
@@ -100,20 +103,29 @@ exports.getStatus = (req, res) => {
   });
 };
 
-// Stop WhatsApp session
+// Stop WhatsApp session (logout + delete session data for fresh QR)
 exports.stopSession = async (req, res) => {
   try {
     if (client) {
-      await client.destroy();
+      try { await client.logout(); } catch (e) { console.log("Logout skipped:", e.message); }
+      try { await client.destroy(); } catch (e) {}
       client = null;
     }
     sessionStatus = "disconnected";
     qrDataUrl = null;
-    res.json({ status: "disconnected", message: "Session stopped" });
+
+    // Delete saved session so next start shows a new QR
+    if (fs.existsSync(SESSION_PATH)) {
+      fs.rmSync(SESSION_PATH, { recursive: true, force: true });
+      console.log("🗑️ WhatsApp session data cleared");
+    }
+
+    res.json({ status: "disconnected", message: "Session stopped and cleared" });
   } catch (err) {
     console.error("Error stopping session:", err);
     sessionStatus = "disconnected";
     client = null;
+    try { if (fs.existsSync(SESSION_PATH)) fs.rmSync(SESSION_PATH, { recursive: true, force: true }); } catch (e) {}
     res.status(500).json({ message: "Error stopping session" });
   }
 };

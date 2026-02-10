@@ -9,6 +9,19 @@ lerna-debug.log*
 
 
 
+.wwebjs_cache/
+_IGNORE_studio-whatsapp/
+server/.wwebjs_cache/
+server/_IGNORE_studio-whatsapp/
+server/whatsapp-session/
+whatsapp-session/
+# ملفات واتساب المؤقتة
+whatsapp-session/
+.wwebjs_cache/
+_IGNORE_studio-whatsapp/
+server/.wwebjs_cache/
+
+
 
 node_modules
 dist
