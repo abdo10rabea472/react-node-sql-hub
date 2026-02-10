@@ -9,15 +9,6 @@ lerna-debug.log*
 
 
 
-.wwebjs_cache/
-_IGNORE_studio-whatsapp/
-server/.wwebjs_cache/
-server/_IGNORE_studio-whatsapp/
-server/whatsapp-session/
-whatsapp-session/
-
-
-
 
 node_modules
 dist

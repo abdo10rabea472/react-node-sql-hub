@@ -1,0 +1,41 @@
+2026/02/10-04:32:32.427 ae80 Creating DB C:\Users\pc\Desktop\Stodio\server\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb since it was missing.
+2026/02/10-04:32:32.430 ae80 Reusing MANIFEST C:\Users\pc\Desktop\Stodio\server\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/10-04:33:26.898 eac Level-0 table #5: started
+2026/02/10-04:33:26.927 eac Level-0 table #5: 1020984 bytes OK
+2026/02/10-04:33:26.930 eac Delete type=0 #3
+2026/02/10-04:33:31.983 eac Level-0 table #7: started
+2026/02/10-04:33:31.998 eac Level-0 table #7: 1055931 bytes OK
+2026/02/10-04:33:32.000 eac Delete type=0 #4
+2026/02/10-04:33:32.001 eac Compacting 1@1 + 1@2 files
+2026/02/10-04:33:32.023 eac Generated table #8@1: 29181 keys, 1150726 bytes
+2026/02/10-04:33:32.024 eac Compacted 1@1 + 1@2 files => 1150726 bytes
+2026/02/10-04:33:32.024 eac compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/10-04:33:32.025 eac Delete type=2 #5
+2026/02/10-04:33:32.025 eac Delete type=2 #7
+2026/02/10-04:33:32.183 eac Level-0 table #10: started
+2026/02/10-04:33:32.195 eac Level-0 table #10: 893918 bytes OK
+2026/02/10-04:33:32.196 eac Delete type=0 #6
+2026/02/10-04:33:32.454 eac Compacting 1@1 + 1@2 files
+2026/02/10-04:33:32.483 eac Generated table #11@1: 36108 keys, 1577608 bytes
+2026/02/10-04:33:32.483 eac Compacted 1@1 + 1@2 files => 1577608 bytes
+2026/02/10-04:33:32.484 eac compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/10-04:33:32.484 eac Delete type=2 #8
+2026/02/10-04:33:32.484 eac Delete type=2 #10
+2026/02/10-04:34:13.325 eac Level-0 table #13: started
+2026/02/10-04:34:13.341 eac Level-0 table #13: 1040025 bytes OK
+2026/02/10-04:34:13.342 eac Delete type=0 #9
+2026/02/10-04:34:13.780 a890 Compacting 1@1 + 1@2 files
+2026/02/10-04:34:13.809 a890 Generated table #14@1: 39930 keys, 1774992 bytes
+2026/02/10-04:34:13.809 a890 Compacted 1@1 + 1@2 files => 1774992 bytes
+2026/02/10-04:34:13.810 a890 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/10-04:34:35.817 eac Level-0 table #16: started
+2026/02/10-04:34:35.835 eac Level-0 table #16: 1087219 bytes OK
+2026/02/10-04:34:35.836 eac Delete type=2 #11
+2026/02/10-04:34:35.836 eac Delete type=0 #12
+2026/02/10-04:34:35.836 eac Delete type=2 #13
+2026/02/10-04:34:35.839 eac Compacting 1@1 + 1@2 files
+2026/02/10-04:34:35.878 eac Generated table #17@1: 44808 keys, 1986028 bytes
+2026/02/10-04:34:35.878 eac Compacted 1@1 + 1@2 files => 1986028 bytes
+2026/02/10-04:34:35.880 eac compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/02/10-04:34:35.881 eac Delete type=2 #14
+2026/02/10-04:34:35.881 eac Delete type=2 #16
