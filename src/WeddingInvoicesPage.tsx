@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, User as UserIcon, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin, Video, BookOpen, Image as ImageIcon, MessageCircle, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppInvoice, getWhatsAppStatus } from './api';
+import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppPDF, getWhatsAppStatus } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
@@ -73,14 +73,36 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const totalAmount = selectedItems.reduce((sum, item) => sum + item.price, 0);
   const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
 
+  const generateAndSendPDF = async (inv: WeddingInvoice, items: InvoiceItem[]) => {
+    try {
+      const statusRes = await getWhatsAppStatus();
+      if (!statusRes.data.connected) { alert(lang === 'ar' ? 'الواتساب غير متصل! اذهب للإعدادات لتفعيل الجلسة.' : 'WhatsApp not connected! Go to Settings to start session.'); return; }
+      setPrintingInvoice(inv); setPrintingItems(items); setShowPrintModal(true);
+      await new Promise(r => setTimeout(r, 500));
+      const el = document.getElementById('invoice-print');
+      if (!el) { console.error('Invoice print element not found'); return; }
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, canvas.height * 80 / canvas.width] });
+      pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 80 / canvas.width);
+      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+      await sendWhatsAppPDF({ phone: inv.customer_phone, pdfBase64, fileName: `${inv.invoice_no}.pdf`, caption: `${settings.studioName || t.studioName} - ${t.invoiceNo}: ${inv.invoice_no}` });
+      alert(lang === 'ar' ? 'تم إرسال الفاتورة PDF عبر الواتساب ✓' : 'Invoice PDF sent via WhatsApp ✓');
+    } catch (err: any) { console.error('WhatsApp PDF send error:', err); alert(err.response?.data?.message || (lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice')); }
+  };
+
   const handleCreateInvoice = async () => {
     if (!selectedCustomerId || selectedItems.length === 0) return;
     setIsSaving(true);
     try {
       const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: selectedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
-      setSelectedCustomerId(''); setSelectedItems([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes(''); setActiveTab('list');
       const invRes = await getWeddingInvoices(); setInvoices(invRes.data);
-      if (res.data?.id) handlePrint(res.data.id, invRes.data);
+      const newInv = invRes.data.find((i: WeddingInvoice) => i.id === res.data?.id);
+      if (newInv) {
+        const detailsRes = await getWeddingInvoiceDetails(newInv.id);
+        await generateAndSendPDF(newInv, detailsRes.data);
+      }
+      setSelectedCustomerId(''); setSelectedItems([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes(''); setActiveTab('list');
     } catch (err) { console.error(err); } finally { setIsSaving(false); }
   };
 
@@ -103,14 +125,9 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   };
   const handleSendWhatsApp = async (inv: WeddingInvoice) => {
     try {
-      const statusRes = await getWhatsAppStatus();
-      if (!statusRes.data.connected) { alert(lang === 'ar' ? 'الواتساب غير متصل! اذهب للإعدادات لتفعيل الجلسة.' : 'WhatsApp not connected! Go to Settings to start session.'); return; }
       const res = await getWeddingInvoiceDetails(inv.id);
-      const items = res.data as InvoiceItem[];
-      const invoiceText = `*${settings.studioName || t.studioName}*\n💍 ${lang === 'ar' ? 'قسم الزفاف' : 'Wedding Division'}\n━━━━━━━━━━━━━━━━\n📄 ${t.invoiceNo}: *${inv.invoice_no}*\n👤 ${t.customerName}: ${inv.customer_name}\n📅 ${t.date}: ${new Date(inv.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}${inv.wedding_date ? `\n💒 ${t.weddingDate}: ${new Date(inv.wedding_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}` : ''}${inv.venue ? `\n📍 ${t.venue}: ${inv.venue}` : ''}\n━━━━━━━━━━━━━━━━\n${items.map((item, i) => `${i + 1}. ${item.package_name}${item.item_type === 'video' && item.quantity ? ` (${item.quantity} ${t.hours})` : ''} — ${item.item_price} ${settings.currency}`).join('\n')}\n━━━━━━━━━━━━━━━━\n💰 ${t.total}: *${inv.total_amount} ${settings.currency}*\n✅ ${t.paid}: ${inv.paid_amount} ${settings.currency}\n📌 ${t.remaining}: *${inv.remaining_amount} ${settings.currency}*\n━━━━━━━━━━━━━━━━\n${lang === 'ar' ? 'مبروك! نتمنى لكم حياة سعيدة ♥' : 'Congratulations! Wishing you happiness ♥'}`;
-      await sendWhatsAppInvoice({ phone: inv.customer_phone, invoiceText });
-      alert(lang === 'ar' ? 'تم إرسال الفاتورة عبر الواتساب ✓' : 'Invoice sent via WhatsApp ✓');
-    } catch (err: any) { console.error(err); const msg = err.response?.data?.message || (lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); alert(msg); }
+      await generateAndSendPDF(inv, res.data);
+    } catch (err: any) { console.error(err); alert(lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); }
   };
   const getStatusLabel = (s: string) => lang === 'ar' ? (s === 'paid' ? t.paid_label : s === 'partial' ? t.partial : t.pending) : s.charAt(0).toUpperCase() + s.slice(1);
   const statusClass = (s: string) => s === 'paid' ? 'bg-success/10 text-success' : s === 'partial' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-500';

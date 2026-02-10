@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MessageCircle, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, sendWhatsAppInvoice, getWhatsAppStatus } from './api';
+import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, sendWhatsAppPDF, getWhatsAppStatus } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
@@ -48,14 +48,38 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
   const totalAmount = selectedPackages.reduce((sum, pkg) => sum + Number(pkg.price), 0);
   const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
 
+  const generateAndSendPDF = async (inv: Invoice, items: InvoiceItem[]) => {
+    try {
+      const statusRes = await getWhatsAppStatus();
+      if (!statusRes.data.connected) { alert(lang === 'ar' ? 'الواتساب غير متصل! اذهب للإعدادات لتفعيل الجلسة.' : 'WhatsApp not connected! Go to Settings to start session.'); return; }
+      // Open print modal to render invoice
+      setPrintingInvoice(inv); setPrintingItems(items); setShowPrintModal(true);
+      // Wait for DOM render
+      await new Promise(r => setTimeout(r, 500));
+      const el = document.getElementById('invoice-print');
+      if (!el) { console.error('Invoice print element not found'); return; }
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, canvas.height * 80 / canvas.width] });
+      pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 80 / canvas.width);
+      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+      await sendWhatsAppPDF({ phone: inv.customer_phone, pdfBase64, fileName: `${inv.invoice_no}.pdf`, caption: `${settings.studioName || t.studioName} - ${t.invoiceNo}: ${inv.invoice_no}` });
+      alert(lang === 'ar' ? 'تم إرسال الفاتورة PDF عبر الواتساب ✓' : 'Invoice PDF sent via WhatsApp ✓');
+    } catch (err: any) { console.error('WhatsApp PDF send error:', err); alert(err.response?.data?.message || (lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice')); }
+  };
+
   const handleCreateInvoice = async () => {
     if (!selectedCustomerId || selectedPackages.length === 0) return;
     setIsSaving(true);
     try {
       const res = await createInvoice({ customer_id: Number(selectedCustomerId), items: selectedPackages, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', participants });
-      setSelectedCustomerId(''); setSelectedPackages([]); setPaidAmount('0'); setParticipants(''); setActiveTab('list');
       const invRes = await getInvoices(); setInvoices(invRes.data);
-      if (res.data?.id) handlePrint(res.data.id, invRes.data);
+      const newInv = invRes.data.find((i: Invoice) => i.id === res.data?.id);
+      if (newInv) {
+        const detailsRes = await getInvoiceDetails(newInv.id);
+        await generateAndSendPDF(newInv, detailsRes.data);
+      }
+      setSelectedCustomerId(''); setSelectedPackages([]); setPaidAmount('0'); setParticipants(''); setActiveTab('list');
     } catch (err) { console.error(err); } finally { setIsSaving(false); }
   };
 
@@ -78,14 +102,9 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
   };
   const handleSendWhatsApp = async (inv: Invoice) => {
     try {
-      const statusRes = await getWhatsAppStatus();
-      if (!statusRes.data.connected) { alert(lang === 'ar' ? 'الواتساب غير متصل! اذهب للإعدادات لتفعيل الجلسة.' : 'WhatsApp not connected! Go to Settings to start session.'); return; }
       const res = await getInvoiceDetails(inv.id);
-      const items = res.data as InvoiceItem[];
-      const invoiceText = `*${settings.studioName || t.studioName}*\n━━━━━━━━━━━━━━━━\n📄 ${t.invoiceNo}: *${inv.invoice_no}*\n👤 ${t.customerName}: ${inv.customer_name}\n📅 ${t.date}: ${new Date(inv.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}\n━━━━━━━━━━━━━━━━\n${items.map((item, i) => `${i + 1}. ${item.package_name} — ${item.item_price} ${settings.currency}`).join('\n')}\n━━━━━━━━━━━━━━━━\n💰 ${t.total}: *${inv.total_amount} ${settings.currency}*\n✅ ${t.paid}: ${inv.paid_amount} ${settings.currency}\n📌 ${t.remaining}: *${inv.remaining_amount} ${settings.currency}*\n━━━━━━━━━━━━━━━━\n${lang === 'ar' ? 'شكراً لاختياركم لنا ✦' : 'Thank you for choosing us ✦'}`;
-      await sendWhatsAppInvoice({ phone: inv.customer_phone, invoiceText });
-      alert(lang === 'ar' ? 'تم إرسال الفاتورة عبر الواتساب ✓' : 'Invoice sent via WhatsApp ✓');
-    } catch (err: any) { console.error(err); const msg = err.response?.data?.message || (lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); alert(msg); }
+      await generateAndSendPDF(inv, res.data);
+    } catch (err: any) { console.error(err); alert(lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); }
   };
   const getStatusLabel = (s: string) => lang === 'ar' ? (s === 'paid' ? t.paid_label : s === 'partial' ? t.partial : t.pending) : s.charAt(0).toUpperCase() + s.slice(1);
   const statusClass = (s: string) => s === 'paid' ? 'bg-success/10 text-success' : s === 'partial' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-500';
