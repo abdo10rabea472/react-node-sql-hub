@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface PdfInvoiceData {
   studioName: string;
@@ -21,186 +20,203 @@ interface PdfInvoiceData {
   lang: 'ar' | 'en';
 }
 
-const buildInvoiceHTML = (data: PdfInvoiceData): string => {
-  const isAr = data.lang === 'ar';
-  const dir = isAr ? 'rtl' : 'ltr';
-  const align = isAr ? 'right' : 'left';
-  const alignOpp = isAr ? 'left' : 'right';
+export const generateInvoicePdfBase64 = (data: PdfInvoiceData): string => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  let y = 20;
 
-  const labels = isAr ? {
-    invoiceNo: 'رقم الفاتورة',
-    customer: 'العميل',
-    phone: 'الهاتف',
-    date: 'التاريخ',
-    time: 'الوقت',
-    weddingDate: 'تاريخ الفرح',
-    venue: 'المكان',
-    item: 'الصنف',
-    amount: 'المبلغ',
-    total: 'الإجمالي',
-    paid: 'المدفوع',
-    remaining: 'المتبقي',
-    manager: 'المسؤول',
-    participants: 'المشاركين',
-    thankYou: 'شكراً لتعاملكم معنا ✦',
-  } : {
-    invoiceNo: 'Invoice No',
-    customer: 'Customer',
-    phone: 'Phone',
-    date: 'Date',
-    time: 'Time',
-    weddingDate: 'Wedding Date',
-    venue: 'Venue',
-    item: 'Item',
-    amount: 'Amount',
-    total: 'Total',
-    paid: 'Paid',
-    remaining: 'Remaining',
-    manager: 'Manager',
-    participants: 'Participants',
-    thankYou: 'Thank you for choosing us ✦',
+  // Helper for centered text
+  const centerText = (text: string, yPos: number, size: number, style: string = 'normal') => {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', style);
+    const textWidth = doc.getTextWidth(text);
+    doc.text(text, (pageWidth - textWidth) / 2, yPos);
   };
 
-  const itemsHTML = data.items.map((it, i) => `
-    <tr>
-      <td style="padding:3px 4px;font-size:10px;color:#999;text-align:center;">${i + 1}</td>
-      <td style="padding:3px 4px;font-size:11px;font-weight:bold;">${it.name || '---'}</td>
-      <td style="padding:3px 4px;font-size:11px;font-weight:bold;text-align:${alignOpp};">${it.price} ${data.currency}</td>
-    </tr>
-  `).join('');
+  // Helper for right-aligned text
+  const rightText = (text: string, yPos: number, size: number, style: string = 'normal') => {
+    doc.setFontSize(size);
+    doc.setFont('helvetica', style);
+    const textWidth = doc.getTextWidth(text);
+    doc.text(text, pageWidth - margin - textWidth + 10, yPos);
+  };
 
-  let dateSection = '';
+  // Studio Name
+  doc.setTextColor(0, 0, 0);
+  centerText(data.studioName, y, 18, 'bold');
+  y += 8;
+
+  // Address & Phone
+  if (data.address) {
+    doc.setTextColor(136, 136, 136);
+    centerText(data.address, y, 9);
+    y += 5;
+  }
+  if (data.phone) {
+    doc.setTextColor(136, 136, 136);
+    centerText(data.phone, y, 9);
+    y += 5;
+  }
+
+  // Line
+  y += 3;
+  doc.setDrawColor(221, 221, 221);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 8;
+
+  // Invoice Number
+  doc.setTextColor(136, 136, 136);
+  centerText(data.lang === 'ar' ? 'Invoice No' : 'Invoice No', y, 9);
+  y += 7;
+  doc.setTextColor(0, 0, 0);
+  centerText(data.invoiceNo, y, 20, 'bold');
+  y += 10;
+
+  // Date & Time
   if (data.createdAt) {
     const d = new Date(data.createdAt);
-    dateSection = `
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div><span style="font-size:8px;color:#888;">${labels.date}</span><br><b style="font-size:10px;">${d.toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</b></div>
-        <div style="text-align:${alignOpp};"><span style="font-size:8px;color:#888;">${labels.time}</span><br><b style="font-size:10px;">${d.toLocaleTimeString(isAr ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</b></div>
-      </div>
-    `;
+    doc.setFontSize(8);
+    doc.setTextColor(136, 136, 136);
+    doc.text('Date', margin, y);
+    rightText('Time', y, 8);
+    y += 5;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(d.toLocaleDateString('en-US'), margin, y);
+    rightText(d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), y, 10, 'bold');
+    y += 8;
   }
 
-  let weddingSection = '';
+  // Wedding info
   if (data.weddingDate || data.venue) {
-    weddingSection = `
-      <div style="border-top:1px solid #ddd;padding-top:5px;margin-bottom:6px;display:flex;justify-content:space-between;">
-        <div><span style="font-size:8px;color:#888;">${labels.weddingDate}</span><br><b style="font-size:10px;">${data.weddingDate || '---'}</b></div>
-        <div style="text-align:${alignOpp};"><span style="font-size:8px;color:#888;">${labels.venue}</span><br><b style="font-size:10px;">${data.venue || '---'}</b></div>
-      </div>
-    `;
+    doc.setDrawColor(221, 221, 221);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+    doc.setFontSize(8);
+    doc.setTextColor(136, 136, 136);
+    doc.text('Wedding Date', margin, y);
+    rightText('Venue', y, 8);
+    y += 5;
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(data.weddingDate || '---', margin, y);
+    rightText(data.venue || '---', y, 10, 'bold');
+    y += 8;
   }
 
-  const remColor = data.remainingAmount > 0 ? '#dc3545' : '#28a745';
+  // Line
+  doc.setDrawColor(221, 221, 221);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 6;
 
-  return `
-    <div id="pdf-invoice" dir="${dir}" style="width:340px;padding:12px 10px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#fff;color:#000;text-align:${align};line-height:1.4;">
-      <!-- Header -->
-      <div style="text-align:center;margin-bottom:6px;">
-        <div style="font-size:16px;font-weight:bold;">${data.studioName}</div>
-        ${data.address ? `<div style="font-size:8px;color:#888;">${data.address}</div>` : ''}
-        ${data.phone ? `<div style="font-size:8px;color:#888;">${data.phone}</div>` : ''}
-      </div>
+  // Customer info
+  doc.setFontSize(8);
+  doc.setTextColor(136, 136, 136);
+  doc.text('Customer', margin, y);
+  rightText('Phone', y, 8);
+  y += 5;
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.customerName, margin, y);
+  rightText(data.customerPhone, y, 11, 'bold');
+  y += 8;
 
-      <hr style="border:none;border-top:1px solid #ddd;margin:6px 0;">
-
-      <!-- Invoice No -->
-      <div style="text-align:center;margin-bottom:8px;">
-        <div style="font-size:8px;color:#888;">${labels.invoiceNo}</div>
-        <div style="font-size:18px;font-weight:bold;">${data.invoiceNo}</div>
-      </div>
-
-      ${dateSection}
-      ${weddingSection}
-
-      <hr style="border:none;border-top:1px solid #ddd;margin:6px 0;">
-
-      <!-- Customer -->
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div><span style="font-size:8px;color:#888;">${labels.customer}</span><br><b style="font-size:11px;">${data.customerName}</b></div>
-        <div style="text-align:${alignOpp};"><span style="font-size:8px;color:#888;">${labels.phone}</span><br><b style="font-size:11px;">${data.customerPhone}</b></div>
-      </div>
-
-      ${data.participants ? `<div style="font-size:9px;color:#555;margin-bottom:6px;">${labels.participants}: ${data.participants}</div>` : ''}
-
-      <hr style="border:none;border-top:2px solid #000;margin:6px 0;">
-
-      <!-- Items -->
-      <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
-        <thead>
-          <tr style="border-bottom:1px solid #ddd;">
-            <th style="padding:3px 4px;font-size:8px;color:#888;text-align:center;width:20px;">#</th>
-            <th style="padding:3px 4px;font-size:8px;color:#888;text-align:${align};">${labels.item}</th>
-            <th style="padding:3px 4px;font-size:8px;color:#888;text-align:${alignOpp};">${labels.amount}</th>
-          </tr>
-        </thead>
-        <tbody>${itemsHTML}</tbody>
-      </table>
-
-      <hr style="border:none;border-top:2px solid #000;margin:6px 0;">
-
-      <!-- Totals -->
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-        <span style="font-size:9px;color:#666;font-weight:bold;">${labels.total}</span>
-        <span style="font-size:14px;font-weight:bold;">${data.totalAmount} ${data.currency}</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-        <span style="font-size:9px;color:#28a745;font-weight:bold;">${labels.paid}: ${data.paidAmount} ${data.currency}</span>
-        <span style="font-size:9px;color:${remColor};font-weight:bold;">${labels.remaining}: ${data.remainingAmount} ${data.currency}</span>
-      </div>
-
-      <hr style="border:none;border-top:1px solid #ddd;margin:8px 0;">
-
-      <!-- Footer -->
-      <div style="text-align:center;">
-        <div style="font-size:8px;color:#999;">${labels.manager}: ${data.createdBy}</div>
-        <div style="font-size:11px;font-weight:bold;margin-top:5px;">${labels.thankYou}</div>
-        <div style="font-size:7px;color:#999;font-weight:bold;margin-top:3px;">${data.studioName.toUpperCase()}</div>
-      </div>
-    </div>
-  `;
-};
-
-export const generateInvoicePdfBase64 = async (data: PdfInvoiceData): Promise<string> => {
-  // Create hidden container
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-9999px';
-  container.style.top = '0';
-  container.style.zIndex = '-1';
-  container.innerHTML = buildInvoiceHTML(data);
-  document.body.appendChild(container);
-
-  const invoiceEl = container.querySelector('#pdf-invoice') as HTMLElement;
-
-  try {
-    const canvas = await html2canvas(invoiceEl, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
-
-    // 100mm width receipt
-    const pdfWidthMM = 100;
-    const margin = 2;
-    const contentWidthMM = pdfWidthMM - margin * 2;
-    const aspectRatio = canvas.height / canvas.width;
-    const contentHeightMM = contentWidthMM * aspectRatio;
-    const pdfHeightMM = contentHeightMM + margin * 2;
-
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: [pdfWidthMM, pdfHeightMM],
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    doc.addImage(imgData, 'PNG', margin, margin, contentWidthMM, contentHeightMM);
-
-    const pdfOutput = doc.output('datauristring');
-    const base64 = pdfOutput.split(',')[1];
-    return base64;
-  } finally {
-    document.body.removeChild(container);
+  // Participants
+  if (data.participants) {
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Participants: ${data.participants}`, margin, y);
+    y += 7;
   }
+
+  // Thick line before items
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 7;
+
+  // Table header
+  doc.setFontSize(8);
+  doc.setTextColor(136, 136, 136);
+  doc.setFont('helvetica', 'bold');
+  doc.text('#', margin, y);
+  doc.text('Item', margin + 12, y);
+  rightText('Amount', y, 8, 'bold');
+  y += 5;
+
+  // Line
+  doc.setDrawColor(221, 221, 221);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
+
+  // Items
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  data.items.forEach((item, i) => {
+    doc.setFontSize(9);
+    doc.setTextColor(153, 153, 153);
+    doc.text((i + 1).toString(), margin, y);
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.text(item.name || '---', margin + 12, y);
+    rightText(`${item.price} ${data.currency}`, y, 10, 'bold');
+    y += 7;
+  });
+
+  // Thick line after items
+  y += 2;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.8);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 8;
+
+  // Totals
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(102, 102, 102);
+  doc.text('Total', margin, y);
+  doc.setFontSize(13);
+  doc.setTextColor(0, 0, 0);
+  rightText(`${data.totalAmount} ${data.currency}`, y, 13, 'bold');
+  y += 7;
+
+  doc.setFontSize(9);
+  doc.setTextColor(40, 167, 69);
+  doc.text(`Paid: ${data.paidAmount} ${data.currency}`, margin, y);
+  
+  const remColor = data.remainingAmount > 0 ? [220, 53, 69] : [40, 167, 69];
+  doc.setTextColor(remColor[0], remColor[1], remColor[2]);
+  rightText(`Remaining: ${data.remainingAmount} ${data.currency}`, y, 9, 'bold');
+  y += 12;
+
+  // Footer line
+  doc.setDrawColor(221, 221, 221);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 8;
+
+  // Manager
+  doc.setTextColor(153, 153, 153);
+  centerText(`Manager: ${data.createdBy}`, y, 9);
+  y += 8;
+
+  // Thank you
+  doc.setTextColor(0, 0, 0);
+  centerText(data.lang === 'ar' ? 'Thank you ✦' : 'Thank you for choosing us ✦', y, 12, 'bold');
+  y += 6;
+  doc.setTextColor(153, 153, 153);
+  centerText(data.studioName.toUpperCase(), y, 8, 'bold');
+
+  // Return base64 without the data:... prefix
+  const pdfOutput = doc.output('datauristring');
+  // Extract pure base64 from data URI
+  const base64 = pdfOutput.split(',')[1];
+  return base64;
 };

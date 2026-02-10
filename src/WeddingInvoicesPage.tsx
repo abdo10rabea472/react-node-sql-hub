@@ -130,7 +130,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
         items = detailsRes.data;
       }
 
-      const base64Data = await generateInvoicePdfBase64({
+      const base64Data = generateInvoicePdfBase64({
         studioName: settings.studioName || t.studioName,
         address: settings.address,
         phone: settings.phone,
@@ -175,7 +175,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
     try {
       const detailsRes = await getWeddingInvoiceDetails(printingInvoice.id);
       const items = detailsRes.data;
-      const base64Data = await generateInvoicePdfBase64({
+      const base64Data = generateInvoicePdfBase64({
         studioName: settings.studioName || t.studioName,
         address: settings.address,
         phone: settings.phone,
