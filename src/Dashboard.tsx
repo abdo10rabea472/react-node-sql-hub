@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import {
-    LayoutDashboard, Users, Bell, BarChart3, Settings, LogOut,
+    LayoutDashboard, Users, Bell, Settings, LogOut,
     Search, Sun, Moon, Menu, X, TrendingUp, ShoppingCart,
     DollarSign, UserPlus, ArrowUpRight,
     ArrowDownRight, MoreHorizontal, Eye, ChevronRight,
@@ -122,8 +122,6 @@ const navItems = [
     { icon: FileText, key: 'invoices' as const },
     { icon: Camera, key: 'pricing' as const },
     { icon: UserCog, key: 'users' as const },
-    { icon: Bell, key: 'notifications' as const },
-    { icon: BarChart3, key: 'analytics' as const },
     { icon: Settings, key: 'settings' as const },
 ];
 
@@ -399,7 +397,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                     <div className="dash-content">
                         <UsersPage />
                     </div>
-                ) : activeNav === 7 ? (
+                ) : activeNav === 5 ? (
                     <div className="dash-content">
                         <SettingsPage />
                     </div>
