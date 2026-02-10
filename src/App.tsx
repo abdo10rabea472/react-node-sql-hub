@@ -41,11 +41,11 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--bg-app)', color: 'var(--p-500)', fontSize: 18, fontFamily: "'Cairo', sans-serif",
-      }}>
-        جاري التحميل...
+      <div className="min-h-screen flex items-center justify-content-center bg-background">
+        <div className="flex flex-col items-center gap-3 mx-auto">
+          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground font-cairo text-sm">جاري التحميل...</p>
+        </div>
       </div>
     );
   }

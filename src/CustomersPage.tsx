@@ -1,234 +1,135 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Users, UserPlus, Search, Trash2, X, Loader
-} from 'lucide-react';
+import { Users, UserPlus, Search, Trash2, X, Loader } from 'lucide-react';
 import { getCustomers, addCustomer, deleteCustomer } from './api';
 import { useSettings } from './SettingsContext';
-import './CustomersPage.css';
 
 interface Customer {
-    id: number;
-    name: string;
-    phone: string;
-    email: string;
-    address: string;
-    created_at: string;
+  id: number; name: string; phone: string; email: string; address: string; created_at: string;
 }
 
 const translations = {
-    ar: {
-        title: 'إدارة العملاء',
-        subtitle: 'قاعدة بيانات جميع عملاء الاستوديو',
-        addBtn: 'إضافة عميل جديد',
-        search: 'ابحث بالاسم أو الهاتف...',
-        name: 'اسم العميل',
-        phone: 'رقم الهاتف',
-        email: 'البريد الإلكتروني',
-        address: 'العنوان',
-        actions: 'إجراءات',
-        date: 'تاريخ الإضافة',
-        save: 'حفظ العميل',
-        cancel: 'إلغاء',
-        empty: 'لا يوجد عملاء حالياً',
-        loading: 'جاري تحميل العملاء...',
-        success: 'تمت إضافة العميل بنجاح',
-        error: 'حدث خطأ ما',
-        confirmDelete: 'هل أنت متأكد من حذف العميل؟'
-    },
-    en: {
-        title: 'Customer Management',
-        subtitle: 'Studio customer database',
-        addBtn: 'Add New Customer',
-        search: 'Search by name or phone...',
-        name: 'Customer Name',
-        phone: 'Phone Number',
-        email: 'Email',
-        address: 'Address',
-        actions: 'Actions',
-        date: 'Join Date',
-        save: 'Save Customer',
-        cancel: 'Cancel',
-        empty: 'No customers found',
-        loading: 'Loading customers...',
-        success: 'Customer added successfully',
-        error: 'An error occurred',
-        confirmDelete: 'Are you sure you want to delete this customer?'
-    }
+  ar: { title: 'إدارة العملاء', subtitle: 'قاعدة بيانات جميع عملاء الاستوديو', addBtn: 'إضافة عميل جديد', search: 'ابحث بالاسم أو الهاتف...', name: 'اسم العميل', phone: 'رقم الهاتف', email: 'البريد الإلكتروني', address: 'العنوان', actions: 'إجراءات', date: 'تاريخ الإضافة', save: 'حفظ العميل', cancel: 'إلغاء', empty: 'لا يوجد عملاء حالياً', loading: 'جاري تحميل العملاء...', confirmDelete: 'هل أنت متأكد من حذف العميل؟' },
+  en: { title: 'Customer Management', subtitle: 'Studio customer database', addBtn: 'Add New Customer', search: 'Search by name or phone...', name: 'Customer Name', phone: 'Phone Number', email: 'Email', address: 'Address', actions: 'Actions', date: 'Join Date', save: 'Save Customer', cancel: 'Cancel', empty: 'No customers found', loading: 'Loading customers...', confirmDelete: 'Are you sure you want to delete this customer?' },
 };
 
 const CustomersPage: React.FC = () => {
-    const { settings } = useSettings();
-    const lang = settings.lang;
-    const t = translations[lang];
+  const { settings } = useSettings();
+  const t = translations[settings.lang];
 
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showModal, setShowModal] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formAddress, setFormAddress] = useState('');
+  const [saving, setSaving] = useState(false);
 
-    // Form state
-    const [formName, setFormName] = useState('');
-    const [formPhone, setFormPhone] = useState('');
-    const [formEmail, setFormEmail] = useState('');
-    const [formAddress, setFormAddress] = useState('');
-    const [saving, setSaving] = useState(false);
+  const fetchCustomers = async () => { setLoading(true); try { const res = await getCustomers(); setCustomers(res.data); } catch (err) { console.error(err); } finally { setLoading(false); } };
+  useEffect(() => { fetchCustomers(); }, []);
 
-    const fetchCustomers = async () => {
-        setLoading(true);
-        try {
-            const res = await getCustomers();
-            setCustomers(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const filtered = customers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery));
 
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
+  const handleAdd = async () => {
+    if (!formName || !formPhone) return;
+    setSaving(true);
+    try { await addCustomer({ name: formName, phone: formPhone, email: formEmail, address: formAddress }); setShowModal(false); fetchCustomers(); setFormName(''); setFormPhone(''); setFormEmail(''); setFormAddress(''); } catch (err) { console.error(err); } finally { setSaving(false); }
+  };
 
-    const filtered = customers.filter(c =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.includes(searchQuery)
-    );
+  const handleDelete = async (id: number) => { if (!window.confirm(t.confirmDelete)) return; try { await deleteCustomer(id); fetchCustomers(); } catch (err) { console.error(err); } };
 
-    const handleAdd = async () => {
-        if (!formName || !formPhone) return;
-        setSaving(true);
-        try {
-            await addCustomer({
-                name: formName,
-                phone: formPhone,
-                email: formEmail,
-                address: formAddress
-            });
-            setShowModal(false);
-            fetchCustomers();
-            setFormName(''); setFormPhone(''); setFormEmail(''); setFormAddress('');
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        if (!window.confirm(t.confirmDelete)) return;
-        try {
-            await deleteCustomer(id);
-            fetchCustomers();
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    return (
-        <div className="customers-page">
-            <header className="customers-page-header">
-                <div>
-                    <h2 className="customers-page-title"><Users size={24} /> {t.title}</h2>
-                    <p className="customers-page-subtitle">{t.subtitle}</p>
-                </div>
-                <button className="customers-add-btn" onClick={() => setShowModal(true)}>
-                    <UserPlus size={18} /> {t.addBtn}
-                </button>
-            </header>
-
-            <div className="customers-filters">
-                <div className="customers-search-box">
-                    <Search size={18} />
-                    <input
-                        type="text"
-                        placeholder={t.search}
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div className="customers-table-card">
-                <div className="customers-table-wrapper">
-                    <table className="customers-table">
-                        <thead>
-                            <tr>
-                                <th>{t.name}</th>
-                                <th>{t.phone}</th>
-                                <th>{t.email}</th>
-                                <th>{t.date}</th>
-                                <th>{t.actions}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr><td colSpan={5} className="customers-loading"><Loader className="spin" /> {t.loading}</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>{t.empty}</td></tr>
-                            ) : (
-                                filtered.map(c => (
-                                    <tr key={c.id}>
-                                        <td>
-                                            <div className="customer-name-cell">
-                                                <div className="customer-avatar-sm">{c.name.charAt(0).toUpperCase()}</div>
-                                                <span>{c.name}</span>
-                                            </div>
-                                        </td>
-                                        <td>{c.phone}</td>
-                                        <td>{c.email || '-'}</td>
-                                        <td>{new Date(c.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</td>
-                                        <td>
-                                            <div className="action-btns">
-                                                <button className="action-btn delete" onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <AnimatePresence>
-                {showModal && (
-                    <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <motion.div className="modal-content" initial={{ y: 20 }} animate={{ y: 0 }}>
-                            <div className="modal-header">
-                                <h3>{t.addBtn}</h3>
-                                <button className="modal-close-btn" onClick={() => setShowModal(false)}><X size={20} /></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="modal-field">
-                                    <label>{t.name} *</label>
-                                    <input value={formName} onChange={e => setFormName(e.target.value)} />
-                                </div>
-                                <div className="modal-field">
-                                    <label>{t.phone} *</label>
-                                    <input value={formPhone} onChange={e => setFormPhone(e.target.value)} />
-                                </div>
-                                <div className="modal-field">
-                                    <label>{t.email}</label>
-                                    <input value={formEmail} onChange={e => setFormEmail(e.target.value)} />
-                                </div>
-                                <div className="modal-field">
-                                    <label>{t.address}</label>
-                                    <textarea value={formAddress} onChange={e => setFormAddress(e.target.value)} rows={3} />
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button className="modal-cancel-btn" onClick={() => setShowModal(false)}>{t.cancel}</button>
-                                <button className="modal-save-btn" onClick={handleAdd} disabled={saving}>
-                                    {saving ? <Loader className="spin" size={16} /> : t.save}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  return (
+    <div className="animate-fade-in">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-extrabold text-foreground flex items-center gap-2.5"><Users size={22} /> {t.title}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
         </div>
-    );
+        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-all shadow-md shadow-primary/20">
+          <UserPlus size={18} /> {t.addBtn}
+        </button>
+      </header>
+
+      <div className="flex items-center gap-2.5 bg-card border border-border rounded-lg px-3.5 h-11 mb-5 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 transition-all max-w-md">
+        <Search size={18} className="text-muted-foreground shrink-0" />
+        <input type="text" placeholder={t.search} value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo placeholder:text-muted-foreground" />
+      </div>
+
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-muted/50">
+                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.name}</th>
+                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.phone}</th>
+                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.email}</th>
+                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.date}</th>
+                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.actions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={5} className="text-center py-16"><Loader className="animate-spin mx-auto text-primary" size={28} /><p className="text-muted-foreground text-sm mt-3">{t.loading}</p></td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-16 text-muted-foreground">{t.empty}</td></tr>
+              ) : (
+                filtered.map(c => (
+                  <tr key={c.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{c.name.charAt(0).toUpperCase()}</div>
+                        <span className="font-medium text-sm">{c.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{c.phone}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{c.email || '-'}</td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{new Date(c.created_at).toLocaleDateString(settings.lang === 'ar' ? 'ar-EG' : 'en-US')}</td>
+                    <td className="px-5 py-3.5">
+                      <button onClick={() => handleDelete(c.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all">
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showModal && (
+          <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000] flex items-center justify-center p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}>
+              <div className="flex justify-between items-center px-6 py-4 border-b border-border">
+                <h3 className="font-bold text-foreground">{t.addBtn}</h3>
+                <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                {[
+                  { label: `${t.name} *`, value: formName, set: setFormName },
+                  { label: `${t.phone} *`, value: formPhone, set: setFormPhone },
+                  { label: t.email, value: formEmail, set: setFormEmail },
+                ].map((f, i) => (
+                  <div key={i}><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{f.label}</label><input value={f.value} onChange={e => f.set(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" /></div>
+                ))}
+                <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.address}</label><textarea value={formAddress} onChange={e => setFormAddress(e.target.value)} rows={3} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo resize-y" /></div>
+              </div>
+              <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
+                <button onClick={() => setShowModal(false)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted transition-all">{t.cancel}</button>
+                <button onClick={handleAdd} disabled={saving} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2">
+                  {saving ? <Loader className="animate-spin" size={16} /> : null} {t.save}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 export default CustomersPage;

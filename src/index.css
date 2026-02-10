@@ -1,127 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ═══════════════════════════════════════════════
-   DESIGN SYSTEM — CSS Custom Properties (HSL)
-   ═══════════════════════════════════════════════ */
-:root {
-    /* Primary palette */
-    --p-50: #eef2ff;
-    --p-100: #e0e7ff;
-    --p-200: #c7d2fe;
-    --p-300: #a5b4fc;
-    --p-400: #818cf8;
-    --p-500: #6366f1;
-    --p-600: #4f46e5;
-    --p-700: #4338ca;
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 20% 25%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 8% 46%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 199 89% 48%;
+    --sidebar: 220 20% 14%;
+    --sidebar-foreground: 210 20% 90%;
+    --radius: 0.75rem;
+  }
 
-    /* Surfaces */
-    --bg-app: #f5f7fa;
-    --bg-card: #ffffff;
-    --bg-sidebar: #ffffff;
-    --bg-input: #f0f2f5;
-    --text-h: #111827;
-    --text-p: #6b7280;
-    --text-muted: #9ca3af;
-    --border: #e5e7eb;
-    --border-light: #f3f4f6;
-    --hover-bg: #f9fafb;
+  [data-theme="dark"] {
+    --background: 222 47% 6%;
+    --foreground: 210 20% 95%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 20% 95%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 210 20% 80%;
+    --muted: 222 30% 14%;
+    --muted-foreground: 220 8% 55%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 222 30% 18%;
+    --input: 222 30% 14%;
+    --ring: 199 89% 48%;
+    --sidebar: 222 47% 6%;
+    --sidebar-foreground: 210 20% 90%;
+    --radius: 0.75rem;
+  }
 
-    /* Shadows */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.03);
-    --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.1), 0 8px 16px -6px rgba(0, 0, 0, 0.04);
+  * {
+    @apply border-border;
+  }
 
-    /* Radii */
-    --radius-sm: 10px;
-    --radius-md: 14px;
-    --radius-lg: 18px;
-    --radius-xl: 22px;
-
-    /* Layout */
-    --sidebar-width: 260px;
-    --header-height: 68px;
-    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-[data-theme='dark'] {
-    --bg-app: #0b0f19;
-    --bg-card: #12162a;
-    --bg-sidebar: #0e1225;
-    --bg-input: #1a1f36;
-    --text-h: #f1f5f9;
-    --text-p: #94a3b8;
-    --text-muted: #64748b;
-    --border: #1e2540;
-    --border-light: #1a1f36;
-    --hover-bg: #1a1f36;
-
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.6);
-}
-
-/* ═══════════════════════════════════════════════
-   RESET & BASE
-   ═══════════════════════════════════════════════ */
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg-app);
-    color: var(--text-h);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
-    line-height: 1.6;
-    min-width: 320px;
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
     min-height: 100vh;
+  }
+
+  [dir='rtl'] body, [dir='rtl'] {
+    font-family: 'Cairo', 'Inter', system-ui, sans-serif;
+  }
 }
 
-[dir='rtl'] body, [dir='rtl'] {
-    font-family: 'Cairo', 'Inter', -apple-system, sans-serif;
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 1s linear infinite;
+  }
 }
-
-a { text-decoration: none; color: inherit; }
-button { font-family: inherit; cursor: pointer; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground; }
 
 /* Selection */
-::selection { background: rgba(99, 102, 241, 0.2); color: var(--text-h); }
+::selection { background: hsl(var(--primary) / 0.2); color: hsl(var(--foreground)); }
 
-#root {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    text-align: start;
+/* Print styles for invoices */
+@media print {
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body * { visibility: hidden; }
+  #invoice-print, #invoice-print * { visibility: visible; }
+  #invoice-print { position: fixed; left: 0; top: 0; width: 80mm; margin: 0; padding: 10px; }
+  .no-print { display: none !important; }
 }
-
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.spin { animation: spin 1s linear infinite; }
