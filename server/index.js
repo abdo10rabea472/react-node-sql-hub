@@ -13,6 +13,7 @@ app.use("/customers", require("./routes/customers"));
 app.use("/invoices", require("./routes/invoices"));
 app.use("/wedding-pricing", require("./routes/weddingPricing"));
 app.use("/wedding-invoices", require("./routes/weddingInvoices"));
+app.use("/whatsapp", require("./routes/whatsapp"));
 
 app.get("/", (req, res) => {
   res.send("Server is running!");

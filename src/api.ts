@@ -79,6 +79,13 @@ export const createWeddingInvoice = (data: any) => api.post("/wedding-invoices",
 export const updateWeddingInvoice = (id: number, data: any) => api.put(`/wedding-invoices/${id}`, data);
 export const deleteWeddingInvoice = (id: number) => api.delete(`/wedding-invoices/${id}`);
 
+// WhatsApp
+export const startWhatsAppSession = () => api.post("/whatsapp/start");
+export const getWhatsAppStatus = () => api.get("/whatsapp/status");
+export const stopWhatsAppSession = () => api.post("/whatsapp/stop");
+export const sendWhatsAppMessage = (data: { phone: string; message: string }) => api.post("/whatsapp/send-message", data);
+export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) => api.post("/whatsapp/send-invoice", data);
+
 export default api;
 
 

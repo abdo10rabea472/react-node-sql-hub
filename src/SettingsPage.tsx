@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera } from 'lucide-react';
+import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff } from 'lucide-react';
 import { useSettings } from './SettingsContext';
+import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 
 const currencies = [
   { code: 'SAR', label: { ar: 'ريال سعودي', en: 'Saudi Riyal' }, symbol: 'ر.س' },
@@ -12,15 +13,15 @@ const currencies = [
 ];
 
 const translations = {
-  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح' },
-  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light' },
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'إيقاف الجلسة', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR على شاشة السيرفر. امسحه من تطبيق واتساب على هاتفك.' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Stop Session', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear on the server screen. Scan it from WhatsApp on your phone.' },
 };
 
 const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const lang = settings.lang;
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system'>('studio');
+  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp'>('studio');
   const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
   const [showToast, setShowToast] = useState(false);
   const [studioName, setStudioName] = useState(settings.studioName);
@@ -29,12 +30,22 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); }, [settings]);
 
+  const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'connected'>('disconnected');
+  const [waLoading, setWaLoading] = useState(false);
+
+  const checkWaStatus = async () => { try { const res = await getWhatsAppStatus(); setWaStatus(res.data.connected ? 'connected' : res.data.status === 'starting' ? 'starting' : 'disconnected'); } catch { setWaStatus('disconnected'); } };
+  useEffect(() => { checkWaStatus(); }, []);
+
+  const handleStartWa = async () => { setWaLoading(true); try { await startWhatsAppSession(); setWaStatus('starting'); setTimeout(checkWaStatus, 10000); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
+  const handleStopWa = async () => { setWaLoading(true); try { await stopWhatsAppSession(); setWaStatus('disconnected'); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
+
   const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
     { key: 'studio' as const, icon: Store, label: t.studio },
     { key: 'system' as const, icon: Globe, label: t.system },
+    { key: 'whatsapp' as const, icon: MessageCircle, label: t.whatsapp },
   ];
 
   const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo";
@@ -99,6 +110,33 @@ const SettingsPage: React.FC = () => {
                     <div><label className="block text-xs font-semibold text-foreground mb-2">{t.language}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50"><Globe size={16} className="text-muted-foreground" /><select value={settings.lang} onChange={e => updateSettings({ lang: e.target.value as 'ar' | 'en' })} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo cursor-pointer"><option value="ar">العربية (Arabic)</option><option value="en">English</option></select></div></div>
                     <div><label className="block text-xs font-semibold text-foreground mb-2">{t.theme}</label><div className="flex gap-1 bg-muted p-1 rounded-lg"><button onClick={() => updateSettings({ theme: 'light' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'light' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Sun size={14} />{t.light}</button><button onClick={() => updateSettings({ theme: 'dark' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'dark' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Moon size={14} />{t.dark}</button></div></div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'whatsapp' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-green-600 mb-2"><MessageCircle size={20} /><h3 className="text-base font-bold text-foreground">{t.waTitle}</h3></div>
+                <p className="text-sm text-muted-foreground mb-6">{t.waSubtitle}</p>
+                <div className="bg-muted rounded-xl p-5 border border-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {waStatus === 'connected' ? <Wifi size={20} className="text-green-500" /> : <WifiOff size={20} className="text-muted-foreground" />}
+                      <span className={`text-sm font-bold ${waStatus === 'connected' ? 'text-green-500' : waStatus === 'starting' ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {waStatus === 'connected' ? t.waConnected : waStatus === 'starting' ? t.waStarting : t.waDisconnected}
+                      </span>
+                    </div>
+                    {waStatus === 'connected' ? (
+                      <button onClick={handleStopWa} disabled={waLoading} className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-semibold hover:bg-destructive/20 transition-all disabled:opacity-50 flex items-center gap-2">
+                        {waLoading && <Loader size={14} className="animate-spin" />}{t.waStop}
+                      </button>
+                    ) : (
+                      <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                        {waLoading && <Loader size={14} className="animate-spin" />}{t.waStart}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground bg-card p-3 rounded-lg border border-border">{t.waHint}</p>
                 </div>
               </div>
             )}
