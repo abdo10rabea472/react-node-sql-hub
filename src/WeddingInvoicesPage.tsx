@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, User as UserIcon, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin, Video, BookOpen, Image as ImageIcon, MessageCircle } from 'lucide-react';
+import { Heart, User as UserIcon, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2, MapPin, Video, BookOpen, Image as ImageIcon, MessageCircle, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, addCustomer, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppInvoice, getWhatsAppStatus } from './api';
 import { useSettings } from './SettingsContext';
 
@@ -88,6 +90,17 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const handleEditInvoice = (inv: WeddingInvoice) => { setEditingInvoice(inv); setEditPaidAmount(inv.paid_amount.toString()); setEditVenue(inv.venue || ''); setEditNotes(inv.notes || ''); setEditWeddingDate(inv.wedding_date ? inv.wedding_date.split('T')[0] : ''); };
   const handleUpdateInvoice = async () => { if (!editingInvoice) return; try { await updateWeddingInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, wedding_date: editWeddingDate, venue: editVenue, notes: editNotes }); setEditingInvoice(null); await fetchData(); } catch (err: any) { console.error(err); } };
   const executePrint = () => window.print();
+  const handleDownloadPDF = async () => {
+    const el = document.getElementById('invoice-print');
+    if (!el) return;
+    try {
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, canvas.height * 80 / canvas.width] });
+      pdf.addImage(imgData, 'PNG', 0, 0, 80, canvas.height * 80 / canvas.width);
+      pdf.save(`${printingInvoice?.invoice_no || 'invoice'}.pdf`);
+    } catch (err) { console.error('PDF generation failed:', err); }
+  };
   const handleSendWhatsApp = async (inv: WeddingInvoice) => {
     try {
       const statusRes = await getWhatsAppStatus();
@@ -97,7 +110,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       const invoiceText = `*${settings.studioName || t.studioName}*\n💍 ${lang === 'ar' ? 'قسم الزفاف' : 'Wedding Division'}\n━━━━━━━━━━━━━━━━\n📄 ${t.invoiceNo}: *${inv.invoice_no}*\n👤 ${t.customerName}: ${inv.customer_name}\n📅 ${t.date}: ${new Date(inv.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}${inv.wedding_date ? `\n💒 ${t.weddingDate}: ${new Date(inv.wedding_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}` : ''}${inv.venue ? `\n📍 ${t.venue}: ${inv.venue}` : ''}\n━━━━━━━━━━━━━━━━\n${items.map((item, i) => `${i + 1}. ${item.package_name}${item.item_type === 'video' && item.quantity ? ` (${item.quantity} ${t.hours})` : ''} — ${item.item_price} ${settings.currency}`).join('\n')}\n━━━━━━━━━━━━━━━━\n💰 ${t.total}: *${inv.total_amount} ${settings.currency}*\n✅ ${t.paid}: ${inv.paid_amount} ${settings.currency}\n📌 ${t.remaining}: *${inv.remaining_amount} ${settings.currency}*\n━━━━━━━━━━━━━━━━\n${lang === 'ar' ? 'مبروك! نتمنى لكم حياة سعيدة ♥' : 'Congratulations! Wishing you happiness ♥'}`;
       await sendWhatsAppInvoice({ phone: inv.customer_phone, invoiceText });
       alert(lang === 'ar' ? 'تم إرسال الفاتورة عبر الواتساب ✓' : 'Invoice sent via WhatsApp ✓');
-    } catch (err) { console.error(err); alert(lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); }
+    } catch (err: any) { console.error(err); const msg = err.response?.data?.message || (lang === 'ar' ? 'فشل إرسال الفاتورة' : 'Failed to send invoice'); alert(msg); }
   };
   const getStatusLabel = (s: string) => lang === 'ar' ? (s === 'paid' ? t.paid_label : s === 'partial' ? t.partial : t.pending) : s.charAt(0).toUpperCase() + s.slice(1);
   const statusClass = (s: string) => s === 'paid' ? 'bg-success/10 text-success' : s === 'partial' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-500';
@@ -230,7 +243,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                       <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${statusClass(inv.status)}`}>{getStatusLabel(inv.status)}</span></td>
                       <td className="px-4 py-3"><div className="flex gap-1.5">
                         <button onClick={() => handleSendWhatsApp(inv)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-green-600 hover:bg-green-500/10 transition-all" title={lang === 'ar' ? 'إرسال واتساب' : 'Send WhatsApp'}><MessageCircle size={15} /></button>
-                        <button onClick={() => handlePrint(inv.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-pink-500 hover:bg-pink-500/10 transition-all"><Printer size={15} /></button>
+                        <button onClick={() => handlePrint(inv.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-pink-500 hover:bg-pink-500/10 transition-all" title={lang === 'ar' ? 'طباعة / PDF' : 'Print / PDF'}><Printer size={15} /></button>
                         <button onClick={() => handleEditInvoice(inv)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-pink-500 hover:bg-pink-500/10 transition-all"><Edit2 size={15} /></button>
                         <button onClick={() => handleDeleteInvoice(inv.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={15} /></button>
                       </div></td>
@@ -282,6 +295,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               </div>
               <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-border no-print">
                 <button onClick={() => setShowPrintModal(false)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted transition-all">{t.close}</button>
+                <button onClick={handleDownloadPDF} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all"><Download size={18} />PDF</button>
                 <button onClick={executePrint} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all"><Printer size={18} />{t.print}</button>
               </div>
             </motion.div>

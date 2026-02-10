@@ -13,8 +13,8 @@ const currencies = [
 ];
 
 const translations = {
-  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'إيقاف الجلسة', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR على شاشة السيرفر. امسحه من تطبيق واتساب على هاتفك.' },
-  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Stop Session', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear on the server screen. Scan it from WhatsApp on your phone.' },
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'إيقاف الجلسة', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Stop Session', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.' },
 };
 
 const SettingsPage: React.FC = () => {
@@ -30,14 +30,16 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); }, [settings]);
 
-  const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'connected'>('disconnected');
+  const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'qr' | 'connected'>('disconnected');
   const [waLoading, setWaLoading] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
 
-  const checkWaStatus = async () => { try { const res = await getWhatsAppStatus(); setWaStatus(res.data.connected ? 'connected' : res.data.status === 'starting' ? 'starting' : 'disconnected'); } catch { setWaStatus('disconnected'); } };
+  const checkWaStatus = async () => { try { const res = await getWhatsAppStatus(); const s = res.data; setWaStatus(s.connected ? 'connected' : s.status === 'qr' ? 'qr' : s.status === 'starting' ? 'starting' : 'disconnected'); setQrCode(s.qrCode || null); } catch { setWaStatus('disconnected'); setQrCode(null); } };
   useEffect(() => { checkWaStatus(); }, []);
+  useEffect(() => { if (waStatus === 'starting' || waStatus === 'qr') { const interval = setInterval(checkWaStatus, 3000); return () => clearInterval(interval); } }, [waStatus]);
 
-  const handleStartWa = async () => { setWaLoading(true); try { await startWhatsAppSession(); setWaStatus('starting'); setTimeout(checkWaStatus, 10000); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
-  const handleStopWa = async () => { setWaLoading(true); try { await stopWhatsAppSession(); setWaStatus('disconnected'); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
+  const handleStartWa = async () => { setWaLoading(true); try { await startWhatsAppSession(); setWaStatus('starting'); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
+  const handleStopWa = async () => { setWaLoading(true); try { await stopWhatsAppSession(); setWaStatus('disconnected'); setQrCode(null); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
 
   const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
@@ -121,9 +123,9 @@ const SettingsPage: React.FC = () => {
                 <div className="bg-muted rounded-xl p-5 border border-border">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      {waStatus === 'connected' ? <Wifi size={20} className="text-green-500" /> : <WifiOff size={20} className="text-muted-foreground" />}
-                      <span className={`text-sm font-bold ${waStatus === 'connected' ? 'text-green-500' : waStatus === 'starting' ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                        {waStatus === 'connected' ? t.waConnected : waStatus === 'starting' ? t.waStarting : t.waDisconnected}
+                      {waStatus === 'connected' ? <Wifi size={20} className="text-green-500" /> : waStatus === 'qr' ? <Smartphone size={20} className="text-amber-500 animate-pulse" /> : <WifiOff size={20} className="text-muted-foreground" />}
+                      <span className={`text-sm font-bold ${waStatus === 'connected' ? 'text-green-500' : (waStatus === 'starting' || waStatus === 'qr') ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {waStatus === 'connected' ? t.waConnected : waStatus === 'qr' ? (lang === 'ar' ? 'امسح رمز QR من واتساب' : 'Scan QR from WhatsApp') : waStatus === 'starting' ? t.waStarting : t.waDisconnected}
                       </span>
                     </div>
                     {waStatus === 'connected' ? (
@@ -131,11 +133,23 @@ const SettingsPage: React.FC = () => {
                         {waLoading && <Loader size={14} className="animate-spin" />}{t.waStop}
                       </button>
                     ) : (
-                      <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">
-                        {waLoading && <Loader size={14} className="animate-spin" />}{t.waStart}
+                      <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting' || waStatus === 'qr'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                        {(waLoading || waStatus === 'starting') && <Loader size={14} className="animate-spin" />}{t.waStart}
                       </button>
                     )}
                   </div>
+                  {(waStatus === 'qr' && qrCode) && (
+                    <div className="flex flex-col items-center gap-3 my-4 p-4 bg-white rounded-xl border border-border">
+                      <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64 rounded-lg" />
+                      <p className="text-xs text-gray-500 font-semibold text-center">{lang === 'ar' ? 'افتح واتساب > الأجهزة المرتبطة > ربط جهاز > امسح الرمز' : 'Open WhatsApp > Linked Devices > Link a Device > Scan Code'}</p>
+                    </div>
+                  )}
+                  {waStatus === 'starting' && (
+                    <div className="flex flex-col items-center gap-3 my-4 p-4">
+                      <Loader size={32} className="animate-spin text-green-500" />
+                      <p className="text-sm text-muted-foreground font-semibold">{lang === 'ar' ? 'جاري تحميل المتصفح... انتظر ظهور رمز QR' : 'Loading browser... waiting for QR code'}</p>
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground bg-card p-3 rounded-lg border border-border">{t.waHint}</p>
                 </div>
               </div>

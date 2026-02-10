@@ -97,7 +97,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useSettings = () => {
     const context = useContext(SettingsContext);
     if (!context) {
-        throw new Error('useSettings must be used within a SettingsProvider');
+        // Fallback for HMR / hot-reload edge cases
+        return {
+            settings: {
+                currency: 'SAR',
+                lang: 'ar' as const,
+                studioName: 'STODIO Photography',
+                theme: 'light' as const,
+                address: '',
+                phone: '',
+            },
+            updateSettings: async () => {},
+            refreshSettings: async () => {},
+        };
     }
     return context;
 };

@@ -1,8 +1,9 @@
-const { create } = require("@open-wa/wa-automate");
+const { Client, LocalAuth } = require("whatsapp-web.js");
+const QRCode = require("qrcode");
 
 let client = null;
-let qrCode = null;
-let sessionStatus = "disconnected"; // disconnected, qr, connected
+let qrDataUrl = null;
+let sessionStatus = "disconnected"; // disconnected, qr, connected, starting
 
 // Start WhatsApp session
 exports.startSession = async (req, res) => {
@@ -10,49 +11,82 @@ exports.startSession = async (req, res) => {
     return res.json({ status: "connected", message: "Session already active" });
   }
 
+  // If already starting, don't create another client
+  if (sessionStatus === "starting" || sessionStatus === "qr") {
+    return res.json({ status: sessionStatus, qrCode: qrDataUrl, message: "Session already starting..." });
+  }
+
   try {
     sessionStatus = "starting";
-    qrCode = null;
+    qrDataUrl = null;
 
-    create({
-      sessionId: "studio-whatsapp",
-      multiDevice: true,
-      authTimeout: 60,
-      qrTimeout: 0,
-      cacheEnabled: false,
-      headless: true,
-      qrRefreshS: 15,
-      logConsole: false,
-      popup: false,
-    })
-      .then((waClient) => {
-        client = waClient;
-        sessionStatus = "connected";
-        qrCode = null;
+    // Destroy old client if exists
+    if (client) {
+      try { await client.destroy(); } catch (e) {}
+      client = null;
+    }
 
-        // Listen for QR code
-        waClient.onStateChanged((state) => {
-          if (state === "CONFLICT" || state === "UNLAUNCHED") {
-            sessionStatus = "disconnected";
-            client = null;
-          }
-        });
-      })
-      .catch((err) => {
-        console.error("WhatsApp session error:", err);
-        sessionStatus = "disconnected";
-      });
+    client = new Client({
+      authStrategy: new LocalAuth({ dataPath: "./whatsapp-session" }),
+      puppeteer: {
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--disable-gpu",
+        ],
+      },
+    });
 
-    // Wait a moment then check for QR
-    setTimeout(async () => {
-      if (!client && sessionStatus === "starting") {
-        sessionStatus = "qr";
+    client.on("qr", async (qr) => {
+      console.log("📱 QR Code received - scan it from WhatsApp app");
+      sessionStatus = "qr";
+      try {
+        qrDataUrl = await QRCode.toDataURL(qr, { width: 300, margin: 2 });
+      } catch (e) {
+        console.error("QR generation error:", e);
       }
-    }, 5000);
+    });
+
+    client.on("ready", () => {
+      console.log("✅ WhatsApp client is ready!");
+      sessionStatus = "connected";
+      qrDataUrl = null;
+    });
+
+    client.on("authenticated", () => {
+      console.log("🔐 WhatsApp authenticated");
+      sessionStatus = "connected";
+      qrDataUrl = null;
+    });
+
+    client.on("auth_failure", (msg) => {
+      console.error("❌ WhatsApp auth failure:", msg);
+      sessionStatus = "disconnected";
+      qrDataUrl = null;
+      client = null;
+    });
+
+    client.on("disconnected", (reason) => {
+      console.log("⚠️ WhatsApp disconnected:", reason);
+      sessionStatus = "disconnected";
+      qrDataUrl = null;
+      client = null;
+    });
+
+    client.initialize().catch((err) => {
+      console.error("WhatsApp init error:", err.message);
+      sessionStatus = "disconnected";
+      client = null;
+    });
 
     res.json({ status: "starting", message: "Starting WhatsApp session..." });
   } catch (err) {
     console.error("Error starting WhatsApp:", err);
+    sessionStatus = "disconnected";
     res.status(500).json({ message: "Error starting WhatsApp session" });
   }
 };
@@ -61,7 +95,7 @@ exports.startSession = async (req, res) => {
 exports.getStatus = (req, res) => {
   res.json({
     status: sessionStatus,
-    qrCode: qrCode,
+    qrCode: qrDataUrl,
     connected: sessionStatus === "connected",
   });
 };
@@ -70,16 +104,37 @@ exports.getStatus = (req, res) => {
 exports.stopSession = async (req, res) => {
   try {
     if (client) {
-      await client.kill();
+      await client.destroy();
       client = null;
     }
     sessionStatus = "disconnected";
-    qrCode = null;
+    qrDataUrl = null;
     res.json({ status: "disconnected", message: "Session stopped" });
   } catch (err) {
     console.error("Error stopping session:", err);
+    sessionStatus = "disconnected";
+    client = null;
     res.status(500).json({ message: "Error stopping session" });
   }
+};
+
+// Helper: format and validate phone number
+const formatPhone = async (phone) => {
+  let cleaned = phone.replace(/[^0-9]/g, "");
+  // Try the number as-is
+  try {
+    const numberId = await client.getNumberId(cleaned + "@c.us");
+    if (numberId) return numberId._serialized;
+  } catch (e) {}
+  // Try with country code prefixed (Egypt: 20)
+  if (cleaned.startsWith("0")) {
+    try {
+      const withCode = "20" + cleaned.substring(1);
+      const numberId = await client.getNumberId(withCode + "@c.us");
+      if (numberId) return numberId._serialized;
+    } catch (e) {}
+  }
+  return null; // Not found on WhatsApp
 };
 
 // Send text message
@@ -94,13 +149,15 @@ exports.sendMessage = async (req, res) => {
   }
 
   try {
-    // Format phone number (remove + and add @c.us)
-    const formattedPhone = phone.replace(/[^0-9]/g, "") + "@c.us";
-    await client.sendText(formattedPhone, message);
+    const chatId = await formatPhone(phone);
+    if (!chatId) {
+      return res.status(400).json({ message: "This number is not registered on WhatsApp: " + phone });
+    }
+    await client.sendMessage(chatId, message);
     res.json({ success: true, message: "Message sent successfully" });
   } catch (err) {
-    console.error("Error sending message:", err);
-    res.status(500).json({ message: "Error sending message" });
+    console.error("Error sending message:", err.message || err);
+    res.status(500).json({ message: "Error sending message: " + (err.message || "Unknown error") });
   }
 };
 
@@ -116,11 +173,14 @@ exports.sendInvoice = async (req, res) => {
   }
 
   try {
-    const formattedPhone = phone.replace(/[^0-9]/g, "") + "@c.us";
-    await client.sendText(formattedPhone, invoiceText);
+    const chatId = await formatPhone(phone);
+    if (!chatId) {
+      return res.status(400).json({ message: "This number is not registered on WhatsApp: " + phone });
+    }
+    await client.sendMessage(chatId, invoiceText);
     res.json({ success: true, message: "Invoice sent via WhatsApp" });
   } catch (err) {
-    console.error("Error sending invoice:", err);
-    res.status(500).json({ message: "Error sending invoice via WhatsApp" });
+    console.error("Error sending invoice:", err.message || err);
+    res.status(500).json({ message: "Error sending invoice: " + (err.message || "Unknown error") });
   }
 };
