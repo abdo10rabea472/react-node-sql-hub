@@ -1,204 +1,122 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-    User, Store, Globe, Moon, Sun, DollarSign,
-    Save, CheckCircle, Smartphone, Mail, MapPin, Camera
-} from 'lucide-react';
+import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera } from 'lucide-react';
 import { useSettings } from './SettingsContext';
-import './SettingsPage.css';
 
 const currencies = [
-    { code: 'SAR', label: { ar: 'ريال سعودي', en: 'Saudi Riyal' }, symbol: 'ر.س' },
-    { code: 'USD', label: { ar: 'دولار أمريكي', en: 'US Dollar' }, symbol: '$' },
-    { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
-    { code: 'AED', label: { ar: 'درهم إماراتي', en: 'UAE Dirham' }, symbol: 'د.إ' },
-    { code: 'EUR', label: { ar: 'يورو', en: 'Euro' }, symbol: '€' },
+  { code: 'SAR', label: { ar: 'ريال سعودي', en: 'Saudi Riyal' }, symbol: 'ر.س' },
+  { code: 'USD', label: { ar: 'دولار أمريكي', en: 'US Dollar' }, symbol: '$' },
+  { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
+  { code: 'AED', label: { ar: 'درهم إماراتي', en: 'UAE Dirham' }, symbol: 'د.إ' },
+  { code: 'EUR', label: { ar: 'يورو', en: 'Euro' }, symbol: '€' },
 ];
 
 const translations = {
-    ar: {
-        title: 'الإعدادات',
-        subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات',
-        profile: 'الملف الشخصي',
-        studio: 'إعدادات الاستوديو',
-        system: 'النظام والعملات',
-        studioName: 'اسم الاستوديو',
-        studioEmail: 'البريد الإلكتروني للعمل',
-        studioAddress: 'العنوان الرسمي',
-        currency: 'العملة الافتراضية',
-        currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار',
-        language: 'لغة النظام',
-        theme: 'المظهر الخارجي',
-        save: 'حفظ التغييرات',
-        success: 'تم حفظ الإعدادات بنجاح',
-        phone: 'رقم الهاتف',
-        adminName: 'اسم المدير',
-        dark: 'داكن',
-        light: 'فاتح',
-    },
-    en: {
-        title: 'Settings',
-        subtitle: 'Customize studio details, system preferences, and currencies',
-        profile: 'Personal Profile',
-        studio: 'Studio Settings',
-        system: 'System & Currency',
-        studioName: 'Studio Name',
-        studioEmail: 'Business Email',
-        studioAddress: 'Official Address',
-        currency: 'Default Currency',
-        currencyHint: 'This will be used for all invoices and pricing',
-        language: 'System Language',
-        theme: 'Appearance',
-        save: 'Save Changes',
-        success: 'Settings saved successfully',
-        phone: 'Phone Number',
-        adminName: 'Admin Name',
-        dark: 'Dark',
-        light: 'Light',
-    }
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light' },
 };
 
 const SettingsPage: React.FC = () => {
-    const { settings, updateSettings } = useSettings();
-    const lang = settings.lang;
-    const t = translations[lang];
+  const { settings, updateSettings } = useSettings();
+  const lang = settings.lang;
+  const t = translations[lang];
+  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system'>('studio');
+  const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
+  const [showToast, setShowToast] = useState(false);
+  const [studioName, setStudioName] = useState(settings.studioName);
+  const [adminName, setAdminName] = useState('Admin Studio');
+  const [email, setEmail] = useState('contact@stodio.com');
 
-    const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system'>('studio');
-    const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
-    const [showToast, setShowToast] = useState(false);
+  useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); }, [settings]);
 
-    // Form states
-    const [studioName, setStudioName] = useState(settings.studioName);
-    const [adminName, setAdminName] = useState('Admin Studio');
-    const [email, setEmail] = useState('contact@stodio.com');
+  const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
-    // Sync local state when settings are loaded from DB
-    useEffect(() => {
-        setStudioName(settings.studioName);
-        setSelectedCurrency(settings.currency);
-    }, [settings]);
+  const tabs = [
+    { key: 'profile' as const, icon: User, label: t.profile },
+    { key: 'studio' as const, icon: Store, label: t.studio },
+    { key: 'system' as const, icon: Globe, label: t.system },
+  ];
 
+  const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo";
 
-    const handleSave = () => {
-        updateSettings({
-            currency: selectedCurrency,
-            studioName: studioName,
-            lang: settings.lang,
-            theme: settings.theme,
-        });
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-    };
+  return (
+    <div className="animate-fade-in">
+      <header className="mb-7">
+        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{t.title}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t.subtitle}</p>
+      </header>
 
-    return (
-        <div className="settings-page">
-            <header className="settings-header">
-                <h1 className="settings-title">{t.title}</h1>
-                <p className="settings-subtitle">{t.subtitle}</p>
-            </header>
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-start">
+        <aside className="bg-card border border-border rounded-xl p-2.5 flex lg:flex-col gap-1 overflow-x-auto">
+          {tabs.map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-all text-start whitespace-nowrap ${activeTab === tab.key ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
+              <tab.icon size={18} /><span>{tab.label}</span>
+            </button>
+          ))}
+        </aside>
 
-            <div className="settings-container">
-                <aside className="settings-tabs">
-                    <button className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
-                        <User size={18} /> <span>{t.profile}</span>
-                    </button>
-                    <button className={`tab-btn ${activeTab === 'studio' ? 'active' : ''}`} onClick={() => setActiveTab('studio')}>
-                        <Store size={18} /> <span>{t.studio}</span>
-                    </button>
-                    <button className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`} onClick={() => setActiveTab('system')}>
-                        <Globe size={18} /> <span>{t.system}</span>
-                    </button>
-                </aside>
-
-                <main className="settings-content">
-                    <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="settings-card">
-
-                        {activeTab === 'profile' && (
-                            <div className="settings-section">
-                                <div className="section-header"><User size={20} /> <h3>{t.profile}</h3></div>
-                                <div className="form-grid">
-                                    <div className="form-group"><label>{t.adminName}</label>
-                                        <input value={adminName} onChange={e => setAdminName(e.target.value)} />
-                                    </div>
-                                    <div className="form-group"><label>{t.phone}</label>
-                                        <div className="input-wrap"><Smartphone size={16} /><input defaultValue="+966 50 000 0000" /></div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'studio' && (
-                            <div className="settings-section">
-                                <div className="section-header"><Store size={20} /> <h3>{t.studio}</h3></div>
-                                <div className="form-grid">
-                                    <div className="form-group full"><label>{t.studioName}</label>
-                                        <div className="input-wrap"><Camera size={16} />
-                                            <input value={studioName} onChange={e => setStudioName(e.target.value)} />
-                                        </div>
-                                    </div>
-                                    <div className="form-group"><label>{t.studioEmail}</label>
-                                        <div className="input-wrap"><Mail size={16} /><input value={email} onChange={e => setEmail(e.target.value)} /></div>
-                                    </div>
-                                    <div className="form-group"><label>{t.studioAddress}</label>
-                                        <div className="input-wrap"><MapPin size={16} /><input defaultValue="Riyadh, Saudi Arabia" /></div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'system' && (
-                            <div className="settings-section">
-                                <div className="section-header"><DollarSign size={20} /> <h3>{t.system}</h3></div>
-                                <div className="form-grid">
-                                    <div className="form-group full">
-                                        <label>{t.currency}</label>
-                                        <p className="field-hint">{t.currencyHint}</p>
-                                        <div className="currency-selector">
-                                            {currencies.map(curr => (
-                                                <button key={curr.code} className={`currency-opt ${selectedCurrency === curr.code ? 'selected' : ''}`} onClick={() => setSelectedCurrency(curr.code)}>
-                                                    <span className="curr-sym">{curr.symbol}</span>
-                                                    <span className="curr-name">{curr.label[lang]} ({curr.code})</span>
-                                                    {selectedCurrency === curr.code && <CheckCircle size={16} className="check" />}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="form-group half"><label>{t.language}</label>
-                                        <div className="input-wrap"><Globe size={16} />
-                                            <select value={settings.lang} onChange={e => updateSettings({ lang: e.target.value as 'ar' | 'en' })}>
-                                                <option value="ar">العربية (Arabic)</option>
-                                                <option value="en">English</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="form-group half"><label>{t.theme}</label>
-                                        <div className="theme-toggle-simple">
-                                            <button className={`theme-opt ${settings.theme === 'light' ? 'active' : ''}`} onClick={() => updateSettings({ theme: 'light' })}>
-                                                <Sun size={14} /> <span>{t.light}</span>
-                                            </button>
-                                            <button className={`theme-opt ${settings.theme === 'dark' ? 'active' : ''}`} onClick={() => updateSettings({ theme: 'dark' })}>
-                                                <Moon size={14} /> <span>{t.dark}</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="settings-footer">
-                            <button className="save-settings-btn" onClick={handleSave}><Save size={18} /> {t.save}</button>
-                        </div>
-                    </motion.div>
-                </main>
-            </div>
-
-            {showToast && (
-                <motion.div className="settings-toast" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                    <CheckCircle size={18} /> <span>{t.success}</span>
-                </motion.div>
+        <main>
+          <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            {activeTab === 'profile' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-primary mb-6"><User size={20} /><h3 className="text-base font-bold text-foreground">{t.profile}</h3></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.adminName}</label><input value={adminName} onChange={e => setAdminName(e.target.value)} className={inputClass} /></div>
+                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.phone}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Smartphone size={16} className="text-muted-foreground" /><input defaultValue="+966 50 000 0000" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                </div>
+              </div>
             )}
-        </div>
-    );
+
+            {activeTab === 'studio' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-primary mb-6"><Store size={20} /><h3 className="text-base font-bold text-foreground">{t.studio}</h3></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="sm:col-span-2"><label className="block text-xs font-semibold text-foreground mb-2">{t.studioName}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Camera size={16} className="text-muted-foreground" /><input value={studioName} onChange={e => setStudioName(e.target.value)} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.studioEmail}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Mail size={16} className="text-muted-foreground" /><input value={email} onChange={e => setEmail(e.target.value)} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.studioAddress}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><MapPin size={16} className="text-muted-foreground" /><input defaultValue="Riyadh, Saudi Arabia" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'system' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-primary mb-6"><DollarSign size={20} /><h3 className="text-base font-bold text-foreground">{t.system}</h3></div>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">{t.currency}</label>
+                    <p className="text-xs text-muted-foreground mb-3">{t.currencyHint}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {currencies.map(curr => (
+                        <button key={curr.code} onClick={() => setSelectedCurrency(curr.code)} className={`flex items-center gap-2.5 px-3.5 py-3 rounded-lg border text-start transition-all ${selectedCurrency === curr.code ? 'border-primary/50 bg-primary/5 text-primary' : 'border-border bg-muted hover:border-border hover:bg-muted/80 text-foreground'}`}>
+                          <span className="w-9 h-9 rounded-lg bg-card shadow-sm flex items-center justify-center font-extrabold text-xs text-primary">{curr.symbol}</span>
+                          <span className="flex-1 text-sm font-semibold">{curr.label[lang]} ({curr.code})</span>
+                          {selectedCurrency === curr.code && <CheckCircle size={16} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div><label className="block text-xs font-semibold text-foreground mb-2">{t.language}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50"><Globe size={16} className="text-muted-foreground" /><select value={settings.lang} onChange={e => updateSettings({ lang: e.target.value as 'ar' | 'en' })} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo cursor-pointer"><option value="ar">العربية (Arabic)</option><option value="en">English</option></select></div></div>
+                    <div><label className="block text-xs font-semibold text-foreground mb-2">{t.theme}</label><div className="flex gap-1 bg-muted p-1 rounded-lg"><button onClick={() => updateSettings({ theme: 'light' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'light' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Sun size={14} />{t.light}</button><button onClick={() => updateSettings({ theme: 'dark' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'dark' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Moon size={14} />{t.dark}</button></div></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end px-7 py-4 border-t border-border bg-muted/30">
+              <button onClick={handleSave} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-primary/20"><Save size={18} /> {t.save}</button>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+
+      {showToast && (
+        <motion.div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-green-500 text-white px-5 py-3 rounded-full flex items-center gap-2 text-sm font-bold shadow-xl z-[3000]" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <CheckCircle size={18} /> {t.success}
+        </motion.div>
+      )}
+    </div>
+  );
 };
 
 export default SettingsPage;

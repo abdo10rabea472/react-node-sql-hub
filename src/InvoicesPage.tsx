@@ -1,746 +1,220 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    FileText, User as UserIcon, Package, CheckCircle,
-    Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2
-} from 'lucide-react';
-import {
-    getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails,
-    addCustomer, deleteInvoice, updateInvoice
-} from './api';
+import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Clock, Calendar, Plus, Trash2, Edit2 } from 'lucide-react';
+import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice } from './api';
 import { useSettings } from './SettingsContext';
-import './InvoicesPage.css';
 
-interface Customer {
-    id: number;
-    name: string;
-    phone: string;
-}
-
-interface PricingPackage {
-    id: number;
-    type: string;
-    price: number;
-}
-
-interface Invoice {
-    id: number;
-    invoice_no: string;
-    customer_id: number;
-    customer_name: string;
-    customer_phone: string;
-    total_amount: number;
-    paid_amount: number;
-    remaining_amount: number;
-    created_by: string;
-    participants: string;
-    status: string;
-    created_at: string;
-}
-
-interface InvoiceItem {
-    package_name: string;
-    item_price: number;
-}
+interface Customer { id: number; name: string; phone: string; }
+interface PricingPackage { id: number; type: string; price: number; }
+interface Invoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; participants: string; status: string; created_at: string; }
+interface InvoiceItem { package_name: string; item_price: number; }
 
 const translations = {
-    ar: {
-        title: 'الفواتير وإدارة المبيعات',
-        createTab: 'إنشاء فاتورة جديدة',
-        listTab: 'سجل الفواتير',
-        selectCustomer: 'بيانات العميل',
-        selectPackages: 'اختر الباقة',
-        invoiceSummary: 'ملخص الفاتورة',
-        noItems: 'لم يتم اختيار باقات بعد',
-        total: 'الإجمالي',
-        paid: 'المدفوع',
-        remaining: 'الباقي',
-        createBtn: 'إصدار الفاتورة وحفظها',
-        customerName: 'اسم العميل',
-        customerPhone: 'رقم الهاتف',
-        invoiceNo: 'رقم الفاتورة',
-        amount: 'المجموع',
-        status: 'الحالة',
-        date: 'التاريخ',
-        time: 'الوقت',
-        success: 'تم إصدار الفاتورة بنجاح',
-        searchCustomer: 'ابحث عن عميل...',
-        multiplePackagesHint: 'يمكنك إضافة الباقة أكثر من مرة',
-        pending: 'معلق',
-        paid_label: 'مدفوع بالكامل',
-        partial: 'مدفوع جزئياً',
-        actions: 'إجراءات',
-        createdBy: 'المسؤول',
-        print: 'طباعة الفاتورة',
-        close: 'إغلاق',
-        studioName: 'استوديو التصوير',
-        participants: 'المشاركين في الجلسة',
-        participantsHint: 'ادخل الأسماء هنا...',
-        deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة نهائياً؟',
-        editInvoice: 'تعديل بيانات الفاتورة',
-        saveChanges: 'حفظ التغييرات الآن'
-    },
-    en: {
-        title: 'Invoices & Sales',
-        createTab: 'Create New Invoice',
-        listTab: 'Invoice History',
-        selectCustomer: 'Customer Info',
-        selectPackages: 'Select Package',
-        invoiceSummary: 'Invoice Summary',
-        noItems: 'No packages selected',
-        total: 'Total',
-        paid: 'Paid',
-        remaining: 'Remaining',
-        createBtn: 'Issue & Save Invoice',
-        customerName: 'Customer Name',
-        customerPhone: 'Phone Number',
-        invoiceNo: 'Invoice No',
-        amount: 'Total',
-        status: 'Status',
-        date: 'Date',
-        time: 'Time',
-        success: 'Invoice issued successfully',
-        searchCustomer: 'Search customer...',
-        multiplePackagesHint: 'You can add packages multiple times',
-        pending: 'Pending',
-        paid_label: 'Fully Paid',
-        partial: 'Partial Payment',
-        actions: 'Actions',
-        createdBy: 'Manager',
-        print: 'Print Invoice',
-        close: 'Close',
-        studioName: 'Photography Studio',
-        participants: 'Session Participants',
-        participantsHint: 'Enter names here...',
-        deleteConfirm: 'Are you sure you want to delete this invoice permanently?',
-        editInvoice: 'Edit Invoice Details',
-        saveChanges: 'Save Changes Now'
-    }
+  ar: { title: 'الفواتير وإدارة المبيعات', createTab: 'إنشاء فاتورة جديدة', listTab: 'سجل الفواتير', selectCustomer: 'بيانات العميل', selectPackages: 'اختر الباقة', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار باقات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', createBtn: 'إصدار الفاتورة وحفظها', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المجموع', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', multiplePackagesHint: 'يمكنك إضافة الباقة أكثر من مرة', pending: 'معلق', paid_label: 'مدفوع بالكامل', partial: 'مدفوع جزئياً', actions: 'إجراءات', createdBy: 'المسؤول', print: 'طباعة الفاتورة', close: 'إغلاق', studioName: 'استوديو التصوير', participants: 'المشاركين في الجلسة', participantsHint: 'ادخل الأسماء هنا...', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة نهائياً؟', editInvoice: 'تعديل بيانات الفاتورة', saveChanges: 'حفظ التغييرات الآن' },
+  en: { title: 'Invoices & Sales', createTab: 'Create New Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Package', invoiceSummary: 'Invoice Summary', noItems: 'No packages selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue & Save Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Total', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', multiplePackagesHint: 'You can add packages multiple times', pending: 'Pending', paid_label: 'Fully Paid', partial: 'Partial Payment', actions: 'Actions', createdBy: 'Manager', print: 'Print Invoice', close: 'Close', studioName: 'Photography Studio', participants: 'Session Participants', participantsHint: 'Enter names here...', deleteConfirm: 'Are you sure you want to delete this invoice permanently?', editInvoice: 'Edit Invoice Details', saveChanges: 'Save Changes Now' },
 };
 
 const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
-    const { settings } = useSettings();
-    const lang = settings.lang;
-    const t = translations[lang];
+  const { settings } = useSettings();
+  const lang = settings.lang; const t = translations[lang];
+  const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [packages, setPackages] = useState<PricingPackage[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
+  const [selectedPackages, setSelectedPackages] = useState<PricingPackage[]>([]);
+  const [participants, setParticipants] = useState('');
+  const [paidAmount, setPaidAmount] = useState<string>('0');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [isAddingCust, setIsAddingCust] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printingInvoice, setPrintingInvoice] = useState<Invoice | null>(null);
+  const [printingItems, setPrintingItems] = useState<InvoiceItem[]>([]);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editPaidAmount, setEditPaidAmount] = useState<string>('0');
+  const [editParticipants, setEditParticipants] = useState('');
 
-    const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [packages, setPackages] = useState<PricingPackage[]>([]);
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const fetchData = async () => { setIsLoading(true); try { const [c, p, i] = await Promise.all([getCustomers(), getPackages(), getInvoices()]); setCustomers(c.data); setPackages(p.data); setInvoices(i.data); } catch (err) { console.error(err); } finally { setIsLoading(false); } };
+  useEffect(() => { fetchData(); }, []);
 
-    // Create Invoice Form State
-    const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
-    const [selectedPackages, setSelectedPackages] = useState<PricingPackage[]>([]);
-    const [participants, setParticipants] = useState('');
-    const [paidAmount, setPaidAmount] = useState<string>('0');
-    const [isSaving, setIsSaving] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+  const addPkg = (pkg: PricingPackage) => setSelectedPackages(prev => [...prev, { ...pkg, tempId: Date.now() + Math.random() } as any]);
+  const removePkg = (tempId: number) => setSelectedPackages(prev => (prev as any).filter((p: any) => p.tempId !== tempId));
+  const totalAmount = selectedPackages.reduce((sum, pkg) => sum + Number(pkg.price), 0);
+  const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
 
-    // Quick Add Customer State
-    const [showQuickAdd, setShowQuickAdd] = useState(false);
-    const [newCustName, setNewCustName] = useState('');
-    const [newCustPhone, setNewCustPhone] = useState('');
-    const [isAddingCust, setIsAddingCust] = useState(false);
+  const handleCreateInvoice = async () => {
+    if (!selectedCustomerId || selectedPackages.length === 0) return;
+    setIsSaving(true);
+    try {
+      const res = await createInvoice({ customer_id: Number(selectedCustomerId), items: selectedPackages, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', participants });
+      setSelectedCustomerId(''); setSelectedPackages([]); setPaidAmount('0'); setParticipants(''); setActiveTab('list');
+      const invRes = await getInvoices(); setInvoices(invRes.data);
+      if (res.data?.id) handlePrint(res.data.id, invRes.data);
+    } catch (err) { console.error(err); } finally { setIsSaving(false); }
+  };
 
-    // Printing State
-    const [showPrintModal, setShowPrintModal] = useState(false);
-    const [printingInvoice, setPrintingInvoice] = useState<Invoice | null>(null);
-    const [printingItems, setPrintingItems] = useState<InvoiceItem[]>([]);
+  const handlePrint = async (id: number, current?: Invoice[]) => { try { const inv = (current || invoices).find(i => i.id === id); if (!inv) return; const res = await getInvoiceDetails(id); setPrintingInvoice(inv); setPrintingItems(res.data); setShowPrintModal(true); } catch (err) { console.error(err); } };
+  const handleQuickAdd = async () => { if (!newCustName || !newCustPhone) return; setIsAddingCust(true); try { const res = await addCustomer({ name: newCustName, phone: newCustPhone }); await fetchData(); setSelectedCustomerId(res.data.id); setShowQuickAdd(false); setNewCustName(''); setNewCustPhone(''); } catch (err) { console.error(err); } finally { setIsAddingCust(false); } };
+  const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; try { await deleteInvoice(id); await fetchData(); } catch (err: any) { console.error(err); alert("Delete failed: " + (err.response?.data?.message || err.message)); } };
+  const handleEditInvoice = (inv: Invoice) => { setEditingInvoice(inv); setEditPaidAmount(inv.paid_amount.toString()); setEditParticipants(inv.participants || ''); };
+  const handleUpdateInvoice = async () => { if (!editingInvoice) return; try { await updateInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, participants: editParticipants }); setEditingInvoice(null); await fetchData(); } catch (err: any) { console.error(err); alert("Update failed: " + (err.response?.data?.message || err.message)); } };
+  const executePrint = () => window.print();
+  const getStatusLabel = (s: string) => lang === 'ar' ? (s === 'paid' ? t.paid_label : s === 'partial' ? t.partial : t.pending) : s.charAt(0).toUpperCase() + s.slice(1);
+  const statusClass = (s: string) => s === 'paid' ? 'bg-success/10 text-success' : s === 'partial' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-500';
+  const currentUserName = user?.name || 'Admin';
+  const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo";
 
-    // Editing State
-    const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-    const [editPaidAmount, setEditPaidAmount] = useState<string>('0');
-    const [editParticipants, setEditParticipants] = useState('');
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const [custRes, pkgRes, invRes] = await Promise.all([
-                getCustomers(),
-                getPackages(),
-                getInvoices()
-            ]);
-            setCustomers(custRes.data);
-            setPackages(pkgRes.data);
-            setInvoices(invRes.data);
-        } catch (err) {
-            console.error("Failed to fetch data:", err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const addPackage = (pkg: PricingPackage) => {
-        setSelectedPackages(prev => [...prev, { ...pkg, tempId: Date.now() + Math.random() } as any]);
-    };
-
-    const removePackageInstance = (tempId: number) => {
-        setSelectedPackages(prev => (prev as any).filter((p: any) => p.tempId !== tempId));
-    };
-
-    const totalAmount = selectedPackages.reduce((sum, pkg) => sum + Number(pkg.price), 0);
-    const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
-
-    const handleCreateInvoice = async () => {
-        if (!selectedCustomerId || selectedPackages.length === 0) return;
-
-        setIsSaving(true);
-        try {
-            const res = await createInvoice({
-                customer_id: Number(selectedCustomerId),
-                items: selectedPackages,
-                total_amount: totalAmount,
-                paid_amount: parseFloat(paidAmount) || 0,
-                created_by: user?.name || 'Admin',
-                participants: participants
-            });
-            // Reset form
-            setSelectedCustomerId('');
-            setSelectedPackages([]);
-            setPaidAmount('0');
-            setParticipants('');
-            setActiveTab('list');
-
-            // Wait for history refresh
-            const invRes = await getInvoices();
-            setInvoices(invRes.data);
-
-            // Auto open print for the new invoice
-            if (res.data && res.data.id) {
-                handlePrint(res.data.id, invRes.data);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handlePrint = async (invoiceId: number, currentInvoices?: Invoice[]) => {
-        try {
-            const source = currentInvoices || invoices;
-            const inv = source.find(i => i.id === invoiceId);
-            if (!inv) return;
-
-            const res = await getInvoiceDetails(invoiceId);
-            setPrintingInvoice(inv);
-            setPrintingItems(res.data);
-            setShowPrintModal(true);
-        } catch (err) {
-            console.error("Print fetch failed:", err);
-        }
-    };
-
-    const handleQuickAddCustomer = async () => {
-        if (!newCustName || !newCustPhone) return;
-        setIsAddingCust(true);
-        try {
-            const res = await addCustomer({ name: newCustName, phone: newCustPhone });
-            await fetchData();
-            // The backend returns the ID even if it exists. 
-            // So we select it automatically.
-            setSelectedCustomerId(res.data.id);
-            setShowQuickAdd(false);
-            setNewCustName('');
-            setNewCustPhone('');
-        } catch (err) {
-            console.error("Quick add failed:", err);
-        } finally {
-            setIsAddingCust(false);
-        }
-    };
-
-    const handleDeleteInvoice = async (id: number) => {
-        if (!window.confirm(t.deleteConfirm)) return;
-        try {
-            await deleteInvoice(id);
-            await fetchData(); // Refresh list
-        } catch (err: any) {
-            console.error("Delete failed:", err);
-            alert("Delete failed: " + (err.response?.data?.message || err.message || "Unknown error"));
-        }
-    };
-
-    const handleEditInvoice = (inv: Invoice) => {
-        setEditingInvoice(inv);
-        setEditPaidAmount(inv.paid_amount.toString());
-        setEditParticipants(inv.participants || '');
-    };
-
-    const handleUpdateInvoice = async () => {
-        if (!editingInvoice) return;
-        try {
-            await updateInvoice(editingInvoice.id, {
-                paid_amount: parseFloat(editPaidAmount) || 0,
-                total_amount: editingInvoice.total_amount,
-                participants: editParticipants
-            });
-            setEditingInvoice(null);
-            await fetchData();
-        } catch (err: any) {
-            console.error("Update failed:", err);
-            alert("Update failed: " + (err.response?.data?.message || err.message || "Unknown error"));
-        }
-    };
-
-    const executePrint = () => {
-        window.print();
-    };
-
-    const getStatusLabel = (status: string) => {
-        if (lang === 'ar') {
-            switch (status) {
-                case 'paid': return t.paid_label;
-                case 'partial': return t.partial;
-                default: return t.pending;
-            }
-        }
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    };
-
-    const currentUserName = user?.name || 'Admin';
-
-    return (
-        <div className="invoices-page">
-            <header className="invoices-header">
-                <div>
-                    <h2 className="title-with-icon"><FileText size={24} /> {t.title}</h2>
-                    <div className="tab-switcher">
-                        <button className={activeTab === 'create' ? 'active' : ''} onClick={() => setActiveTab('create')}>{t.createTab}</button>
-                        <button className={activeTab === 'list' ? 'active' : ''} onClick={() => setActiveTab('list')}>{t.listTab}</button>
-                    </div>
-                </div>
-            </header>
-
-            {activeTab === 'create' ? (
-                <div className="invoice-create-layout">
-                    <div className="invoice-form-main">
-                        <section className="invoice-form-card">
-                            <h3 className="section-title"><UserIcon size={20} /> {t.selectCustomer}</h3>
-                            <div className="customer-quick-info">
-                                <div className="customer-select-row">
-                                    <select
-                                        className="customer-search-select"
-                                        value={selectedCustomerId}
-                                        onChange={e => setSelectedCustomerId(Number(e.target.value))}
-                                    >
-                                        <option value="">{t.searchCustomer}</option>
-                                        {customers.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>
-                                        ))}
-                                    </select>
-                                    <button className="quick-add-cust-btn" onClick={() => setShowQuickAdd(true)} title="Add New Customer">
-                                        <Plus size={20} />
-                                    </button>
-                                </div>
-                                {selectedCustomerId && (
-                                    <div className="selected-cust-details">
-                                        <span className="badge"><UserIcon size={12} /> {customers.find(c => c.id === selectedCustomerId)?.name}</span>
-                                        <span className="badge"><Wallet size={12} /> {customers.find(c => c.id === selectedCustomerId)?.phone}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </section>
-
-                        <section className="invoice-form-card mt-2">
-                            <h3 className="section-title">
-                                <Package size={20} /> {t.selectPackages}
-                                <span className="hint-badge">{t.multiplePackagesHint}</span>
-                            </h3>
-                            <div className="packages-selection-grid">
-                                {packages.map(pkg => (
-                                    <div
-                                        key={pkg.id}
-                                        className="pkg-select-card"
-                                        onClick={() => addPackage(pkg)}
-                                    >
-                                        <span className="pkg-select-name">{pkg.type}</span>
-                                        <Plus size={18} className="add-pkg-icon" />
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="invoice-form-card mt-2">
-                            <h3 className="section-title"><UserIcon size={20} /> {t.participants}</h3>
-                            <textarea
-                                className="participants-input"
-                                placeholder={t.participantsHint}
-                                value={participants}
-                                onChange={e => setParticipants(e.target.value)}
-                            />
-                        </section>
-                    </div>
-
-                    <aside className="invoice-summary-card">
-                        <h3 className="section-title">{t.invoiceSummary}</h3>
-                        <div className="summary-items-list">
-                            {selectedPackages.length === 0 ? (
-                                <p className="empty-summary-text">{t.noItems}</p>
-                            ) : (
-                                selectedPackages.map((p: any) => (
-                                    <div key={p.tempId} className="summary-item">
-                                        <span>{p.type}</span>
-                                        <div className="summary-item-actions">
-                                            <strong>{p.price} {settings.currency}</strong>
-                                            <button className="remove-item-btn" onClick={() => removePackageInstance(p.tempId)}><X size={14} /></button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-
-                        <div className="invoice-payment-fields">
-                            <div className="summary-item total">
-                                <span>{t.total}</span>
-                                <span>{totalAmount} {settings.currency}</span>
-                            </div>
-
-                            <div className="payment-input-group">
-                                <label><DollarSign size={14} /> {t.paid}</label>
-                                <input
-                                    type="number"
-                                    value={paidAmount}
-                                    onChange={e => setPaidAmount(e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </div>
-
-                            <div className={`summary-item remaining ${remainingAmount > 0 ? 'highlight' : ''}`}>
-                                <span><Wallet size={14} /> {t.remaining}</span>
-                                <span>{remainingAmount} {settings.currency}</span>
-                            </div>
-                        </div>
-
-                        <div className="summary-footer-info">
-                            <div className="info-row"><Clock size={12} /> {new Date().toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US')}</div>
-                            <div className="info-row"><Calendar size={12} /> {new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</div>
-                            <div className="info-row"><UserIcon size={12} /> {t.createdBy}: {currentUserName}</div>
-                        </div>
-
-                        <button
-                            className="create-invoice-btn"
-                            disabled={!selectedCustomerId || selectedPackages.length === 0 || isSaving}
-                            onClick={handleCreateInvoice}
-                        >
-                            {isSaving ? <Loader className="spin" size={20} /> : <CheckCircle size={20} />}
-                            {t.createBtn}
-                        </button>
-                    </aside>
-                </div>
-            ) : (
-                <div className="invoices-list-section">
-                    <div className="customers-table-card">
-                        <div className="customers-table-wrapper">
-                            <table className="customers-table">
-                                <thead>
-                                    <tr>
-                                        <th>{t.invoiceNo}</th>
-                                        <th>{t.customerName}</th>
-                                        <th>{t.amount}</th>
-                                        <th>{t.paid}</th>
-                                        <th>{t.remaining}</th>
-                                        <th>{t.status}</th>
-                                        <th>{t.createdBy}</th>
-                                        <th>{t.actions}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {invoices.length === 0 ? (
-                                        <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem' }}>{isLoading ? <Loader className="spin" /> : t.noItems}</td></tr>
-                                    ) : (
-                                        invoices.map(inv => (
-                                            <tr key={inv.id}>
-                                                <td>
-                                                    <div className="inv-no-cell">
-                                                        <strong>{inv.invoice_no}</strong>
-                                                        <small>{new Date(inv.created_at).toLocaleDateString()}</small>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div className="cust-info-cell">
-                                                        <span>{inv.customer_name}</span>
-                                                        <small>{inv.customer_phone}</small>
-                                                    </div>
-                                                </td>
-                                                <td>{inv.total_amount} {settings.currency}</td>
-                                                <td className="text-success">{inv.paid_amount}</td>
-                                                <td className={inv.remaining_amount > 0 ? 'text-error' : ''}>{inv.remaining_amount}</td>
-                                                <td>
-                                                    <span className={`status-badge status-${inv.status}`}>
-                                                        {getStatusLabel(inv.status)}
-                                                    </span>
-                                                </td>
-                                                <td>{inv.created_by || currentUserName}</td>
-                                                <td>
-                                                    <div className="action-btns">
-                                                        <button className="action-btn" title={t.print} onClick={() => handlePrint(inv.id)}><Printer size={16} /></button>
-                                                        <button className="action-btn" title={t.editInvoice} onClick={() => handleEditInvoice(inv)}><Edit2 size={16} /></button>
-                                                        <button className="action-btn delete" title="Delete" onClick={() => handleDeleteInvoice(inv.id)}><Trash2 size={16} /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Print Modal */}
-            <AnimatePresence>
-                {showPrintModal && printingInvoice && (
-                    <div className="modal-overlay">
-                        <motion.div
-                            className="print-modal-content wide"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                        >
-                            <div className="print-modal-header no-print">
-                                <h3>{t.print}</h3>
-                                <button className="close-btn" onClick={() => setShowPrintModal(false)}><X size={20} /></button>
-                            </div>
-
-                            <div className="invoice-printable receipt-80mm" id="invoice-print">
-                                {/* Top decorative border */}
-                                <div className="print-top-border"></div>
-
-                                {/* Studio brand header */}
-                                <div className="print-brand-center">
-                                    <div className="print-logo-circle">
-                                        {(settings.studioName || t.studioName).charAt(0)}
-                                    </div>
-                                    <h1 className="print-studio-name">{settings.studioName || t.studioName}</h1>
-                                    {settings.address && <p className="print-studio-info">{settings.address}</p>}
-                                    {settings.phone && <p className="print-studio-info">{settings.phone}</p>}
-                                </div>
-
-                                <div className="print-divider dashed"></div>
-
-                                {/* Invoice number & date */}
-                                <div className="print-invoice-badge">
-                                    <span className="print-inv-label">{t.invoiceNo}</span>
-                                    <span className="print-inv-no">{printingInvoice.invoice_no}</span>
-                                </div>
-
-                                <div className="print-date-row">
-                                    <div>
-                                        <span className="print-meta-label">{t.date}</span>
-                                        <span className="print-meta-value">{new Date(printingInvoice.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span>
-                                    </div>
-                                    <div>
-                                        <span className="print-meta-label">{t.time}</span>
-                                        <span className="print-meta-value">{new Date(printingInvoice.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                </div>
-
-                                <div className="print-divider solid"></div>
-
-                                {/* Customer info */}
-                                <div className="print-customer-section">
-                                    <div className="print-customer-row">
-                                        <span className="print-cust-label">{t.customerName}</span>
-                                        <span className="print-cust-value">{printingInvoice.customer_name}</span>
-                                    </div>
-                                    <div className="print-customer-row">
-                                        <span className="print-cust-label">{t.customerPhone}</span>
-                                        <span className="print-cust-value" dir="ltr">{printingInvoice.customer_phone}</span>
-                                    </div>
-                                </div>
-
-                                {printingInvoice.participants && (
-                                    <>
-                                        <div className="print-divider dashed"></div>
-                                        <div className="print-participants-section">
-                                            <span className="print-cust-label">{t.participants}</span>
-                                            <p className="print-participants-text">{printingInvoice.participants}</p>
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="print-divider double"></div>
-
-                                {/* Items table */}
-                                <table className="print-items-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>{t.selectPackages}</th>
-                                            <th>{t.amount}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {printingItems.map((item, index) => (
-                                            <tr key={index}>
-                                                <td className="print-item-num">{index + 1}</td>
-                                                <td>{item.package_name}</td>
-                                                <td className="print-item-price">{item.item_price} {settings.currency}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-
-                                <div className="print-divider double"></div>
-
-                                {/* Payment summary */}
-                                <div className="print-payment-summary">
-                                    <div className="print-pay-row">
-                                        <span>{t.total}</span>
-                                        <strong>{printingInvoice.total_amount} {settings.currency}</strong>
-                                    </div>
-                                    <div className="print-pay-row paid-row">
-                                        <span>{t.paid}</span>
-                                        <strong>{printingInvoice.paid_amount} {settings.currency}</strong>
-                                    </div>
-                                    <div className="print-pay-row remaining-box">
-                                        <span>{t.remaining}</span>
-                                        <strong>{printingInvoice.remaining_amount} {settings.currency}</strong>
-                                    </div>
-                                </div>
-
-                                {/* Status badge */}
-                                <div className="print-status-line">
-                                    <span className={`print-status-badge ps-${printingInvoice.status}`}>
-                                        {printingInvoice.status === 'paid' ? (lang === 'ar' ? '✓ مدفوع بالكامل' : '✓ Fully Paid')
-                                            : printingInvoice.status === 'partial' ? (lang === 'ar' ? '◐ مدفوع جزئياً' : '◐ Partial Payment')
-                                            : (lang === 'ar' ? '○ معلق' : '○ Pending')}
-                                    </span>
-                                </div>
-
-                                <div className="print-divider dashed"></div>
-
-                                {/* Footer */}
-                                <div className="print-receipt-footer">
-                                    <div className="print-manager-line">
-                                        <span>{t.createdBy}:</span>
-                                        <strong>{printingInvoice.created_by || currentUserName}</strong>
-                                    </div>
-                                    <div className="print-thank-you">
-                                        {lang === 'ar' ? 'شكراً لاختياركم لنا ✦' : 'Thank you for choosing us ✦'}
-                                    </div>
-                                    <div className="print-footer-brand">
-                                        {settings.studioName || t.studioName}
-                                    </div>
-                                </div>
-
-                                <div className="print-bottom-border"></div>
-                            </div>
-
-                            <div className="print-modal-actions no-print">
-                                <button className="print-exec-btn" onClick={executePrint}><Printer size={20} /> {t.print}</button>
-                                <button className="print-cancel-btn" onClick={() => setShowPrintModal(false)}>{t.close}</button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Quick Add Customer Modal */}
-            <AnimatePresence>
-                {showQuickAdd && (
-                    <div className="modal-overlay" onClick={() => setShowQuickAdd(false)}>
-                        <motion.div
-                            className="modal-content large"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="modal-header">
-                                <h3>{t.selectCustomer}</h3>
-                                <button className="close-btn" onClick={() => setShowQuickAdd(false)}><X size={20} /></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="modal-field">
-                                    <label>{t.customerName}</label>
-                                    <input
-                                        value={newCustName}
-                                        onChange={e => setNewCustName(e.target.value)}
-                                        placeholder="Ex: Ahmed Mohamed"
-                                    />
-                                </div>
-                                <div className="modal-field">
-                                    <label>{t.customerPhone}</label>
-                                    <input
-                                        value={newCustPhone}
-                                        onChange={e => setNewCustPhone(e.target.value)}
-                                        placeholder="05xxxxxxx"
-                                    />
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button className="modal-cancel-btn" onClick={() => setShowQuickAdd(false)}>{t.close}</button>
-                                <button
-                                    className="modal-save-btn btn-primary"
-                                    disabled={!newCustName || !newCustPhone || isAddingCust}
-                                    onClick={handleQuickAddCustomer}
-                                >
-                                    {isAddingCust ? <Loader className="spin" size={20} /> : <CheckCircle size={20} />}
-                                    {lang === 'ar' ? 'إضافة وتلوين' : 'Add & Select'}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-
-            {/* Edit Invoice Modal */}
-            <AnimatePresence>
-                {editingInvoice && (
-                    <div className="modal-overlay" onClick={() => setEditingInvoice(null)}>
-                        <motion.div
-                            className="modal-content large"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="modal-header">
-                                <h3>{t.editInvoice}: {editingInvoice.invoice_no}</h3>
-                                <button className="close-btn" onClick={() => setEditingInvoice(null)}><X size={20} /></button>
-                            </div>
-                            <div className="modal-body">
-                                <div className="modal-field">
-                                    <label>{t.paid}</label>
-                                    <div className="input-with-icon">
-                                        <DollarSign size={16} />
-                                        <input
-                                            type="number"
-                                            value={editPaidAmount}
-                                            onChange={e => setEditPaidAmount(e.target.value)}
-                                        />
-                                    </div>
-                                    <small className="help-text">{t.total}: {editingInvoice.total_amount} {settings.currency}</small>
-                                </div>
-                                <div className="modal-field">
-                                    <label>{t.participants}</label>
-                                    <textarea
-                                        value={editParticipants}
-                                        onChange={e => setEditParticipants(e.target.value)}
-                                        rows={4}
-                                        placeholder={t.participantsHint}
-                                    />
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button className="modal-cancel-btn" onClick={() => setEditingInvoice(null)}>{t.close}</button>
-                                <button className="modal-save-btn btn-primary" onClick={handleUpdateInvoice}>
-                                    <CheckCircle size={20} /> {t.saveChanges}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+  return (
+    <div className="animate-fade-in">
+      <header className="mb-6">
+        <h2 className="text-xl font-extrabold text-foreground flex items-center gap-2.5"><FileText size={22} />{t.title}</h2>
+        <div className="flex gap-0.5 bg-muted p-0.5 rounded-lg mt-3 w-fit">
+          <button onClick={() => setActiveTab('create')} className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'create' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'}`}>{t.createTab}</button>
+          <button onClick={() => setActiveTab('list')} className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'list' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground'}`}>{t.listTab}</button>
         </div>
-    );
+      </header>
+
+      {activeTab === 'create' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 mt-6">
+          <div className="space-y-4">
+            <section className="bg-card border border-border rounded-xl p-5">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><UserIcon size={18} />{t.selectCustomer}</h3>
+              <div className="flex gap-2 items-center">
+                <select value={selectedCustomerId} onChange={e => setSelectedCustomerId(Number(e.target.value))} className={`${inputClass} flex-1`}>
+                  <option value="">{t.searchCustomer}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.phone}</option>)}
+                </select>
+                <button onClick={() => setShowQuickAdd(true)} className="shrink-0 w-11 h-11 rounded-lg border border-border bg-card text-primary flex items-center justify-center hover:bg-primary/5 hover:border-primary/50 transition-all"><Plus size={20} /></button>
+              </div>
+              {selectedCustomerId && <div className="flex gap-2 mt-3 flex-wrap">{[{ icon: UserIcon, text: customers.find(c => c.id === selectedCustomerId)?.name }, { icon: Wallet, text: customers.find(c => c.id === selectedCustomerId)?.phone }].map((b, i) => <span key={i} className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1.5 rounded-full text-xs font-semibold"><b.icon size={12} />{b.text}</span>)}</div>}
+            </section>
+
+            <section className="bg-card border border-border rounded-xl p-5">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Package size={18} />{t.selectPackages}<span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span></h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {packages.map(pkg => <div key={pkg.id} onClick={() => addPkg(pkg)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-primary/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative"><span className="text-sm font-semibold text-foreground">{pkg.type}</span><Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" /></div>)}
+              </div>
+            </section>
+
+            <section className="bg-card border border-border rounded-xl p-5">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><UserIcon size={18} />{t.participants}</h3>
+              <textarea placeholder={t.participantsHint} value={participants} onChange={e => setParticipants(e.target.value)} className={`${inputClass} min-h-[70px] resize-y`} />
+            </section>
+          </div>
+
+          <aside className="bg-card border border-border rounded-xl p-5 sticky top-24 h-fit">
+            <h3 className="font-bold text-sm text-foreground mb-4">{t.invoiceSummary}</h3>
+            <div className="max-h-[200px] overflow-y-auto mb-3">
+              {selectedPackages.length === 0 ? <p className="text-center text-muted-foreground text-sm py-5">{t.noItems}</p> :
+                selectedPackages.map((p: any) => <div key={p.tempId} className="flex justify-between items-center py-2 border-b border-dashed border-border text-sm"><span>{p.type}</span><div className="flex items-center gap-2"><strong>{p.price} {settings.currency}</strong><button onClick={() => removePkg(p.tempId)} className="w-5 h-5 rounded bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive/20 transition-all"><X size={12} /></button></div></div>)}
+            </div>
+            <div className="bg-muted rounded-lg p-3.5 mb-4 space-y-2.5">
+              <div className="flex justify-between font-extrabold text-lg text-primary border-b border-border pb-2.5">{t.total}<span>{totalAmount} {settings.currency}</span></div>
+              <div><label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5"><DollarSign size={12} />{t.paid}</label><input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} className="w-full bg-card border-2 border-border rounded-lg px-3 py-2.5 text-foreground font-extrabold text-lg outline-none focus:border-primary/50 transition-all" /></div>
+              <div className={`flex justify-between items-center text-sm ${remainingAmount > 0 ? 'bg-destructive/5 p-2.5 rounded-lg' : ''}`}><span className="flex items-center gap-1.5"><Wallet size={13} />{t.remaining}</span><span className={remainingAmount > 0 ? 'text-destructive font-extrabold' : ''}>{remainingAmount} {settings.currency}</span></div>
+            </div>
+            <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5"><Clock size={12} />{new Date().toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US')}</div>
+              <div className="flex items-center gap-1.5"><Calendar size={12} />{new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</div>
+              <div className="flex items-center gap-1.5"><UserIcon size={12} />{t.createdBy}: {currentUserName}</div>
+            </div>
+            <button onClick={handleCreateInvoice} disabled={!selectedCustomerId || selectedPackages.length === 0 || isSaving} className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/20">
+              {isSaving ? <Loader className="animate-spin" size={18} /> : <CheckCircle size={18} />}{t.createBtn}
+            </button>
+          </aside>
+        </div>
+      ) : (
+        <div className="mt-6 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead><tr className="bg-muted/50">{[t.invoiceNo, t.customerName, t.amount, t.paid, t.remaining, t.status, t.createdBy, t.actions].map(h => <th key={h} className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>)}</tr></thead>
+              <tbody>
+                {invoices.length === 0 ? <tr><td colSpan={8} className="text-center py-16">{isLoading ? <Loader className="animate-spin mx-auto text-primary" /> : <span className="text-muted-foreground">{t.noItems}</span>}</td></tr> :
+                  invoices.map(inv => (
+                    <tr key={inv.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3"><div className="flex flex-col"><strong className="text-sm">{inv.invoice_no}</strong><small className="text-xs text-muted-foreground">{new Date(inv.created_at).toLocaleDateString()}</small></div></td>
+                      <td className="px-4 py-3"><div className="flex flex-col"><span className="text-sm">{inv.customer_name}</span><small className="text-xs text-muted-foreground" dir="ltr">{inv.customer_phone}</small></div></td>
+                      <td className="px-4 py-3 text-sm font-medium">{inv.total_amount} {settings.currency}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-success">{inv.paid_amount}</td>
+                      <td className={`px-4 py-3 text-sm font-semibold ${inv.remaining_amount > 0 ? 'text-destructive' : ''}`}>{inv.remaining_amount}</td>
+                      <td className="px-4 py-3"><span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${statusClass(inv.status)}`}>{getStatusLabel(inv.status)}</span></td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{inv.created_by || currentUserName}</td>
+                      <td className="px-4 py-3"><div className="flex gap-1.5">
+                        <button onClick={() => handlePrint(inv.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"><Printer size={15} /></button>
+                        <button onClick={() => handleEditInvoice(inv)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"><Edit2 size={15} /></button>
+                        <button onClick={() => handleDeleteInvoice(inv.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={15} /></button>
+                      </div></td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Print Modal */}
+      <AnimatePresence>
+        {showPrintModal && printingInvoice && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2100] flex items-center justify-center p-5">
+            <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <div className="flex justify-between items-center px-5 py-4 border-b border-border no-print"><h3 className="font-bold text-foreground text-sm">{t.print}</h3><button onClick={() => setShowPrintModal(false)} className="w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all"><X size={18} /></button></div>
+              <div id="invoice-print" className="p-5 bg-white text-gray-900 font-cairo text-xs leading-relaxed" style={{ width: '80mm', margin: '0 auto' }}>
+                <div className="h-1 bg-repeating-[linear-gradient(90deg,#000_0px,#000_8px,transparent_8px,transparent_12px)] mb-3.5 rounded" style={{ background: 'repeating-linear-gradient(90deg, #000 0px, #000 8px, transparent 8px, transparent 12px)' }} />
+                <div className="text-center mb-3"><div className="w-12 h-12 bg-black text-white text-xl font-black rounded-full inline-flex items-center justify-center mb-1.5">{(settings.studioName || t.studioName).charAt(0)}</div><h1 className="text-lg font-black m-0">{settings.studioName || t.studioName}</h1>{settings.address && <p className="text-[9px] text-gray-500 m-0">{settings.address}</p>}{settings.phone && <p className="text-[9px] text-gray-500 m-0">{settings.phone}</p>}</div>
+                <div className="border-t border-dashed border-gray-300 my-2.5" />
+                <div className="text-center my-2"><span className="block text-[9px] text-gray-400 font-bold uppercase tracking-widest">{t.invoiceNo}</span><span className="block text-lg font-black tracking-wide font-mono mt-0.5">{printingInvoice.invoice_no}</span></div>
+                <div className="flex justify-between my-1.5 text-[11px]"><div><span className="block text-[8px] text-gray-400 font-bold uppercase">{t.date}</span><span className="font-bold">{new Date(printingInvoice.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span></div><div><span className="block text-[8px] text-gray-400 font-bold uppercase">{t.time}</span><span className="font-bold">{new Date(printingInvoice.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span></div></div>
+                <div className="border-t border-gray-300 my-2.5" />
+                <div className="space-y-1.5 my-1.5"><div className="flex justify-between"><span className="text-[9px] text-gray-500 font-bold">{t.customerName}</span><span className="text-xs font-extrabold">{printingInvoice.customer_name}</span></div><div className="flex justify-between"><span className="text-[9px] text-gray-500 font-bold">{t.customerPhone}</span><span className="text-xs font-extrabold" dir="ltr">{printingInvoice.customer_phone}</span></div></div>
+                {printingInvoice.participants && <><div className="border-t border-dashed border-gray-300 my-2.5" /><div><span className="text-[9px] text-gray-500 font-bold">{t.participants}</span><p className="text-[11px] font-semibold bg-gray-100 p-1.5 rounded mt-1 border-r-2 border-gray-800">{printingInvoice.participants}</p></div></>}
+                <div className="border-t-[3px] border-double border-gray-800 my-2.5" />
+                <table className="w-full border-collapse my-1.5"><thead><tr className="border-b-2 border-gray-800"><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-center w-6">#</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-start">{t.selectPackages}</th><th className="text-[9px] font-extrabold uppercase text-gray-500 py-1.5 text-end">{t.amount}</th></tr></thead><tbody>{printingItems.map((item, i) => <tr key={i} className="border-b border-dotted border-gray-200"><td className="py-1.5 text-center text-[10px] text-gray-400 font-bold">{i + 1}</td><td className="py-1.5 text-[11px] font-semibold">{item.package_name}</td><td className="py-1.5 text-end font-extrabold font-mono whitespace-nowrap">{item.item_price} {settings.currency}</td></tr>)}</tbody></table>
+                <div className="border-t-[3px] border-double border-gray-800 my-2.5" />
+                <div className="space-y-1 my-1.5"><div className="flex justify-between text-xs"><span className="text-gray-500 font-semibold">{t.total}</span><strong className="font-mono">{printingInvoice.total_amount} {settings.currency}</strong></div><div className="flex justify-between text-xs text-green-600"><span className="font-semibold">{t.paid}</span><strong className="font-mono">{printingInvoice.paid_amount} {settings.currency}</strong></div><div className="flex justify-between text-sm bg-gray-900 text-white p-2 rounded-md mt-1"><span className="font-bold">{t.remaining}</span><strong className="font-mono text-base">{printingInvoice.remaining_amount} {settings.currency}</strong></div></div>
+                <div className="text-center my-2.5"><span className={`inline-block px-4 py-1 rounded-full text-[11px] font-extrabold ${printingInvoice.status === 'paid' ? 'bg-green-100 text-green-800 border border-green-300' : printingInvoice.status === 'partial' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' : 'bg-red-100 text-red-800 border border-red-300'}`}>{printingInvoice.status === 'paid' ? '✓ ' : printingInvoice.status === 'partial' ? '◐ ' : '○ '}{getStatusLabel(printingInvoice.status)}</span></div>
+                <div className="border-t border-dashed border-gray-300 my-2.5" />
+                <div className="text-center"><div className="text-[10px] text-gray-500 mb-2"><span>{t.createdBy}:</span> <strong className="text-black">{printingInvoice.created_by || currentUserName}</strong></div><div className="text-sm font-black">{lang === 'ar' ? 'شكراً لاختياركم لنا ✦' : 'Thank you for choosing us ✦'}</div><div className="text-[8px] text-gray-300 uppercase tracking-widest font-bold mt-1">{settings.studioName || t.studioName}</div></div>
+                <div className="h-1 mt-3.5 rounded" style={{ background: 'repeating-linear-gradient(90deg, #000 0px, #000 8px, transparent 8px, transparent 12px)' }} />
+              </div>
+              <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-border no-print">
+                <button onClick={() => setShowPrintModal(false)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted transition-all">{t.close}</button>
+                <button onClick={executePrint} className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:opacity-90 transition-all"><Printer size={18} />{t.print}</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Quick Add Customer Modal */}
+      <AnimatePresence>{showQuickAdd && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2100] flex items-center justify-center p-5" onClick={() => setShowQuickAdd(false)}>
+          <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border"><h3 className="font-bold text-foreground">{t.selectCustomer}</h3><button onClick={() => setShowQuickAdd(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button></div>
+            <div className="p-6 space-y-4"><div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.customerName}</label><input value={newCustName} onChange={e => setNewCustName(e.target.value)} className={inputClass} /></div><div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.customerPhone}</label><input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className={inputClass} /></div></div>
+            <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30"><button onClick={() => setShowQuickAdd(false)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted">{t.close}</button><button onClick={handleQuickAdd} disabled={!newCustName || !newCustPhone || isAddingCust} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2">{isAddingCust ? <Loader className="animate-spin" size={16} /> : <CheckCircle size={16} />}{lang === 'ar' ? 'إضافة' : 'Add'}</button></div>
+          </motion.div>
+        </div>
+      )}</AnimatePresence>
+
+      {/* Edit Invoice Modal */}
+      <AnimatePresence>{editingInvoice && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2100] flex items-center justify-center p-5" onClick={() => setEditingInvoice(null)}>
+          <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border"><h3 className="font-bold text-foreground">{t.editInvoice}: {editingInvoice.invoice_no}</h3><button onClick={() => setEditingInvoice(null)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button></div>
+            <div className="p-6 space-y-4">
+              <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.paid}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><DollarSign size={16} className="text-muted-foreground" /><input type="number" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div><small className="text-xs text-muted-foreground mt-1 block">{t.total}: {editingInvoice.total_amount} {settings.currency}</small></div>
+              <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.participants}</label><textarea value={editParticipants} onChange={e => setEditParticipants(e.target.value)} className={`${inputClass} min-h-[70px] resize-y`} /></div>
+            </div>
+            <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30"><button onClick={() => setEditingInvoice(null)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted">{t.close}</button><button onClick={handleUpdateInvoice} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:opacity-90 flex items-center gap-2"><CheckCircle size={16} />{t.saveChanges}</button></div>
+          </motion.div>
+        </div>
+      )}</AnimatePresence>
+    </div>
+  );
 };
 
 export default InvoicesPage;
