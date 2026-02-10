@@ -83,7 +83,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       </header>
 
       {activeTab === 'create' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] gap-4 sm:gap-5 mt-4 sm:mt-6">
           <div className="space-y-4">
             <section className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><UserIcon size={18} />{t.selectCustomer}</h3>
@@ -97,7 +97,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
 
             <section className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4"><Package size={18} />{t.selectPackages}<span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span></h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {packages.map(pkg => <div key={pkg.id} onClick={() => addPkg(pkg)} className="bg-muted border-2 border-transparent rounded-lg p-3.5 cursor-pointer hover:border-pink-500/50 hover:-translate-y-0.5 hover:shadow-sm transition-all relative"><span className="text-sm font-semibold text-foreground">{pkg.description}</span><span className="block text-xs text-muted-foreground mt-1">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'} • {pkg.size || ''}</span><Plus size={16} className="absolute top-2.5 end-2.5 text-muted-foreground opacity-50" /></div>)}
               </div>
             </section>

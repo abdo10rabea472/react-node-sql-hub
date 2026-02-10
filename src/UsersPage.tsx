@@ -93,21 +93,27 @@ const UsersPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead><tr className="bg-muted/50">
-              {['#', l.name, l.email, l.role, l.status, l.joinDate, l.actions].map(h => <th key={h} className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>)}
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">#</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.name}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden md:table-cell">{l.email}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.role}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">{l.status}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">{l.joinDate}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.actions}</th>
             </tr></thead>
             <tbody>
               {paginatedUsers.length === 0 ? <tr><td colSpan={7} className="text-center py-16 text-muted-foreground">{l.noUsers}</td></tr> :
                 paginatedUsers.map((u, idx) => (
                   <motion.tr key={u.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.05 }}>
-                    <td className="px-4 py-3 text-sm text-muted-foreground font-semibold tabular-nums">{u.id}</td>
-                    <td className="px-4 py-3"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{u.name.charAt(0).toUpperCase()}</div><span className="text-sm font-medium">{u.name}</span></div></td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground" dir="ltr">{u.email}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadgeClass(u.role)}`}>{getRoleIcon(u.role)} {getRoleLabel(u.role)}</span></td>
-                    <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(u.status)}`}>{getStatusIcon(u.status)} {getStatusLabel(u.status)}</span></td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(u.created_at)}</td>
-                    <td className="px-4 py-3"><div className="flex gap-1.5">
-                      <button onClick={() => openEditModal(u)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
-                      <button onClick={() => setDeletingUser(u)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground font-semibold tabular-nums hidden sm:table-cell">{u.id}</td>
+                    <td className="px-3 sm:px-4 py-3"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{u.name.charAt(0).toUpperCase()}</div><span className="text-sm font-medium truncate max-w-[120px] sm:max-w-none">{u.name}</span></div></td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground hidden md:table-cell" dir="ltr">{u.email}</td>
+                    <td className="px-3 sm:px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${roleBadgeClass(u.role)}`}>{getRoleIcon(u.role)} <span className="hidden xs:inline">{getRoleLabel(u.role)}</span></span></td>
+                    <td className="px-3 sm:px-4 py-3 hidden sm:table-cell"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(u.status)}`}>{getStatusIcon(u.status)} {getStatusLabel(u.status)}</span></td>
+                    <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{formatDate(u.created_at)}</td>
+                    <td className="px-3 sm:px-4 py-3"><div className="flex gap-1.5">
+                      <button onClick={() => openEditModal(u)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
+                      <button onClick={() => setDeletingUser(u)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
                     </div></td>
                   </motion.tr>
                 ))

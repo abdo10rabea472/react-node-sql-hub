@@ -58,16 +58,17 @@ const CustomersPage: React.FC = () => {
           className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo placeholder:text-muted-foreground" />
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+      {/* Desktop Table */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-muted/50">
-                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.name}</th>
-                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.phone}</th>
-                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.email}</th>
-                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.date}</th>
-                <th className="px-5 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.actions}</th>
+                <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.name}</th>
+                <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.phone}</th>
+                <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden md:table-cell">{t.email}</th>
+                <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">{t.date}</th>
+                <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{t.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -78,16 +79,16 @@ const CustomersPage: React.FC = () => {
               ) : (
                 filtered.map(c => (
                   <tr key={c.id} className="border-t border-border/50 hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{c.name.charAt(0).toUpperCase()}</div>
                         <span className="font-medium text-sm">{c.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{c.phone}</td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{c.email || '-'}</td>
-                    <td className="px-5 py-3.5 text-sm text-muted-foreground">{new Date(c.created_at).toLocaleDateString(settings.lang === 'ar' ? 'ar-EG' : 'en-US')}</td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{c.phone}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">{c.email || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{new Date(c.created_at).toLocaleDateString(settings.lang === 'ar' ? 'ar-EG' : 'en-US')}</td>
+                    <td className="px-4 py-3">
                       <button onClick={() => handleDelete(c.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-all">
                         <Trash2 size={15} />
                       </button>
@@ -98,6 +99,27 @@ const CustomersPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center min-h-[200px] gap-3"><Loader className="animate-spin text-primary" size={28} /><p className="text-muted-foreground text-sm">{t.loading}</p></div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">{t.empty}</div>
+        ) : filtered.map(c => (
+          <div key={c.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-sm font-bold shrink-0">{c.name.charAt(0).toUpperCase()}</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-foreground truncate">{c.name}</p>
+              <p className="text-xs text-muted-foreground" dir="ltr">{c.phone}</p>
+              {c.email && <p className="text-xs text-muted-foreground truncate">{c.email}</p>}
+            </div>
+            <button onClick={() => handleDelete(c.id)} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 shrink-0">
+              <Trash2 size={15} />
+            </button>
+          </div>
+        ))}
       </div>
 
       <AnimatePresence>
