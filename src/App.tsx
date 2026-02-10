@@ -41,7 +41,10 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-primary text-lg font-cairo">
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-app)', color: 'var(--p-500)', fontSize: 18, fontFamily: "'Cairo', sans-serif",
+      }}>
         جاري التحميل...
       </div>
     );
