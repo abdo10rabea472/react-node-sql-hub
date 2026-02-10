@@ -112,8 +112,8 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                 content: [
                     // Header
                     { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-                    settings.address && { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] },
-                    settings.phone && { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] },
+                    settings.address ? { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] } : null,
+                    settings.phone ? { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] } : null,
                     { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1, lineColor: '#ddd' }], margin: [0, 0, 0, 10] },
 
                     // Invoice Info
@@ -135,7 +135,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             [{ text: t.customerPhone, fontSize: 8, bold: true, color: '#888', alignment: 'right' }, { text: inv.customer_phone, fontSize: 11, bold: true, alignment: 'right', margin: [0, 2, 0, 0] }]
                         ], margin: [0, 0, 0, 10]
                     },
-                    inv.participants && { text: `${t.participants}:\n${inv.participants}`, fontSize: 10, margin: [10, 5, 10, 10], background: '#f5f5f5', color: '#333' },
+                    inv.participants ? { text: `${t.participants}:\n${inv.participants}`, fontSize: 10, margin: [10, 5, 10, 10], background: '#f5f5f5', color: '#333' } : null,
 
                     { canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 2, lineColor: '#000' }], margin: [0, 0, 0, 10] },
 
@@ -177,7 +177,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                     { text: `${lang === 'ar' ? 'اسم المسؤول' : 'Manager'}: ${inv.created_by || currentUserName}`, fontSize: 9, color: '#999', alignment: 'center', margin: [0, 0, 0, 5] },
                     { text: lang === 'ar' ? 'شكراً لتعاملكم معنا ✦' : 'Thank you for choosing us ✦', fontSize: 12, bold: true, alignment: 'center' },
                     { text: (settings.studioName || t.studioName).toUpperCase(), fontSize: 8, bold: true, alignment: 'center', color: '#999' }
-                ]
+                ].filter(Boolean)
             };
 
             const pm = getPdfMake();

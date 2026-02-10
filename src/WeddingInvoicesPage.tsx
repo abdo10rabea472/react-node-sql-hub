@@ -145,8 +145,8 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
         margins: [10, 10, 10, 10],
         content: [
           { text: settings.studioName || t.studioName, fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-          settings.address && { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] },
-          settings.phone && { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] },
+          settings.address ? { text: settings.address, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 2] } : null,
+          settings.phone ? { text: settings.phone, fontSize: 9, alignment: 'center', color: '#888', margin: [0, 0, 0, 10] } : null,
           { text: inv.invoice_no, fontSize: 20, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
           {
             columns: [
@@ -163,7 +163,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
           { table: { widths: [30, '*', 70], body: [['#', t.items, t.amount], ...items.map((it: any, i: number) => [(i + 1).toString(), it.package_name || '---', `${parseFloat(it.item_price || it.price) || 0} ${settings.currency}`])] } },
           { margin: [0, 10, 0, 0], columns: [[{ text: t.total, fontSize: 10, bold: true }, { text: `${inv.total_amount} ${settings.currency}`, fontSize: 14, bold: true }]] },
           { text: `${lang === 'ar' ? 'المسؤول' : 'Manager'}: ${inv.created_by || currentUserName}`, fontSize: 9, alignment: 'center', margin: [0, 20, 0, 0] }
-        ]
+        ].filter(Boolean)
       };
 
       const pm = getPdfMake();
