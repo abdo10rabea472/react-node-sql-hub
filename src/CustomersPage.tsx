@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Users, UserPlus, Search, Trash2, X, Phone, Mail, MapPin,
-    CheckCircle, AlertTriangle, Loader, ChevronRight, ChevronLeft
+    Users, UserPlus, Search, Trash2, X, Loader
 } from 'lucide-react';
 import { getCustomers, addCustomer, deleteCustomer } from './api';
 import { useSettings } from './SettingsContext';
