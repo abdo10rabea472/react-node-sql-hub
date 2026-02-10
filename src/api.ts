@@ -85,6 +85,7 @@ export const getWhatsAppStatus = () => api.get("/whatsapp/status");
 export const stopWhatsAppSession = () => api.post("/whatsapp/stop");
 export const sendWhatsAppMessage = (data: { phone: string; message: string }) => api.post("/whatsapp/send-message", data);
 export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) => api.post("/whatsapp/send-invoice", data);
+export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) => api.post("/whatsapp/send-invoice-pdf", data);
 
 export default api;
 
