@@ -61,7 +61,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     useEffect(() => { fetchData(); }, []);
 
     const addPkg = (pkg: PricingPackage) => {
-        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, type: pkg.type, price: pkg.price }]);
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, type: pkg.type, price: parseFloat(String(pkg.price)) || 0 }]);
     };
     const removePkg = (tempId: number) => setSelectedPkgs(prev => prev.filter(p => p.tempId !== tempId));
     const totalAmount = selectedPkgs.reduce((sum, item) => sum + item.price, 0);
