@@ -84,7 +84,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 currency: updated.currency,
                 language: updated.lang,
                 theme: updated.theme,
-                country_code: updated.countryCode
+                country_code: updated.countryCode,
+                address: updated.address,
+                phone: updated.phone
             });
         } catch (err) {
             console.error("Failed to sync settings to DB:", err);
