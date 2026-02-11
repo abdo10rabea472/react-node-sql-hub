@@ -34,6 +34,16 @@ exports.addCustomer = (req, res) => {
 };
 
 
+// Update customer
+exports.updateCustomer = (req, res) => {
+    const { id } = req.params;
+    const { name, phone, email, address } = req.body;
+    db.query("UPDATE customers SET name = ?, phone = ?, email = ?, address = ? WHERE id = ?", [name, phone, email, address, id], (err) => {
+        if (err) return res.status(500).json({ message: "Error updating customer" });
+        res.json({ message: "Customer updated successfully" });
+    });
+};
+
 // Delete customer
 exports.deleteCustomer = (req, res) => {
     const { id } = req.params;
