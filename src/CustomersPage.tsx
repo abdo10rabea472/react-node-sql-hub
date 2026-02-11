@@ -131,13 +131,33 @@ const CustomersPage: React.FC = () => {
                 <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button>
               </div>
               <div className="p-6 space-y-4">
-                {[
-                  { label: `${t.name} *`, value: formName, set: setFormName },
-                  { label: `${t.phone} *`, value: formPhone, set: setFormPhone },
-                  { label: t.email, value: formEmail, set: setFormEmail },
-                ].map((f, i) => (
-                  <div key={i}><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{f.label}</label><input value={f.value} onChange={e => f.set(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" /></div>
-                ))}
+                <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.name} *</label><input value={formName} onChange={e => setFormName(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" /></div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.phone} *</label>
+                  <input value={formPhone} onChange={e => setFormPhone(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" dir="ltr" />
+                  {formPhone.length >= 3 && (() => {
+                    const cleanInput = formPhone.replace(/[^0-9]/g, '');
+                    const matches = customers.filter(c => c.phone.includes(cleanInput) || c.name.toLowerCase().includes(formPhone.toLowerCase()));
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                        <p className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1.5">
+                          <Search size={12} />
+                          {settings.lang === 'ar' ? 'عملاء مشابهين موجودين بالفعل:' : 'Similar existing customers:'}
+                        </p>
+                        <div className="space-y-1.5">
+                          {matches.slice(0, 3).map(c => (
+                            <div key={c.id} className="flex justify-between items-center px-3 py-2 bg-card rounded-lg border border-border">
+                              <span className="text-sm font-bold text-foreground">{c.name}</span>
+                              <span className="text-xs text-muted-foreground font-mono" dir="ltr">{c.phone}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.email}</label><input value={formEmail} onChange={e => setFormEmail(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" /></div>
                 <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{t.address}</label><textarea value={formAddress} onChange={e => setFormAddress(e.target.value)} rows={3} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo resize-y" /></div>
               </div>
               <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">

@@ -409,7 +409,32 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         </div>
                         <div className="p-6 space-y-4">
                             <div><label className="block text-xs font-bold text-muted-foreground mb-1.5">{t.customerName}</label><input value={newCustName} onChange={e => setNewCustName(e.target.value)} className={inputClass} /></div>
-                            <div><label className="block text-xs font-bold text-muted-foreground mb-1.5">{t.customerPhone}</label><input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className={inputClass} dir="ltr" /></div>
+                            <div>
+                                <label className="block text-xs font-bold text-muted-foreground mb-1.5">{t.customerPhone}</label>
+                                <input value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className={inputClass} dir="ltr" />
+                                {newCustPhone.length >= 3 && (() => {
+                                    const cleanInput = newCustPhone.replace(/[^0-9]/g, '');
+                                    const matches = customers.filter(c => c.phone.includes(cleanInput) || c.name.toLowerCase().includes(newCustPhone.toLowerCase()));
+                                    if (matches.length === 0) return null;
+                                    return (
+                                        <div className="mt-2 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                                            <p className="text-xs font-bold text-amber-600 mb-2 flex items-center gap-1.5">
+                                                <Search size={12} />
+                                                {lang === 'ar' ? 'عملاء مشابهين موجودين بالفعل:' : 'Similar existing customers:'}
+                                            </p>
+                                            <div className="space-y-1.5">
+                                                {matches.slice(0, 3).map(c => (
+                                                    <button key={c.id} type="button" onClick={() => { setSelectedCustomerId(c.id); setShowQuickAdd(false); setNewCustName(''); setNewCustPhone(''); }}
+                                                        className="w-full text-start flex justify-between items-center px-3 py-2 bg-card rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer">
+                                                        <span className="text-sm font-bold text-foreground">{c.name}</span>
+                                                        <span className="text-xs text-muted-foreground font-mono" dir="ltr">{c.phone}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
                         </div>
                         <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
                             <button onClick={() => setShowQuickAdd(false)} className="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition-all">{t.close}</button>
