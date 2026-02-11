@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Download, Search, Calendar, MapPin, Hash, User as UserIcon, Camera, Film } from 'lucide-react';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, sendWhatsAppPDF, sendWhatsAppMessage } from './api';
+import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Search, Calendar, MapPin, Hash, User as UserIcon, Camera, Film } from 'lucide-react';
+import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
-import { generateInvoicePdfBase64 } from './pdfGenerator';
 
 interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
@@ -104,21 +103,19 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const getStatusLabel = (s: string) => s === 'paid' ? t.paid_label : s === 'partial' ? t.partial : t.pending;
   const statusConfig = (s: string) => s === 'paid' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : s === 'partial' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20';
 
-  const generateAndSendPDF = async (inv: WeddingInvoice, itemsParam: any[]) => {
+  const handleSendWhatsAppAuto = async (inv: WeddingInvoice) => {
     try {
-      let items = itemsParam;
-      if (items.length === 0) { const detailsRes = await getWeddingInvoiceDetails(inv.id); items = detailsRes.data; }
-      const base64Data = await generateInvoicePdfBase64({
-        studioName: settings.studioName || t.studioName, address: settings.address, phone: settings.phone,
-        invoiceNo: inv.invoice_no, customerName: inv.customer_name, customerPhone: inv.customer_phone,
-        createdBy: inv.created_by || currentUserName, currency: settings.currency,
-        totalAmount: inv.total_amount, paidAmount: inv.paid_amount, remainingAmount: inv.remaining_amount,
-        weddingDate: inv.wedding_date, venue: inv.venue,
-        items: items.map((it: any) => ({ name: it.package_name || '---', price: parseFloat(it.item_price || it.price) || 0 })),
-        lang,
-      });
-      await sendWhatsAppPDF({ phone: inv.customer_phone, pdfBase64: base64Data, fileName: `${inv.invoice_no}.pdf`, caption: `${settings.studioName || t.studioName} - ${inv.invoice_no}` });
-      showToastMessage(lang === 'ar' ? '✓ تم إرسال الفاتورة' : '✓ Invoice sent');
+      const statusRes = await getWhatsAppStatus();
+      if (!statusRes.data.connected) {
+        showToastMessage(lang === 'ar' ? 'الواتساب غير متصل حالياً' : 'WhatsApp is not connected', 'error');
+        return;
+      }
+      const detailsRes = await getWeddingInvoiceDetails(inv.id);
+      const items = detailsRes.data;
+      const itemsText = items.map((it: any) => `- ${it.package_name}: ${it.item_price || it.price} ${settings.currency}`).join('\n');
+      const text = `*${settings.studioName || t.studioName}*\n${settings.address ? settings.address + '\n' : ''}${settings.phone ? settings.phone + '\n' : ''}\n*${t.invoiceNo}: ${inv.invoice_no}*\n*${t.customerName}:* ${inv.customer_name}\n*${t.customerPhone}:* ${inv.customer_phone}\n${inv.wedding_date ? `*${t.weddingDate}:* ${inv.wedding_date}\n` : ''}${inv.venue ? `*${t.venue}:* ${inv.venue}\n` : ''}\n*${t.items}:*\n${itemsText}\n\n*${t.total}:* ${inv.total_amount} ${settings.currency}\n*${t.paid}:* ${inv.paid_amount} ${settings.currency}\n*${t.remaining}:* ${inv.remaining_amount} ${settings.currency}`;
+      await sendWhatsAppMessage({ phone: inv.customer_phone, message: text });
+      showToastMessage(lang === 'ar' ? '✓ تم إرسال الفاتورة عبر الواتساب' : '✓ Invoice sent via WhatsApp');
     } catch (err) { console.error(err); showToastMessage(lang === 'ar' ? 'فشل الإرسال' : 'Failed to send', 'error'); }
   };
 
@@ -129,30 +126,13 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: selectedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
       const invRes = await getWeddingInvoices(); setInvoices(invRes.data);
       const newInv = invRes.data.find((i: WeddingInvoice) => i.id === res.data?.id);
-      if (newInv) await generateAndSendPDF(newInv, []);
+      if (newInv) await handleSendWhatsAppAuto(newInv);
       setSelectedCustomerId(''); setSelectedItems([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes(''); setActiveTab('list');
       showToastMessage(lang === 'ar' ? 'تم إنشاء الفاتورة بنجاح' : 'Invoice created');
     } catch (err) { console.error(err); showToastMessage(lang === 'ar' ? 'فشل إنشاء الفاتورة' : 'Failed to create', 'error'); }
     finally { setIsSaving(false); }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!printingInvoice) return;
-    try {
-      const detailsRes = await getWeddingInvoiceDetails(printingInvoice.id);
-      const items = detailsRes.data;
-      const base64Data = await generateInvoicePdfBase64({
-        studioName: settings.studioName || t.studioName, address: settings.address, phone: settings.phone,
-        invoiceNo: printingInvoice.invoice_no, customerName: printingInvoice.customer_name, customerPhone: printingInvoice.customer_phone,
-        createdBy: printingInvoice.created_by || currentUserName, currency: settings.currency,
-        totalAmount: printingInvoice.total_amount, paidAmount: printingInvoice.paid_amount, remainingAmount: printingInvoice.remaining_amount,
-        weddingDate: printingInvoice.wedding_date, venue: printingInvoice.venue,
-        items: items.map((it: any) => ({ name: it.package_name || '---', price: parseFloat(it.item_price || it.price) || 0 })),
-        lang,
-      });
-      const link = document.createElement('a'); link.href = `data:application/pdf;base64,${base64Data}`; link.download = `${printingInvoice.invoice_no}.pdf`; link.click();
-    } catch (err) { showToastMessage(lang === 'ar' ? 'فشل تحميل PDF' : 'PDF download failed', 'error'); }
-  };
 
   const handlePrint = async (id: number) => { try { const inv = invoices.find(i => i.id === id); if (!inv) return; const res = await getWeddingInvoiceDetails(id); setPrintingInvoice(inv); setPrintingItems(res.data); setShowPrintModal(true); } catch (err) { console.error(err); } };
   const handleEditInvoice = (inv: WeddingInvoice) => { setEditingInvoice(inv); setEditPaidAmount(inv.paid_amount.toString()); setEditVenue(inv.venue || ''); setEditNotes(inv.notes || ''); setEditWeddingDate(inv.wedding_date ? inv.wedding_date.split('T')[0] : ''); };
@@ -165,16 +145,6 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
     } catch (err) { console.error(err); }
   };
   const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; await deleteWeddingInvoice(id); fetchData(); };
-  const handleSendWhatsAppText = async (inv: WeddingInvoice) => {
-    try {
-      const detailsRes = await getWeddingInvoiceDetails(inv.id);
-      const items = detailsRes.data;
-      const itemsText = items.map((it: any) => `- ${it.package_name}: ${it.item_price}`).join('\n');
-      const text = `*${settings.studioName || t.studioName}*\n*${t.invoiceNo}: ${inv.invoice_no}*\n*${t.customerName}:* ${inv.customer_name}\n*${t.total}:* ${inv.total_amount} ${settings.currency}\n*${t.paid}:* ${inv.paid_amount}\n*${t.remaining}:* ${inv.remaining_amount}\n*${t.weddingDate}:* ${inv.wedding_date || '---'}\n*${t.venue}:* ${inv.venue || '---'}\n\n*${t.items}:*\n${itemsText}`;
-      await sendWhatsAppMessage({ phone: inv.customer_phone, message: text });
-      showToastMessage(lang === 'ar' ? '✓ تم الإرسال' : '✓ Sent');
-    } catch (err) { showToastMessage('Error', 'error'); }
-  };
 
   const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/10 transition-all font-cairo";
 
@@ -370,7 +340,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => generateAndSendPDF(inv, [])} className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-500/10 transition-all" title="WhatsApp PDF"><MessageCircle size={16} /></button>
+                        <button onClick={() => handleSendWhatsAppAuto(inv)} className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-500/10 transition-all" title="WhatsApp"><MessageCircle size={16} /></button>
                         <button onClick={() => handlePrint(inv.id)} className="p-2 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all" title={t.print}><Printer size={16} /></button>
                         <button onClick={() => handleEditInvoice(inv)} className="p-2 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all"><Edit2 size={16} /></button>
                         <button onClick={() => handleDeleteInvoice(inv.id)} className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={16} /></button>
@@ -428,8 +398,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 </div>
 
                 <div className="flex items-center gap-1.5 border-t border-border pt-3">
-                  <button onClick={() => generateAndSendPDF(inv, [])} className="flex-1 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-500/20 transition-all"><MessageCircle size={14} />PDF</button>
-                  <button onClick={() => handleSendWhatsAppText(inv)} className="flex-1 py-2 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-blue-500/20 transition-all"><MessageCircle size={14} />{lang === 'ar' ? 'نص' : 'Text'}</button>
+                  <button onClick={() => handleSendWhatsAppAuto(inv)} className="flex-1 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-500/20 transition-all"><MessageCircle size={14} />{lang === 'ar' ? 'واتساب' : 'WhatsApp'}</button>
                   <button onClick={() => handlePrint(inv.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-all"><Printer size={16} /></button>
                   <button onClick={() => handleEditInvoice(inv)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all"><Edit2 size={16} /></button>
                   <button onClick={() => handleDeleteInvoice(inv.id)} className="p-2 rounded-lg border border-border text-destructive/60 hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={16} /></button>
@@ -477,7 +446,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               </div>
               <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2.5 no-print">
                 <button onClick={() => setShowPrintModal(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all">{t.close}</button>
-                <button onClick={handleDownloadPDF} className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"><Download size={18} /></button>
+                
                 <button onClick={() => window.print()} className="flex-[2] py-3 bg-rose-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-rose-600 active:scale-95 transition-all"><Printer size={16} />{t.print}</button>
               </div>
             </motion.div>
