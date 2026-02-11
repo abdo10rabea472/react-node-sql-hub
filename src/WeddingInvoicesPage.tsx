@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Search, Calendar, MapPin, Hash, User as UserIcon, Camera, Film } from 'lucide-react';
+import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Search, Calendar, MapPin, Hash, User as UserIcon, Camera, Film, Minus } from 'lucide-react';
 import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
 
@@ -8,7 +8,7 @@ interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
 interface Video { id: number; description: string; price: number; type: string; }
 interface WeddingInvoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; wedding_date: string; venue: string; notes: string; status: string; created_at: string; }
-interface SelectedItem { tempId: number; id: number; package_name: string; price: number; type: 'album' | 'video'; }
+interface SelectedItem { tempId: number; id: number; package_name: string; price: number; type: 'album' | 'video'; hours?: number; }
 
 const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
   const { settings } = useSettings();
@@ -95,6 +95,22 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
 
   const addItem = (item: any, type: 'album' | 'video') => {
     setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: item.id, package_name: item.description, price: parseFloat(item.price) || 0, type }]);
+  };
+  const addVideoWithHours = (video: Video, hours: number) => {
+    if (hours <= 0) return;
+    const pricePerHour = parseFloat(String(video.price)) || 0;
+    // Remove existing entry for this video and replace with new hours
+    setSelectedItems(prev => {
+      const filtered = prev.filter(i => !(i.type === 'video' && i.id === video.id));
+      return [...filtered, { tempId: Date.now() + Math.random(), id: video.id, package_name: `${video.description} - ${hours} ${lang === 'ar' ? 'ساعة فيديو' : 'hours'}`, price: pricePerHour * hours, type: 'video', hours }];
+    });
+  };
+  const removeVideoById = (videoId: number) => {
+    setSelectedItems(prev => prev.filter(i => !(i.type === 'video' && i.id === videoId)));
+  };
+  const getVideoHours = (videoId: number) => {
+    const item = selectedItems.find(i => i.type === 'video' && i.id === videoId);
+    return item?.hours || 0;
   };
   const removeItem = (tempId: number) => setSelectedItems(prev => prev.filter(i => i.tempId !== tempId));
   const totalAmount = selectedItems.reduce((acc, it) => acc + it.price, 0);
@@ -209,20 +225,36 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               </div>
             </section>
 
-            {/* Videos */}
+            {/* Videos with Hours Counter */}
             <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4">
                 <Film size={16} className="text-rose-500" />{t.videos}
+                <span className="ms-auto text-xs text-muted-foreground font-normal">{lang === 'ar' ? 'حدد عدد الساعات لكل كاميرا' : 'Set hours per camera'}</span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {videos.map(v => (
-                  <motion.div key={v.id} whileTap={{ scale: 0.97 }} onClick={() => addItem(v, 'video')}
-                    className="bg-muted/50 border border-border rounded-xl p-3.5 cursor-pointer hover:border-rose-400/40 hover:bg-rose-500/5 transition-all group relative">
-                    <span className="text-sm font-bold text-foreground block">{v.description}</span>
-                    <span className="text-xs text-muted-foreground font-semibold mt-1 block">{v.price} {settings.currency}</span>
-                    <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-rose-500 transition-all" />
-                  </motion.div>
-                ))}
+              <div className="space-y-3">
+                {videos.map(v => {
+                  const hours = getVideoHours(v.id);
+                  return (
+                    <div key={v.id} className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${hours > 0 ? 'bg-rose-500/5 border-rose-400/40' : 'bg-muted/50 border-border'}`}>
+                      <div className="flex-1">
+                        <span className="text-sm font-bold text-foreground block">{v.description}</span>
+                        <span className="text-xs text-muted-foreground font-semibold">{v.price} {settings.currency}/{lang === 'ar' ? 'ساعة' : 'hr'}</span>
+                        {hours > 0 && <span className="text-xs text-rose-500 font-bold block mt-0.5">{lang === 'ar' ? 'الإجمالي' : 'Total'}: {(parseFloat(String(v.price)) || 0) * hours} {settings.currency}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => { if (hours > 0) { if (hours === 1) removeVideoById(v.id); else addVideoWithHours(v, hours - 1); } }}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${hours > 0 ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-muted text-muted-foreground/30 cursor-not-allowed'}`}>
+                          <Minus size={16} />
+                        </button>
+                        <span className={`w-10 text-center text-lg font-black font-mono ${hours > 0 ? 'text-foreground' : 'text-muted-foreground/40'}`}>{hours}</span>
+                        <button onClick={() => addVideoWithHours(v, hours + 1)}
+                          className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 flex items-center justify-center text-sm font-bold transition-all">
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
