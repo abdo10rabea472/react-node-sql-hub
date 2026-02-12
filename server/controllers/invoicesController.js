@@ -1,17 +1,18 @@
 const db = require("../config/db");
 
-// Basic error handling for database queries
-const handleSqlError = (err, res, msg) => {
-    console.error(`[SQL Error] ${msg}:`, err);
-    if (res) res.status(500).json({ message: msg, error: err });
-};
-
-// Check and add columns if missing
+// Safe column check using whitelisted values only
+const ALLOWED_TABLES = ['invoices', 'wedding_invoices', 'wedding_invoice_items', 'studio_settings'];
 const ensureColumnExists = (table, column, definition) => {
-    db.query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`, (err, results) => {
+    if (!ALLOWED_TABLES.includes(table)) {
+        console.error(`Table '${table}' not in whitelist`);
+        return;
+    }
+    // Use parameterized LIKE for column name
+    db.query(`SHOW COLUMNS FROM \`${table}\` LIKE ?`, [column], (err, results) => {
         if (err) return console.error(`Error checking ${column} in ${table}:`, err);
         if (results && results.length === 0) {
-            db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err) => {
+            // Definition is hardcoded, not user input - safe to interpolate
+            db.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`, (err) => {
                 if (err) console.error(`Error adding ${column} to ${table}:`, err);
                 else console.log(`✅ Column '${column}' added to table '${table}'`);
             });
@@ -33,7 +34,10 @@ exports.getInvoices = (req, res) => {
         ORDER BY i.created_at DESC
     `;
     db.query(query, (err, results) => {
-        if (err) return res.status(500).json({ message: "Error fetching invoices", error: err });
+        if (err) {
+            console.error("[Invoices] Fetch error:", err);
+            return res.status(500).json({ message: "خطأ في جلب الفواتير" });
+        }
         res.json(results);
     });
 };
@@ -48,11 +52,13 @@ exports.getInvoiceDetails = (req, res) => {
         WHERE i.id = ?
     `;
     db.query(query, [id], (err, results) => {
-        if (err) return res.status(500).json({ message: "Error fetching invoice details", error: err });
+        if (err) {
+            console.error("[Invoices] Details error:", err);
+            return res.status(500).json({ message: "خطأ في جلب تفاصيل الفاتورة" });
+        }
         res.json(results);
     });
 };
-
 
 // Create invoice with multiple items
 exports.createInvoice = (req, res) => {
@@ -60,27 +66,30 @@ exports.createInvoice = (req, res) => {
     const remaining_amount = total_amount - (parseFloat(paid_amount) || 0);
     const invoice_no = `INV-${Date.now()}`;
 
-    // Determine status
     let status = 'pending';
     if (parseFloat(paid_amount) >= parseFloat(total_amount)) status = 'paid';
     else if (parseFloat(paid_amount) > 0) status = 'partial';
 
     db.getConnection((err, connection) => {
-        if (err) return res.status(500).json({ message: "DB Connection Error" });
+        if (err) {
+            console.error("[Invoices] Connection error:", err);
+            return res.status(500).json({ message: "خطأ في الاتصال بقاعدة البيانات" });
+        }
 
         connection.beginTransaction(err => {
             if (err) {
                 connection.release();
-                return res.status(500).json({ message: "Transaction Error" });
+                console.error("[Invoices] Transaction error:", err);
+                return res.status(500).json({ message: "خطأ في بدء العملية" });
             }
 
             const invQuery = "INSERT INTO invoices (customer_id, invoice_no, total_amount, paid_amount, remaining_amount, created_by, participants, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             connection.query(invQuery, [customer_id, invoice_no, total_amount, paid_amount, remaining_amount, created_by, participants, status], (err, result) => {
                 if (err) {
+                    console.error("[Invoices] Create error:", err);
                     return connection.rollback(() => {
                         connection.release();
-                        console.error("Create Invoice SQL Error:", err);
-                        res.status(500).json({ message: "Error creating invoice record", error: err });
+                        res.status(500).json({ message: "خطأ في إنشاء الفاتورة" });
                     });
                 }
 
@@ -90,17 +99,19 @@ exports.createInvoice = (req, res) => {
 
                 connection.query(itemQuery, [itemData], (err) => {
                     if (err) {
+                        console.error("[Invoices] Items error:", err);
                         return connection.rollback(() => {
                             connection.release();
-                            res.status(500).json({ message: "Error adding invoice items", error: err });
+                            res.status(500).json({ message: "خطأ في إضافة عناصر الفاتورة" });
                         });
                     }
 
                     connection.commit(err => {
                         if (err) {
+                            console.error("[Invoices] Commit error:", err);
                             return connection.rollback(() => {
                                 connection.release();
-                                res.status(500).json({ message: "Commit Error" });
+                                res.status(500).json({ message: "خطأ في حفظ الفاتورة" });
                             });
                         }
                         connection.release();
@@ -112,7 +123,7 @@ exports.createInvoice = (req, res) => {
     });
 };
 
-// Update invoice (paid amount / status / participants)
+// Update invoice
 exports.updateInvoice = (req, res) => {
     const { id } = req.params;
     const { paid_amount, total_amount, participants } = req.body;
@@ -123,10 +134,10 @@ exports.updateInvoice = (req, res) => {
     else if (parseFloat(paid_amount) > 0) status = 'partial';
 
     const query = "UPDATE invoices SET paid_amount = ?, remaining_amount = ?, status = ?, participants = ? WHERE id = ?";
-    db.query(query, [paid_amount, remaining_amount, status, participants, id], (err, result) => {
+    db.query(query, [paid_amount, remaining_amount, status, participants, id], (err) => {
         if (err) {
-            console.error("Update Invoice SQL Error:", err);
-            return res.status(500).json({ message: "Error updating invoice", error: err });
+            console.error("[Invoices] Update error:", err);
+            return res.status(500).json({ message: "خطأ في تحديث الفاتورة" });
         }
         res.json({ message: "Invoice updated successfully" });
     });
@@ -135,10 +146,10 @@ exports.updateInvoice = (req, res) => {
 // Delete invoice
 exports.deleteInvoice = (req, res) => {
     const { id } = req.params;
-    db.query("DELETE FROM invoices WHERE id = ?", [id], (err, result) => {
+    db.query("DELETE FROM invoices WHERE id = ?", [id], (err) => {
         if (err) {
-            console.error("Delete Invoice SQL Error:", err);
-            return res.status(500).json({ message: "Error deleting invoice", error: err });
+            console.error("[Invoices] Delete error:", err);
+            return res.status(500).json({ message: "خطأ في حذف الفاتورة" });
         }
         res.json({ message: "Invoice deleted successfully" });
     });

@@ -2,7 +2,11 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "stodio_secret_key_2026";
+const JWT_SECRET = process.env.JWT_SECRET || "stodio_secret_key_2026_CHANGE_ME";
+
+if (!process.env.JWT_SECRET) {
+  console.warn("⚠️  WARNING: JWT_SECRET is not set in environment variables. Using default key. Set JWT_SECRET in production!");
+}
 
 // LOGIN
 exports.login = (req, res) => {
@@ -13,7 +17,10 @@ exports.login = (req, res) => {
   }
 
   db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
-    if (err) return res.status(500).json({ message: "خطأ في الخادم" });
+    if (err) {
+      console.error("[Auth] Login DB error:", err);
+      return res.status(500).json({ message: "خطأ في الخادم" });
+    }
 
     if (results.length === 0) {
       return res.status(401).json({ message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
@@ -66,7 +73,11 @@ exports.verifyToken = (req, res) => {
       "SELECT id, name, email, role, status, created_at FROM users WHERE id = ?",
       [decoded.id],
       (err, results) => {
-        if (err || results.length === 0)
+        if (err) {
+          console.error("[Auth] Verify DB error:", err);
+          return res.status(401).json({ message: "خطأ في التحقق" });
+        }
+        if (results.length === 0)
           return res.status(401).json({ message: "مستخدم غير موجود" });
         res.json({ user: results[0] });
       }
@@ -76,7 +87,7 @@ exports.verifyToken = (req, res) => {
   }
 };
 
-// Middleware
+// Auth Middleware
 exports.authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ message: "غير مصرح" });
@@ -89,4 +100,12 @@ exports.authMiddleware = (req, res, next) => {
   } catch {
     res.status(401).json({ message: "توكن غير صالح" });
   }
+};
+
+// Admin Middleware - must be used after authMiddleware
+exports.adminMiddleware = (req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ message: "غير مصرح - صلاحيات المدير مطلوبة" });
+  }
+  next();
 };
