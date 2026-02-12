@@ -89,11 +89,26 @@ export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }
 export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) => api.post("/whatsapp/send-invoice-pdf", data);
 export const sendWhatsAppPDFFromDocDef = (data: { phone: string; docDefinition: any; fileName: string; caption: string }) => api.post("/whatsapp/send-pdf-from-docdef", data);
 
-// Purchases
+// Purchases (legacy)
 export const getPurchases = () => api.get("/purchases");
 export const getPurchasesStats = () => api.get("/purchases/stats");
 export const createPurchase = (data: any) => api.post("/purchases", data);
 export const updatePurchase = (id: number, data: any) => api.put(`/purchases/${id}`, data);
 export const deletePurchase = (id: number) => api.delete(`/purchases/${id}`);
+
+// Inventory
+export const getInventoryItems = () => api.get("/inventory");
+export const getInventoryStats = () => api.get("/inventory/stats");
+export const createInventoryItem = (data: any) => api.post("/inventory", data);
+export const updateInventoryItem = (id: number, data: any) => api.put(`/inventory/${id}`, data);
+export const deleteInventoryItem = (id: number) => api.delete(`/inventory/${id}`);
+export const addStock = (id: number, data: any) => api.post(`/inventory/${id}/add-stock`, data);
+export const adjustStock = (id: number, data: any) => api.post(`/inventory/${id}/adjust`, data);
+export const getInventoryCategories = () => api.get("/inventory/categories");
+export const createInventoryCategory = (data: any) => api.post("/inventory/categories", data);
+export const deleteInventoryCategory = (id: number) => api.delete(`/inventory/categories/${id}`);
+export const getPackageMaterials = (packageId: number, packageType: string) => api.get(`/inventory/materials/${packageId}/${packageType}`);
+export const setPackageMaterials = (packageId: number, packageType: string, materials: any[]) => api.post(`/inventory/materials/${packageId}/${packageType}`, { materials });
+export const getInventoryTransactions = (itemId: number) => api.get(`/inventory/transactions/${itemId}`);
 
 export default api;

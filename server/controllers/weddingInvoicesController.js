@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const { deductForInvoice } = require("./inventoryController");
 
 // Safe column check
 const ALLOWED_TABLES = ['wedding_invoices', 'wedding_invoice_items'];
@@ -143,6 +144,8 @@ exports.createInvoice = (req, res) => {
                     connection.commit(err => {
                         if (err) { return connection.rollback(() => { connection.release(); res.status(500).json({ message: "خطأ في حفظ الفاتورة" }); }); }
                         connection.release();
+                        // Deduct inventory
+                        deductForInvoice(invoice_id, 'wedding', items, created_by);
                         console.log("✅ Wedding Invoice Created:", invoice_no);
                         res.json({ id: invoice_id, invoice_no, message: "Wedding invoice created successfully" });
                     });
