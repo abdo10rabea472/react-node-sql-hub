@@ -2,10 +2,10 @@ const db = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "stodio_secret_key_2026_CHANGE_ME";
-
-if (!process.env.JWT_SECRET) {
-  console.warn("⚠️  WARNING: JWT_SECRET is not set in environment variables. Using default key. Set JWT_SECRET in production!");
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("❌ FATAL: JWT_SECRET environment variable is required. Set it before starting the server.");
+  process.exit(1);
 }
 
 // LOGIN

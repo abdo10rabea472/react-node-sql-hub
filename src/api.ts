@@ -89,7 +89,11 @@ export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }
 export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) => api.post("/whatsapp/send-invoice-pdf", data);
 export const sendWhatsAppPDFFromDocDef = (data: { phone: string; docDefinition: any; fileName: string; caption: string }) => api.post("/whatsapp/send-pdf-from-docdef", data);
 
+// Purchases
+export const getPurchases = () => api.get("/purchases");
+export const getPurchasesStats = () => api.get("/purchases/stats");
+export const createPurchase = (data: any) => api.post("/purchases", data);
+export const updatePurchase = (id: number, data: any) => api.put(`/purchases/${id}`, data);
+export const deletePurchase = (id: number) => api.delete(`/purchases/${id}`);
+
 export default api;
-
-
-
