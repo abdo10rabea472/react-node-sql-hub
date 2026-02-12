@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Plus, Edit3, Trash2, CheckCircle, Image as ImageIcon, DollarSign, FileText, X, Save, AlertCircle, Loader, Link2, Package } from 'lucide-react';
+import { Camera, Plus, Edit3, Trash2, Image as ImageIcon, DollarSign, FileText, X, Save, AlertCircle, Loader, Link2, Package } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { getPackages, createPackage, updatePackage, deletePackage, getInventoryItems, getPackageMaterials, setPackageMaterials } from './api';
 
 interface PricingPackage { id: number; type: string; price: number; photo_count: number; sizes: string[]; color: string; }
+// photo_count is repurposed: 1 = per photo pricing. "type" = size name (e.g. "4x6"), "sizes" = notes/description
 interface InventoryItem { id: number; item_name: string; category_name_ar: string; category_name?: string; is_sellable: number; quantity: number; unit_cost: number; sheets_per_package: number; is_paper?: boolean; is_ink?: boolean; }
 interface MaterialLink { inventory_item_id: number; quantity_needed: number; cuts_per_sheet: number; cost_per_print: number; item_name?: string; category_key?: string; sheets_per_package?: number; unit_cost?: number; }
 
 const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6'];
 
 const translations = {
-  ar: { title: 'باقات التصوير والأسعار', subtitle: 'إدارة أنواع التصوير، الأحجام، والأسعار - مع ربط المواد المستهلكة (ورق، أحبار)', addPackage: 'إضافة باقة جديدة', editPackage: 'تعديل الباقة', packageType: 'نوع التصوير', price: 'السعر', photosIncluded: 'عدد الصور المشمولة', sizes: 'الأحجام والأنواع المتاحة', save: 'حفظ الباقة', cancel: 'إلغاء', delete: 'حذف', invoicePreview: 'معاينة الفاتورة', generateInvoice: 'اضغط على باقة لعرض المعاينة', placeholderType: 'مثال: تصوير بورتريه، زفاف...', empty: 'لا توجد باقات حالياً. ابدأ بإضافة واحدة!', total: 'الإجمالي', date: 'التاريخ', invoiceNo: 'رقم الفاتورة', loading: 'جاري تحميل الباقات...', materials: 'المواد المستهلكة', linkMaterials: 'ربط المواد', addMaterial: 'إضافة مادة', qty: 'الكمية', selectItem: 'اختر مادة...', materialCost: 'تكلفة المواد', noConsumables: 'لا توجد مواد استهلاكية - أضف أصناف (ورق/أحبار) في المخزون أولاً', saveMaterials: 'حفظ الربط' },
-  en: { title: 'Photography Pricing & Packages', subtitle: 'Manage photography types, sizes, and pricing - with consumable material linking (paper, ink)', addPackage: 'Add New Package', editPackage: 'Edit Package', packageType: 'Photography Type', price: 'Price', photosIncluded: 'Photos Included', sizes: 'Available Sizes & Formats', save: 'Save Package', cancel: 'Cancel', delete: 'Delete', invoicePreview: 'Invoice Preview', generateInvoice: 'Click a package to preview', placeholderType: 'e.g. Portrait, Wedding...', empty: 'No packages yet. Start by adding one!', total: 'Total', date: 'Date', invoiceNo: 'Invoice No', loading: 'Loading packages...', materials: 'Consumable Materials', linkMaterials: 'Link Materials', addMaterial: 'Add Material', qty: 'Qty', selectItem: 'Select item...', materialCost: 'Material Cost', noConsumables: 'No consumables found - add items (paper/ink) to inventory first', saveMaterials: 'Save Links' },
+  ar: { title: 'أسعار الصور حسب المقاس', subtitle: 'حدد سعر الصورة الواحدة لكل مقاس - مع ربط تكلفة الورق والأحبار', addPackage: 'إضافة مقاس جديد', editPackage: 'تعديل المقاس', packageType: 'مقاس الصورة', price: 'سعر الصورة الواحدة', photosIncluded: 'صورة', sizes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', invoicePreview: 'معاينة', generateInvoice: 'اضغط على مقاس لعرض المعاينة', placeholderType: 'مثال: 4x6, 5x7, 8x10, A4...', empty: 'لا توجد مقاسات حالياً. ابدأ بإضافة واحد!', total: 'الإجمالي', date: 'التاريخ', invoiceNo: 'رقم الفاتورة', loading: 'جاري التحميل...', materials: 'المواد المستهلكة', linkMaterials: 'ربط المواد', addMaterial: 'إضافة مادة', qty: 'الكمية', selectItem: 'اختر مادة...', materialCost: 'تكلفة المواد', noConsumables: 'لا توجد مواد استهلاكية - أضف أصناف (ورق/أحبار) في المخزون أولاً', saveMaterials: 'حفظ الربط', perPhoto: 'للصورة', cutsPerSheet: 'قطع/ورقة', inkCost: 'تكلفة حبر/طبعة', profit: 'الربح' },
+  en: { title: 'Photo Pricing by Size', subtitle: 'Set price per photo for each size - with paper & ink cost linking', addPackage: 'Add New Size', editPackage: 'Edit Size', packageType: 'Photo Size', price: 'Price per Photo', photosIncluded: 'photo', sizes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete', invoicePreview: 'Preview', generateInvoice: 'Click a size to preview', placeholderType: 'e.g. 4x6, 5x7, 8x10, A4...', empty: 'No sizes yet. Start by adding one!', total: 'Total', date: 'Date', invoiceNo: 'Invoice No', loading: 'Loading...', materials: 'Consumable Materials', linkMaterials: 'Link Materials', addMaterial: 'Add Material', qty: 'Qty', selectItem: 'Select item...', materialCost: 'Material Cost', noConsumables: 'No consumables found - add items (paper/ink) to inventory first', saveMaterials: 'Save Links', perPhoto: '/photo', cutsPerSheet: 'cuts/sheet', inkCost: 'ink cost/print', profit: 'Profit' },
 };
 
 const PricingPage: React.FC = () => {
@@ -157,7 +158,7 @@ const PricingPage: React.FC = () => {
                       <button onClick={() => handleDelete(pkg.id)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
                     </div>
                   </div>
-                  <div className="flex items-baseline gap-1.5 mb-3"><span className="text-3xl font-extrabold text-foreground tracking-tight">{pkg.price}</span><span className="text-base font-semibold text-muted-foreground">{currentCurrency}</span></div>
+                  <div className="flex items-baseline gap-1.5 mb-3"><span className="text-3xl font-extrabold text-foreground tracking-tight">{pkg.price}</span><span className="text-base font-semibold text-muted-foreground">{currentCurrency}</span><span className="text-xs text-muted-foreground">/{t.perPhoto || t.photosIncluded}</span></div>
                   
                   {matCost > 0 && (
                     <div className="flex justify-between text-xs mb-3 bg-muted/50 rounded-lg px-3 py-2">
@@ -168,7 +169,8 @@ const PricingPage: React.FC = () => {
                   )}
 
                   <div className="space-y-3 mb-3">
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground"><CheckCircle size={16} style={{ color: pkg.color }} /><span>{pkg.photo_count} {t.photosIncluded}</span></div>
+                    {/* Show cuts info from linked materials */}
+                    {(() => { const mats2 = packageMaterialsMap[pkg.id] || []; const paperMat = mats2.find((m: any) => m.category_key === 'paper'); const inkMat = mats2.find((m: any) => m.category_key === 'ink'); return (<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{paperMat && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full">{paperMat.cuts_per_sheet} {t.cutsPerSheet || 'قطع/ورقة'}</span>}{inkMat && <span className="bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full">{t.inkCost || 'حبر'}: {inkMat.cost_per_print}</span>}</div>); })()}
                     <div className="flex flex-wrap gap-1.5">{pkg.sizes.slice(0, 2).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">{s}</span>)}{pkg.sizes.length > 2 && <span className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">+{pkg.sizes.length - 2}</span>}</div>
                   </div>
 
