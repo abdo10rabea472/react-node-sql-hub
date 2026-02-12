@@ -65,7 +65,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [quantity, setQuantity] = useState('0');
     const [unitCost, setUnitCost] = useState('');
     const [sellPrice, setSellPrice] = useState('');
-    const [sheetsPerPackage, setSheetsPerPackage] = useState('');
+    // sheetsPerPackage removed
     const [minStock, setMinStock] = useState('5');
     const [supplier, setSupplier] = useState('');
     const [notes, setNotes] = useState('');
@@ -106,14 +106,14 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const resetForm = () => {
         setEditId(null); setItemName(''); setCategoryId('');
-        setQuantity('0'); setUnitCost(''); setSellPrice(''); setSheetsPerPackage(''); setMinStock('5'); setSupplier(''); setNotes('');
+        setQuantity('0'); setUnitCost(''); setSellPrice(''); setMinStock('5'); setSupplier(''); setNotes('');
     };
 
     const handleSave = async () => {
         if (!itemName) return;
         setSaving(true);
         try {
-            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, sell_price: parseFloat(sellPrice) || 0, sheets_per_package: parseInt(sheetsPerPackage) || 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
+            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, sell_price: parseFloat(sellPrice) || 0, sheets_per_package: 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
             if (editId) {
                 await updateInventoryItem(editId, data);
                 toast(lang === 'ar' ? 'تم تحديث الصنف' : 'Item updated');
@@ -129,7 +129,6 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const handleEdit = (p: InventoryItem) => {
         setEditId(p.id); setItemName(p.item_name); setCategoryId(p.category_id || '');
         setQuantity(String(p.quantity)); setUnitCost(String(p.unit_cost)); setSellPrice(String(p.sell_price || 0));
-        setSheetsPerPackage(String(p.sheets_per_package || 0));
         setMinStock(String(p.min_stock)); setSupplier(p.supplier || ''); setNotes(p.notes || '');
         setActiveTab('add');
     };
@@ -351,34 +350,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             </div>
                         </div>
 
-                        {/* Paper-specific: sheets per package */}
-                        {(() => {
-                            const selectedCat = categories.find(c => c.id === categoryId);
-                            const isPaper = selectedCat && (selectedCat.name === 'paper' || selectedCat.name_ar === 'ورق');
-                            return isPaper ? (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-sky-500/5 border border-sky-500/20 rounded-xl p-4 space-y-3">
-                                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">📄 {lang === 'ar' ? 'إعدادات بكج الورق' : 'Paper Package Settings'}</h4>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{lang === 'ar' ? 'عدد الأوراق بالبكج' : 'Sheets per Package'}</label>
-                                            <input type="number" min="0" value={sheetsPerPackage} onChange={e => setSheetsPerPackage(e.target.value)} className={inputClass} placeholder={lang === 'ar' ? 'مثال: 500' : 'e.g. 500'} />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{lang === 'ar' ? 'تكلفة الورقة الواحدة' : 'Cost per Sheet'}</label>
-                                            <div className="px-3.5 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-bold text-sky-500">
-                                                {(parseInt(sheetsPerPackage) > 0 ? (parseFloat(unitCost) || 0) / parseInt(sheetsPerPackage) : 0).toFixed(4)} {settings.currency}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        {lang === 'ar' ? '💡 الكمية تمثل عدد البكجات. عدد الأوراق الفعلي = الكمية × عدد الأوراق بالبكج' : '💡 Quantity = packages. Total sheets = Qty × Sheets per Package'}
-                                        {parseInt(sheetsPerPackage) > 0 && parseInt(quantity) > 0 && (
-                                            <span className="font-bold text-foreground ms-1">= {parseInt(quantity) * parseInt(sheetsPerPackage)} {lang === 'ar' ? 'ورقة' : 'sheets'}</span>
-                                        )}
-                                    </p>
-                                </motion.div>
-                            ) : null;
-                        })()}
+                        {/* Paper package settings removed */}
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div>
