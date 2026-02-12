@@ -1,60 +1,59 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Plus, Trash2, Edit2, Search, Package, Loader, BarChart3, Frame, FileText, Droplets, Image } from 'lucide-react';
-import { getPurchases, createPurchase, updatePurchase, deletePurchase, getPurchasesStats } from './api';
+import { Plus, Trash2, Edit2, Search, Package, Loader, BarChart3, AlertTriangle, ArrowUp, ArrowDown, History, X, Tag } from 'lucide-react';
+import { getInventoryItems, getInventoryStats, createInventoryItem, updateInventoryItem, deleteInventoryItem, addStock, adjustStock, getInventoryCategories, createInventoryCategory, getInventoryTransactions } from './api';
 import { useSettings } from './SettingsContext';
 
-interface Purchase {
-    id: number; item_name: string; category: string; quantity: number;
-    unit_cost: number; total_cost: number; supplier: string; notes: string;
-    created_by: string; created_at: string;
+interface Category { id: number; name: string; name_ar: string; color: string; icon: string; }
+interface InventoryItem {
+    id: number; item_name: string; category_id: number; quantity: number;
+    unit_cost: number; min_stock: number; supplier: string; notes: string;
+    created_by: string; created_at: string; updated_at: string;
+    category_name: string; category_name_ar: string; category_color: string; category_icon: string;
 }
 interface Stats {
-    total_purchases: number; total_spent: number; frames_cost: number;
-    paper_cost: number; ink_cost: number; tableau_cost: number; other_cost: number;
+    total_items: number; total_value: number; low_stock_count: number; total_quantity: number;
+    categories: { name: string; name_ar: string; color: string; item_count: number; category_value: number }[];
 }
+interface Transaction { id: number; type: string; quantity: number; notes: string; created_by: string; created_at: string; item_name: string; }
 
-const translations = {
-    ar: {
-        title: 'المشتريات', addNew: 'إضافة مشتريات', list: 'سجل المشتريات',
-        itemName: 'اسم الصنف', category: 'الفئة', quantity: 'الكمية',
-        unitCost: 'سعر الوحدة', totalCost: 'الإجمالي', supplier: 'المورد',
-        notes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف',
-        deleteConfirm: 'هل أنت متأكد من حذف هذا الصنف؟', search: 'بحث...',
-        frame: 'براويز', paper: 'ورق', ink: 'أحبار', tableau: 'طابلو', other: 'أخرى',
-        totalSpent: 'إجمالي المصروفات', items: 'عدد الأصناف', edit: 'تعديل',
-        noItems: 'لا توجد مشتريات حالياً', date: 'التاريخ',
-    },
-    en: {
-        title: 'Purchases', addNew: 'Add Purchase', list: 'Purchase History',
-        itemName: 'Item Name', category: 'Category', quantity: 'Quantity',
-        unitCost: 'Unit Cost', totalCost: 'Total', supplier: 'Supplier',
-        notes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete',
-        deleteConfirm: 'Are you sure you want to delete this item?', search: 'Search...',
-        frame: 'Frames', paper: 'Paper', ink: 'Ink', tableau: 'Tableau', other: 'Other',
-        totalSpent: 'Total Spent', items: 'Items Count', edit: 'Edit',
-        noItems: 'No purchases found', date: 'Date',
-    },
+const t_ar = {
+    title: 'المخزون', addNew: 'إضافة صنف', list: 'سجل المخزون', itemName: 'اسم الصنف',
+    category: 'الفئة', quantity: 'الكمية', unitCost: 'سعر الوحدة', totalValue: 'القيمة الإجمالية',
+    supplier: 'المورد', notes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف',
+    deleteConfirm: 'هل أنت متأكد من حذف هذا الصنف؟', search: 'بحث...',
+    totalItems: 'إجمالي الأصناف', totalVal: 'قيمة المخزون', lowStock: 'مخزون منخفض',
+    totalQty: 'إجمالي الكميات', edit: 'تعديل', noItems: 'لا يوجد مخزون حالياً',
+    date: 'التاريخ', minStock: 'الحد الأدنى', addStock: 'إضافة مخزون', adjust: 'تعديل يدوي',
+    newCategory: 'فئة جديدة', categoryName: 'اسم الفئة', categoryNameAr: 'الاسم بالعربي',
+    addCategory: 'إضافة فئة', history: 'السجل', inStock: 'متوفر', lowStockLabel: 'منخفض',
+    outOfStock: 'نفذ', stockQty: 'كمية الإضافة',
 };
-
-const categories = [
-    { value: 'frame', icon: Frame, color: '#8B5CF6' },
-    { value: 'paper', icon: FileText, color: '#0EA5E9' },
-    { value: 'ink', icon: Droplets, color: '#F59E0B' },
-    { value: 'tableau', icon: Image, color: '#10B981' },
-    { value: 'other', icon: Package, color: '#6B7280' },
-];
+const t_en = {
+    title: 'Inventory', addNew: 'Add Item', list: 'Inventory List', itemName: 'Item Name',
+    category: 'Category', quantity: 'Quantity', unitCost: 'Unit Cost', totalValue: 'Total Value',
+    supplier: 'Supplier', notes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete',
+    deleteConfirm: 'Are you sure you want to delete this item?', search: 'Search...',
+    totalItems: 'Total Items', totalVal: 'Inventory Value', lowStock: 'Low Stock',
+    totalQty: 'Total Quantity', edit: 'Edit', noItems: 'No inventory items',
+    date: 'Date', minStock: 'Min Stock', addStock: 'Add Stock', adjust: 'Manual Adjust',
+    newCategory: 'New Category', categoryName: 'Category Name', categoryNameAr: 'Arabic Name',
+    addCategory: 'Add Category', history: 'History', inStock: 'In Stock', lowStockLabel: 'Low',
+    outOfStock: 'Out', stockQty: 'Quantity to Add',
+};
 
 const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const { settings } = useSettings();
     const lang = settings.lang;
-    const t = translations[lang] || translations.en;
+    const t = lang === 'ar' ? t_ar : t_en;
 
-    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [items, setItems] = useState<InventoryItem[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'add' | 'list'>('add');
+    const [activeTab, setActiveTab] = useState<'add' | 'list'>('list');
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState<number | 'all'>('all');
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -62,12 +61,28 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     // Form state
     const [editId, setEditId] = useState<number | null>(null);
     const [itemName, setItemName] = useState('');
-    const [category, setCategory] = useState('frame');
-    const [quantity, setQuantity] = useState('1');
+    const [categoryId, setCategoryId] = useState<number | ''>('');
+    const [quantity, setQuantity] = useState('0');
     const [unitCost, setUnitCost] = useState('');
+    const [minStock, setMinStock] = useState('5');
     const [supplier, setSupplier] = useState('');
     const [notes, setNotes] = useState('');
     const [saving, setSaving] = useState(false);
+
+    // New category inline
+    const [showNewCat, setShowNewCat] = useState(false);
+    const [newCatName, setNewCatName] = useState('');
+    const [newCatNameAr, setNewCatNameAr] = useState('');
+    const [newCatColor, setNewCatColor] = useState('#6B7280');
+
+    // Add stock modal
+    const [stockModal, setStockModal] = useState<InventoryItem | null>(null);
+    const [stockQty, setStockQty] = useState('');
+    const [stockMode, setStockMode] = useState<'add' | 'adjust'>('add');
+
+    // History modal
+    const [historyModal, setHistoryModal] = useState<number | null>(null);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
 
     const toast = (msg: string, type: 'success' | 'error' = 'success') => {
         setToastMessage(msg); setToastType(type); setShowToast(true);
@@ -76,9 +91,10 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const fetchData = async () => {
         try {
-            const [pRes, sRes] = await Promise.all([getPurchases(), getPurchasesStats()]);
-            setPurchases(pRes.data);
+            const [iRes, sRes, cRes] = await Promise.all([getInventoryItems(), getInventoryStats(), getInventoryCategories()]);
+            setItems(iRes.data);
             setStats(sRes.data);
+            setCategories(cRes.data);
         } catch { toast(lang === 'ar' ? 'فشل تحميل البيانات' : 'Failed to load data', 'error'); }
         finally { setLoading(false); }
     };
@@ -86,51 +102,86 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     useEffect(() => { fetchData(); }, []);
 
     const resetForm = () => {
-        setEditId(null); setItemName(''); setCategory('frame');
-        setQuantity('1'); setUnitCost(''); setSupplier(''); setNotes('');
+        setEditId(null); setItemName(''); setCategoryId('');
+        setQuantity('0'); setUnitCost(''); setMinStock('5'); setSupplier(''); setNotes('');
     };
 
     const handleSave = async () => {
-        if (!itemName || !unitCost) return;
+        if (!itemName) return;
         setSaving(true);
         try {
-            const data = { item_name: itemName, category, quantity: parseInt(quantity) || 1, unit_cost: parseFloat(unitCost) || 0, supplier, notes, created_by: user?.name || 'Admin' };
+            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
             if (editId) {
-                await updatePurchase(editId, data);
-                toast(lang === 'ar' ? 'تم تحديث الصنف بنجاح' : 'Item updated');
+                await updateInventoryItem(editId, data);
+                toast(lang === 'ar' ? 'تم تحديث الصنف' : 'Item updated');
             } else {
-                await createPurchase(data);
-                toast(lang === 'ar' ? 'تم إضافة الصنف بنجاح' : 'Item added');
+                await createInventoryItem(data);
+                toast(lang === 'ar' ? 'تم إضافة الصنف' : 'Item added');
             }
-            resetForm();
-            await fetchData();
+            resetForm(); await fetchData();
         } catch { toast(lang === 'ar' ? 'فشل الحفظ' : 'Save failed', 'error'); }
         finally { setSaving(false); }
     };
 
-    const handleEdit = (p: Purchase) => {
-        setEditId(p.id); setItemName(p.item_name); setCategory(p.category);
+    const handleEdit = (p: InventoryItem) => {
+        setEditId(p.id); setItemName(p.item_name); setCategoryId(p.category_id || '');
         setQuantity(String(p.quantity)); setUnitCost(String(p.unit_cost));
-        setSupplier(p.supplier || ''); setNotes(p.notes || '');
+        setMinStock(String(p.min_stock)); setSupplier(p.supplier || ''); setNotes(p.notes || '');
         setActiveTab('add');
     };
 
     const handleDelete = async (id: number) => {
         if (!window.confirm(t.deleteConfirm)) return;
-        try { await deletePurchase(id); await fetchData(); toast(lang === 'ar' ? 'تم الحذف' : 'Deleted'); }
+        try { await deleteInventoryItem(id); await fetchData(); toast(lang === 'ar' ? 'تم الحذف' : 'Deleted'); }
         catch { toast(lang === 'ar' ? 'فشل الحذف' : 'Delete failed', 'error'); }
     };
 
-    const totalCalc = (parseFloat(quantity) || 1) * (parseFloat(unitCost) || 0);
-    const filteredPurchases = purchases.filter(p =>
-        p.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t as any)[p.category]?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const handleAddStock = async () => {
+        if (!stockModal || !stockQty) return;
+        try {
+            if (stockMode === 'add') {
+                await addStock(stockModal.id, { quantity: parseInt(stockQty), created_by: user?.name || 'Admin' });
+            } else {
+                await adjustStock(stockModal.id, { quantity: parseInt(stockQty), created_by: user?.name || 'Admin' });
+            }
+            setStockModal(null); setStockQty(''); await fetchData();
+            toast(lang === 'ar' ? 'تم تحديث المخزون' : 'Stock updated');
+        } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
+    };
+
+    const handleAddCategory = async () => {
+        if (!newCatName) return;
+        try {
+            await createInventoryCategory({ name: newCatName, name_ar: newCatNameAr || newCatName, color: newCatColor });
+            setShowNewCat(false); setNewCatName(''); setNewCatNameAr(''); setNewCatColor('#6B7280');
+            await fetchData(); toast(lang === 'ar' ? 'تم إضافة الفئة' : 'Category added');
+        } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
+    };
+
+    const handleShowHistory = async (itemId: number) => {
+        setHistoryModal(itemId);
+        try {
+            const res = await getInventoryTransactions(itemId);
+            setTransactions(res.data);
+        } catch { setTransactions([]); }
+    };
+
+    const getStockStatus = (item: InventoryItem) => {
+        if (item.quantity <= 0) return { label: t.outOfStock, color: 'text-red-500 bg-red-500/10' };
+        if (item.quantity <= item.min_stock) return { label: t.lowStockLabel, color: 'text-amber-500 bg-amber-500/10' };
+        return { label: t.inStock, color: 'text-emerald-500 bg-emerald-500/10' };
+    };
+
+    const getCatLabel = (item: InventoryItem) => lang === 'ar' ? (item.category_name_ar || item.category_name || '-') : (item.category_name || '-');
+
+    const filteredItems = items.filter(p => {
+        const matchSearch = p.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.supplier?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchCat = filterCategory === 'all' || p.category_id === filterCategory;
+        return matchSearch && matchCat;
+    });
 
     const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo";
-    const getCatLabel = (c: string) => (t as any)[c] || c;
-    const getCatConfig = (c: string) => categories.find(cat => cat.value === c) || categories[4];
 
     if (loading) return <div className="flex items-center justify-center min-h-[200px]"><Loader className="animate-spin text-primary" size={24} /></div>;
 
@@ -152,7 +203,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                     <div>
                         <h2 className="text-2xl font-black text-foreground flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                                <ShoppingCart size={20} className="text-accent" />
+                                <Package size={20} className="text-accent" />
                             </div>
                             {t.title}
                         </h2>
@@ -170,20 +221,40 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
             {/* Stats Cards */}
             {stats && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {[
-                        { label: t.totalSpent, value: stats.total_spent, color: '#EF4444' },
-                        { label: t.frame, value: stats.frames_cost, color: '#8B5CF6' },
-                        { label: t.paper, value: stats.paper_cost, color: '#0EA5E9' },
-                        { label: t.ink, value: stats.ink_cost, color: '#F59E0B' },
-                        { label: t.tableau, value: stats.tableau_cost, color: '#10B981' },
-                        { label: t.other, value: stats.other_cost, color: '#6B7280' },
+                        { label: t.totalItems, value: stats.total_items, color: '#3B82F6', suffix: '' },
+                        { label: t.totalVal, value: Number(stats.total_value).toLocaleString(), color: '#10B981', suffix: settings.currency },
+                        { label: t.totalQty, value: stats.total_quantity, color: '#8B5CF6', suffix: '' },
+                        { label: t.lowStock, value: stats.low_stock_count, color: stats.low_stock_count > 0 ? '#EF4444' : '#10B981', suffix: '' },
                     ].map((s, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                             className="bg-card border border-border rounded-xl p-3 sm:p-4">
                             <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">{s.label}</p>
-                            <p className="text-sm sm:text-lg font-extrabold" style={{ color: s.color }}>{Number(s.value).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{settings.currency}</span></p>
+                            <p className="text-sm sm:text-lg font-extrabold" style={{ color: s.color }}>
+                                {s.value} {s.suffix && <span className="text-xs font-normal text-muted-foreground">{s.suffix}</span>}
+                            </p>
                         </motion.div>
+                    ))}
+                </div>
+            )}
+
+            {/* Category filter chips */}
+            {stats?.categories && stats.categories.length > 0 && activeTab === 'list' && (
+                <div className="flex gap-2 flex-wrap mb-4">
+                    <button onClick={() => setFilterCategory('all')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterCategory === 'all' ? 'border-primary/50 bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
+                        {lang === 'ar' ? 'الكل' : 'All'}
+                    </button>
+                    {stats.categories.map(c => (
+                        <button key={c.name} onClick={() => {
+                            const cat = categories.find(cc => cc.name === c.name);
+                            if (cat) setFilterCategory(filterCategory === cat.id ? 'all' : cat.id);
+                        }}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterCategory !== 'all' && categories.find(cc => cc.name === c.name)?.id === filterCategory ? 'border-primary/50 bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
+                            <span className="inline-block w-2 h-2 rounded-full me-1.5" style={{ backgroundColor: c.color }}></span>
+                            {lang === 'ar' ? c.name_ar : c.name} ({c.item_count})
+                        </button>
                     ))}
                 </div>
             )}
@@ -202,32 +273,60 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <input value={itemName} onChange={e => setItemName(e.target.value)} className={inputClass} placeholder={lang === 'ar' ? 'مثال: برواز 20×30' : 'e.g. Frame 20x30'} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.category} *</label>
-                                <div className="flex gap-2 flex-wrap">
-                                    {categories.map(c => (
-                                        <button key={c.value} onClick={() => setCategory(c.value)}
-                                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${category === c.value ? 'border-primary/50 bg-primary/5 text-foreground' : 'border-border bg-muted text-muted-foreground hover:border-primary/30'}`}>
-                                            <c.icon size={14} style={{ color: c.color }} />
-                                            {getCatLabel(c.value)}
-                                        </button>
-                                    ))}
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.category}</label>
+                                <div className="flex gap-2">
+                                    <select value={categoryId} onChange={e => setCategoryId(e.target.value ? Number(e.target.value) : '')} className={`${inputClass} flex-1`}>
+                                        <option value="">{lang === 'ar' ? 'اختر فئة...' : 'Select category...'}</option>
+                                        {categories.map(c => <option key={c.id} value={c.id}>{lang === 'ar' ? c.name_ar : c.name}</option>)}
+                                    </select>
+                                    <button onClick={() => setShowNewCat(true)} className="shrink-0 w-11 h-11 rounded-xl border border-dashed border-accent/30 bg-accent/5 text-accent flex items-center justify-center hover:bg-accent/10 transition-all" title={t.newCategory}>
+                                        <Plus size={18} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {/* New category inline */}
+                        <AnimatePresence>
+                            {showNewCat && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                    className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5"><Tag size={14} className="text-accent" />{t.newCategory}</h4>
+                                        <button onClick={() => setShowNewCat(false)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input value={newCatName} onChange={e => setNewCatName(e.target.value)} className={inputClass} placeholder={t.categoryName} />
+                                        <input value={newCatNameAr} onChange={e => setNewCatNameAr(e.target.value)} className={inputClass} placeholder={t.categoryNameAr} />
+                                    </div>
+                                    <div className="flex gap-3 items-center">
+                                        <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} className="w-10 h-10 rounded-lg border border-border cursor-pointer" />
+                                        <button onClick={handleAddCategory} disabled={!newCatName}
+                                            className="flex-1 py-2.5 rounded-xl bg-accent text-accent-foreground font-bold text-xs hover:opacity-90 disabled:opacity-40 transition-all">
+                                            {t.addCategory}
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div>
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.quantity}</label>
-                                <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
+                                <input type="number" min="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.unitCost} *</label>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.unitCost}</label>
                                 <input type="number" min="0" step="0.01" value={unitCost} onChange={e => setUnitCost(e.target.value)} className={inputClass} placeholder="0.00" />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.totalCost}</label>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.minStock}</label>
+                                <input type="number" min="0" value={minStock} onChange={e => setMinStock(e.target.value)} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.totalValue}</label>
                                 <div className="px-3.5 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-bold text-foreground">
-                                    {totalCalc.toFixed(2)} {settings.currency}
+                                    {((parseFloat(quantity) || 0) * (parseFloat(unitCost) || 0)).toFixed(2)} {settings.currency}
                                 </div>
                             </div>
                         </div>
@@ -244,7 +343,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         </div>
 
                         <div className="flex gap-3 pt-2">
-                            <button onClick={handleSave} disabled={saving || !itemName || !unitCost}
+                            <button onClick={handleSave} disabled={saving || !itemName}
                                 className="flex-1 py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                                 {saving ? <Loader size={16} className="animate-spin" /> : <Plus size={16} />}
                                 {editId ? t.save : t.addNew}
@@ -259,15 +358,14 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                 </div>
             ) : (
                 <div>
-                    {/* Search */}
                     <div className="mb-4 relative max-w-md">
                         <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`${inputClass} ps-10`} placeholder={t.search} />
                     </div>
 
-                    {filteredPurchases.length === 0 ? (
+                    {filteredItems.length === 0 ? (
                         <div className="text-center py-16">
-                            <ShoppingCart size={40} className="mx-auto text-muted-foreground/30 mb-3" />
+                            <Package size={40} className="mx-auto text-muted-foreground/30 mb-3" />
                             <p className="text-muted-foreground text-sm">{t.noItems}</p>
                         </div>
                     ) : (
@@ -277,37 +375,47 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border bg-muted/30">
-                                            {[t.itemName, t.category, t.quantity, t.unitCost, t.totalCost, t.supplier, t.date, ''].map((h, i) => (
+                                            {[t.itemName, t.category, t.quantity, '', t.unitCost, t.totalValue, t.supplier, ''].map((h, i) => (
                                                 <th key={i} className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredPurchases.map((p, idx) => {
-                                            const cat = getCatConfig(p.category);
-                                            const CatIcon = cat.icon;
+                                        {filteredItems.map((item, idx) => {
+                                            const status = getStockStatus(item);
                                             return (
-                                                <motion.tr key={p.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors"
+                                                <motion.tr key={item.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors"
                                                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}>
-                                                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{p.item_name}</td>
+                                                    <td className="px-4 py-3 text-sm font-semibold text-foreground">{item.item_name}</td>
                                                     <td className="px-4 py-3">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: `${cat.color}15`, color: cat.color }}>
-                                                            <CatIcon size={12} />{getCatLabel(p.category)}
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                                                            style={{ background: `${item.category_color || '#6B7280'}15`, color: item.category_color || '#6B7280' }}>
+                                                            {getCatLabel(item)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm text-foreground tabular-nums">{p.quantity}</td>
-                                                    <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">{p.unit_cost} {settings.currency}</td>
-                                                    <td className="px-4 py-3 text-sm font-bold text-foreground tabular-nums">{p.total_cost} {settings.currency}</td>
-                                                    <td className="px-4 py-3 text-sm text-muted-foreground">{p.supplier || '-'}</td>
-                                                    <td className="px-4 py-3 text-xs text-muted-foreground tabular-nums">
-                                                        {new Date(p.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
+                                                    <td className="px-4 py-3 text-sm font-bold text-foreground tabular-nums">{item.quantity}</td>
+                                                    <td className="px-4 py-3">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
+                                                        {item.quantity <= item.min_stock && item.quantity > 0 && <AlertTriangle size={12} className="inline-block ms-1 text-amber-500" />}
                                                     </td>
+                                                    <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">{item.unit_cost} {settings.currency}</td>
+                                                    <td className="px-4 py-3 text-sm font-bold text-foreground tabular-nums">{(item.quantity * item.unit_cost).toFixed(2)} {settings.currency}</td>
+                                                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.supplier || '-'}</td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex gap-1">
-                                                            <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-all">
+                                                            <button onClick={() => { setStockModal(item); setStockMode('add'); }} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center transition-all" title={t.addStock}>
+                                                                <ArrowUp size={14} />
+                                                            </button>
+                                                            <button onClick={() => { setStockModal(item); setStockMode('adjust'); }} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 flex items-center justify-center transition-all" title={t.adjust}>
+                                                                <ArrowDown size={14} />
+                                                            </button>
+                                                            <button onClick={() => handleShowHistory(item.id)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 flex items-center justify-center transition-all" title={t.history}>
+                                                                <History size={14} />
+                                                            </button>
+                                                            <button onClick={() => handleEdit(item)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center transition-all">
                                                                 <Edit2 size={14} />
                                                             </button>
-                                                            <button onClick={() => handleDelete(p.id)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all">
+                                                            <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all">
                                                                 <Trash2 size={14} />
                                                             </button>
                                                         </div>
@@ -321,29 +429,29 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
                             {/* Mobile cards */}
                             <div className="md:hidden space-y-3">
-                                {filteredPurchases.map((p, idx) => {
-                                    const cat = getCatConfig(p.category);
-                                    const CatIcon = cat.icon;
+                                {filteredItems.map((item, idx) => {
+                                    const status = getStockStatus(item);
                                     return (
-                                        <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
+                                        <motion.div key={item.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}
                                             className="bg-card border border-border rounded-xl p-4 shadow-sm">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
-                                                    <h4 className="font-bold text-sm text-foreground">{p.item_name}</h4>
-                                                    <span className="inline-flex items-center gap-1 mt-1 text-xs font-semibold" style={{ color: cat.color }}>
-                                                        <CatIcon size={12} />{getCatLabel(p.category)}
-                                                    </span>
+                                                    <h4 className="font-bold text-sm text-foreground">{item.item_name}</h4>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs font-semibold" style={{ color: item.category_color || '#6B7280' }}>{getCatLabel(item)}</span>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-1">
-                                                    <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center"><Edit2 size={14} /></button>
-                                                    <button onClick={() => handleDelete(p.id)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button>
+                                                    <button onClick={() => { setStockModal(item); setStockMode('add'); }} className="w-8 h-8 rounded-lg text-emerald-500 hover:bg-emerald-500/10 flex items-center justify-center"><ArrowUp size={14} /></button>
+                                                    <button onClick={() => handleEdit(item)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 flex items-center justify-center"><Edit2 size={14} /></button>
+                                                    <button onClick={() => handleDelete(item.id)} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button>
                                                 </div>
                                             </div>
                                             <div className="flex justify-between text-xs text-muted-foreground">
-                                                <span>{t.quantity}: {p.quantity}</span>
-                                                <span className="font-bold text-foreground">{p.total_cost} {settings.currency}</span>
+                                                <span>{t.quantity}: <strong className="text-foreground">{item.quantity}</strong></span>
+                                                <span className="font-bold text-foreground">{(item.quantity * item.unit_cost).toFixed(2)} {settings.currency}</span>
                                             </div>
-                                            {p.supplier && <p className="text-xs text-muted-foreground mt-1">{t.supplier}: {p.supplier}</p>}
                                         </motion.div>
                                     );
                                 })}
@@ -352,6 +460,64 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                     )}
                 </div>
             )}
+
+            {/* Add Stock Modal */}
+            <AnimatePresence>
+                {stockModal && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] flex items-center justify-center p-5" onClick={() => setStockModal(null)}>
+                        <motion.div className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-bold text-foreground flex items-center gap-2">
+                                    {stockMode === 'add' ? <ArrowUp size={18} className="text-emerald-500" /> : <ArrowDown size={18} className="text-amber-500" />}
+                                    {stockMode === 'add' ? t.addStock : t.adjust}
+                                </h3>
+                                <button onClick={() => setStockModal(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{stockModal.item_name} — {lang === 'ar' ? 'الكمية الحالية' : 'Current'}: <strong>{stockModal.quantity}</strong></p>
+                            <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.stockQty}</label>
+                                <input type="number" value={stockQty} onChange={e => setStockQty(e.target.value)} className={inputClass}
+                                    placeholder={stockMode === 'adjust' ? (lang === 'ar' ? 'موجب للزيادة، سالب للنقص' : '+/- quantity') : '0'} />
+                            </div>
+                            <button onClick={handleAddStock} disabled={!stockQty}
+                                className="w-full py-3 rounded-xl bg-accent text-accent-foreground font-bold text-sm hover:opacity-90 disabled:opacity-40 transition-all">
+                                {t.save}
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* History Modal */}
+            <AnimatePresence>
+                {historyModal && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] flex items-center justify-center p-5" onClick={() => setHistoryModal(null)}>
+                        <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center px-6 py-4 border-b border-border">
+                                <h3 className="font-bold text-foreground flex items-center gap-2"><History size={18} className="text-blue-500" />{t.history}</h3>
+                                <button onClick={() => setHistoryModal(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+                            </div>
+                            <div className="max-h-[400px] overflow-y-auto p-4 space-y-2">
+                                {transactions.length === 0 ? (
+                                    <p className="text-center text-muted-foreground text-sm py-8">{lang === 'ar' ? 'لا يوجد سجل' : 'No history'}</p>
+                                ) : transactions.map(tx => (
+                                    <div key={tx.id} className="flex items-center justify-between py-2.5 px-3 bg-muted/50 rounded-lg">
+                                        <div>
+                                            <span className={`text-xs font-bold ${tx.quantity > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                {tx.quantity > 0 ? '+' : ''}{tx.quantity}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground ms-2">{tx.notes}</span>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground">
+                                            {new Date(tx.created_at).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' })}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

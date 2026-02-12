@@ -36,6 +36,7 @@ app.use("/wedding-pricing", require("./routes/weddingPricing"));
 app.use("/wedding-invoices", require("./routes/weddingInvoices"));
 app.use("/whatsapp", require("./routes/whatsapp"));
 app.use("/purchases", require("./routes/purchases"));
+app.use("/inventory", require("./routes/inventory"));
 
 app.get("/", (req, res) => {
   res.send("Server is running!");
