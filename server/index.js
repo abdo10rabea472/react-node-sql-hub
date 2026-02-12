@@ -5,12 +5,14 @@ const app = express();
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
-  : ["http://localhost:5173", "http://localhost:5174", "https://dev-sync-spot.lovable.app", "https://id-preview--8221da28-221b-4d0c-ab54-84da531691bb.lovable.app"];
+  : ["http://localhost:5173", "http://localhost:5174"];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
+    // Allow any lovable.app subdomain
+    if (origin.endsWith(".lovable.app") || origin.endsWith(".lovableproject.com")) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
