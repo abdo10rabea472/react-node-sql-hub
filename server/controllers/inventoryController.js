@@ -21,16 +21,10 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory_categories (
         // Insert default categories
         const defaults = [
             ['frame', 'براويز', '#8B5CF6', 'Frame', 1],
-            ['paper', 'ورق', '#0EA5E9', 'FileText', 0],
-            ['ink', 'أحبار', '#F59E0B', 'Droplets', 0],
             ['tableau', 'طابلو', '#10B981', 'Image', 1],
+            ['expenses', 'مصاريف', '#F59E0B', 'Receipt', 0],
             ['other', 'أخرى', '#6B7280', 'Package', 1],
         ];
-        defaults.forEach(([name, name_ar, color, icon, is_sellable]) => {
-            db.query("INSERT IGNORE INTO inventory_categories (name, name_ar, color, icon, is_sellable) VALUES (?, ?, ?, ?, ?)", [name, name_ar, color, icon, is_sellable]);
-        });
-        // Update existing non-sellable categories
-        db.query("UPDATE inventory_categories SET is_sellable = 0 WHERE name IN ('paper', 'ink') AND is_sellable = 1");
     }
 });
 
@@ -41,8 +35,6 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
     quantity INT DEFAULT 0,
     unit_cost DECIMAL(10, 2) DEFAULT 0,
     sell_price DECIMAL(10, 2) DEFAULT 0,
-    sheets_per_package INT DEFAULT 0,
-    used_sheets INT DEFAULT 0,
     min_stock INT DEFAULT 5,
     supplier VARCHAR(255),
     notes TEXT,
@@ -52,7 +44,6 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
 )`, (err) => {
     if (err) console.error("Error creating inventory:", err);
     else {
-        // Ensure new columns exist
         const ensureCol = (col, def) => {
             db.query(`SHOW COLUMNS FROM inventory LIKE '${col}'`, (err, results) => {
                 if (!err && results && results.length === 0) {
@@ -61,35 +52,10 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
             });
         };
         ensureCol('sell_price', 'DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost');
-        ensureCol('sheets_per_package', 'INT DEFAULT 0 AFTER sell_price');
-        ensureCol('used_sheets', 'INT DEFAULT 0 AFTER sheets_per_package');
     }
 });
 
-// Package materials - links packages to consumable inventory items
-db.query(`CREATE TABLE IF NOT EXISTS package_materials (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    package_id INT NOT NULL,
-    package_type ENUM('studio', 'wedding_album', 'wedding_video') DEFAULT 'studio',
-    inventory_item_id INT NOT NULL,
-    quantity_needed INT DEFAULT 1,
-    cuts_per_sheet INT DEFAULT 1,
-    cost_per_print DECIMAL(10, 4) DEFAULT 0,
-    UNIQUE KEY unique_pkg_item (package_id, package_type, inventory_item_id)
-)`, (err) => {
-    if (err) console.error("Error creating package_materials:", err);
-    else {
-        const ensureCol = (col, def) => {
-            db.query(`SHOW COLUMNS FROM package_materials LIKE '${col}'`, (err, results) => {
-                if (!err && results && results.length === 0) {
-                    db.query(`ALTER TABLE package_materials ADD COLUMN ${col} ${def}`);
-                }
-            });
-        };
-        ensureCol('cuts_per_sheet', 'INT DEFAULT 1 AFTER quantity_needed');
-        ensureCol('cost_per_print', 'DECIMAL(10, 4) DEFAULT 0 AFTER cuts_per_sheet');
-    }
-});
+// package_materials table removed - no longer needed
 
 db.query(`CREATE TABLE IF NOT EXISTS inventory_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -169,16 +135,15 @@ exports.getStats = (req, res) => {
 };
 
 exports.createItem = (req, res) => {
-    const { item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes, created_by } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by } = req.body;
     if (!item_name) return res.status(400).json({ message: "اسم الصنف مطلوب" });
 
     const qty = parseInt(quantity) || 0;
     const cost = parseFloat(unit_cost) || 0;
     const sell = parseFloat(sell_price) || 0;
-    const sheets = parseInt(sheets_per_package) || 0;
 
-    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, used_sheets, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [item_name, category_id || null, qty, cost, sell, sheets, qty > 0 ? sheets : 0, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
+    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [item_name, category_id || null, qty, cost, sell, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
         (err, result) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة الصنف" });
             if (qty > 0) {
@@ -191,10 +156,10 @@ exports.createItem = (req, res) => {
 
 exports.updateItem = (req, res) => {
     const { id } = req.params;
-    const { item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes } = req.body;
 
-    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, sell_price = ?, sheets_per_package = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
-        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseFloat(sell_price) || 0, parseInt(sheets_per_package) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
+    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, sell_price = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
+        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseFloat(sell_price) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
         (err) => {
             if (err) return res.status(500).json({ message: "خطأ في تحديث الصنف" });
             res.json({ message: "تم تحديث الصنف بنجاح" });
@@ -216,26 +181,13 @@ exports.addStock = (req, res) => {
     const qty = parseInt(quantity) || 0;
     if (qty <= 0) return res.status(400).json({ message: "الكمية يجب أن تكون أكبر من صفر" });
 
-    // When adding stock to paper items, reset used_sheets to sheets_per_package (full package ready)
-    db.query("SELECT sheets_per_package FROM inventory WHERE id = ?", [id], (err, results) => {
-        if (err) return res.status(500).json({ message: "خطأ" });
-        const sheetsPerPkg = results && results[0] ? results[0].sheets_per_package : 0;
-        
-        const updateQuery = sheetsPerPkg > 0
-            ? "UPDATE inventory SET quantity = quantity + ?, used_sheets = ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?"
-            : "UPDATE inventory SET quantity = quantity + ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?";
-        
-        const params = sheetsPerPkg > 0
-            ? [qty, sheetsPerPkg, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id]
-            : [qty, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id];
-        
-        db.query(updateQuery, params, (err) => {
+    db.query("UPDATE inventory SET quantity = quantity + ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?",
+        [qty, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id], (err) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة المخزون" });
             db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, notes, created_by) VALUES (?, 'purchase', ?, ?, ?)",
                 [id, qty, notes || 'إضافة مخزون', created_by || 'Admin']);
             res.json({ message: "تم إضافة المخزون بنجاح" });
         });
-    });
 };
 
 // Manual adjust
@@ -253,37 +205,7 @@ exports.adjustStock = (req, res) => {
     });
 };
 
-// ==================== Package Materials ====================
-exports.getPackageMaterials = (req, res) => {
-    const { packageId, packageType } = req.params;
-    db.query(`SELECT pm.*, i.item_name, i.unit_cost, i.quantity as available_qty, i.sheets_per_package, ic.name_ar as category_name, ic.name as category_key
-              FROM package_materials pm
-              JOIN inventory i ON pm.inventory_item_id = i.id
-              LEFT JOIN inventory_categories ic ON i.category_id = ic.id
-              WHERE pm.package_id = ? AND pm.package_type = ?`,
-        [packageId, packageType || 'studio'], (err, results) => {
-            if (err) return res.status(500).json({ message: "خطأ في جلب المواد" });
-            res.json(results);
-        });
-};
-
-exports.setPackageMaterials = (req, res) => {
-    const { packageId, packageType } = req.params;
-    const { materials } = req.body;
-
-    db.query("DELETE FROM package_materials WHERE package_id = ? AND package_type = ?", [packageId, packageType || 'studio'], (err) => {
-        if (err) return res.status(500).json({ message: "خطأ" });
-        if (!materials || materials.length === 0) return res.json({ message: "تم حفظ المواد" });
-
-        const values = materials.map(m => [packageId, packageType || 'studio', m.inventory_item_id, m.quantity_needed || 1, m.cuts_per_sheet || 1, m.cost_per_print || 0]);
-        db.query("INSERT INTO package_materials (package_id, package_type, inventory_item_id, quantity_needed, cuts_per_sheet, cost_per_print) VALUES ?", [values], (err) => {
-            if (err) return res.status(500).json({ message: "خطأ في حفظ المواد" });
-            res.json({ message: "تم حفظ المواد بنجاح" });
-        });
-    });
-};
-
-// deductForInvoice removed - no longer auto-deducting materials from invoices
+// Package materials removed - no longer needed
 
 // Get transactions history
 exports.getTransactions = (req, res) => {

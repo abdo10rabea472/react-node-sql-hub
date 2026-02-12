@@ -113,7 +113,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
         if (!itemName) return;
         setSaving(true);
         try {
-            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, sell_price: parseFloat(sellPrice) || 0, sheets_per_package: 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
+            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, sell_price: parseFloat(sellPrice) || 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
             if (editId) {
                 await updateInventoryItem(editId, data);
                 toast(lang === 'ar' ? 'تم تحديث الصنف' : 'Item updated');
@@ -329,7 +329,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                         </button>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">
-                                        {lang === 'ar' ? '⚡ الفئات غير القابلة للبيع (مثل الورق والأحبار) تُستخدم كمواد استهلاكية مرتبطة بباقات التصوير' : '⚡ Non-sellable categories (like paper & ink) are used as consumables linked to photography packages'}
+                                        {lang === 'ar' ? '⚡ فئة المصاريف تُستخدم لتتبع المصاريف التشغيلية مثل الورق والأحبار' : '⚡ Expenses category is used to track operational costs like paper & ink'}
                                     </p>
                                 </motion.div>
                             )}
