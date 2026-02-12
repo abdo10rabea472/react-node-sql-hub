@@ -61,6 +61,7 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
         };
         ensureCol('sell_price', 'DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost');
         ensureCol('sheets_per_package', 'INT DEFAULT 0 AFTER sell_price');
+        ensureCol('used_sheets', 'INT DEFAULT 0 AFTER sheets_per_package');
     }
 });
 
@@ -277,10 +278,11 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
     
     items.forEach(item => {
         if (item.is_package) {
-            // For packages: deduct linked consumables (paper by sheets, ink by cost tracking)
+            // For packages: deduct linked consumables with sheet tracking
             const packageId = item.package_id || item.id;
             const photoCount = item.photo_count || item.quantity || 1;
-            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed, pm.cuts_per_sheet, pm.cost_per_print, ic.name as category_key
+            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed, pm.cuts_per_sheet, pm.cost_per_print, 
+                      ic.name as category_key, i.sheets_per_package, i.used_sheets, i.quantity as available_qty
                       FROM package_materials pm
                       JOIN inventory i ON pm.inventory_item_id = i.id
                       LEFT JOIN inventory_categories ic ON i.category_id = ic.id
@@ -293,25 +295,50 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                     }
                     let matProcessed = 0;
                     materials.forEach(mat => {
-                        let deductQty;
-                        if (mat.category_key === 'paper') {
-                            // Paper: deduct sheets. photos / cuts_per_sheet = sheets needed
-                            deductQty = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
+                        if (mat.category_key === 'paper' && mat.sheets_per_package > 0) {
+                            // Paper: track sheets used per package
+                            const sheetsNeeded = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
+                            const currentUsed = mat.used_sheets || 0;
+                            const newUsed = currentUsed + sheetsNeeded;
+                            const sheetsPerPkg = mat.sheets_per_package;
+                            
+                            // Calculate how many full packages are consumed
+                            const packagesConsumed = Math.floor(newUsed / sheetsPerPkg);
+                            const remainingSheets = newUsed % sheetsPerPkg;
+                            
+                            // Update: deduct full packages from quantity, set remaining used_sheets
+                            db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?), used_sheets = ? WHERE id = ?",
+                                [packagesConsumed, remainingSheets, mat.inventory_item_id], (err) => {
+                                    if (!err) {
+                                        const note = packagesConsumed > 0
+                                            ? `خصم ${sheetsNeeded} ورقة (${packagesConsumed} بكج كامل) - فاتورة #${invoiceId} | متبقي ${remainingSheets}/${sheetsPerPkg} ورقة من البكج الحالي`
+                                            : `استخدام ${sheetsNeeded} ورقة - فاتورة #${invoiceId} | مستخدم ${remainingSheets}/${sheetsPerPkg} من البكج الحالي`;
+                                        db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                                            [mat.inventory_item_id, -sheetsNeeded, invoiceId, invoiceType, note, createdBy || 'Admin']);
+                                    }
+                                    matProcessed++;
+                                    if (matProcessed === materials.length) {
+                                        processed++;
+                                        if (processed === totalItems && callback) callback();
+                                    }
+                                });
                         } else {
-                            // Other consumables: use quantity_needed directly
-                            deductQty = mat.quantity_needed * (item.quantity || 1);
+                            // Other consumables: deduct quantity directly
+                            const deductQty = mat.category_key === 'paper'
+                                ? Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1)
+                                : mat.quantity_needed * (item.quantity || 1);
+                            db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
+                                if (!err) {
+                                    db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                                        [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - باقة في فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                                }
+                                matProcessed++;
+                                if (matProcessed === materials.length) {
+                                    processed++;
+                                    if (processed === totalItems && callback) callback();
+                                }
+                            });
                         }
-                        db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
-                            if (!err) {
-                                db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
-                                    [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - باقة في فاتورة #${invoiceId}`, createdBy || 'Admin']);
-                            }
-                            matProcessed++;
-                            if (matProcessed === materials.length) {
-                                processed++;
-                                if (processed === totalItems && callback) callback();
-                            }
-                        });
                     });
                 });
         } else {
