@@ -30,6 +30,7 @@ const PricingPage: React.FC = () => {
   const [formPrice, setFormPrice] = useState<number>(0);
   const [formPhotos, setFormPhotos] = useState<number>(0);
   const [formSizesText, setFormSizesText] = useState('');
+  const [formExtCost, setFormExtCost] = useState<number>(0);
 
   // Materials linking
   const [consumables, setConsumables] = useState<InventoryItem[]>([]);
@@ -62,14 +63,21 @@ const PricingPage: React.FC = () => {
 
   const activePreview = isModalOpen ? { id: editingPackage?.id || 999, type: formType || (lang === 'ar' ? 'نوع الباقة...' : 'Package Type...'), price: formPrice || 0, photo_count: formPhotos || 0, sizes: formSizesText.split('\n').filter(s => s.trim() !== ''), color: editingPackage?.color || '#0ea5e9' } : selectedPreview;
 
+  const getExtCost = (pkg: PricingPackage) => {
+    const extEntry = pkg.sizes.find(s => s.startsWith('ext_cost:'));
+    return extEntry ? parseFloat(extEntry.split(':')[1]) || 0 : 0;
+  };
+  const getNotes = (pkg: PricingPackage) => pkg.sizes.filter(s => !s.startsWith('ext_cost:'));
+
   const openModal = (pkg?: PricingPackage) => {
-    if (pkg) { setEditingPackage(pkg); setFormType(pkg.type); setFormPrice(pkg.price); setFormPhotos(pkg.photo_count); setFormSizesText(pkg.sizes.join('\n')); }
-    else { setEditingPackage(null); setFormType(''); setFormPrice(0); setFormPhotos(0); setFormSizesText(''); }
+    if (pkg) { setEditingPackage(pkg); setFormType(pkg.type); setFormPrice(pkg.price); setFormPhotos(pkg.photo_count); setFormSizesText(getNotes(pkg).join('\n')); setFormExtCost(getExtCost(pkg)); }
+    else { setEditingPackage(null); setFormType(''); setFormPrice(0); setFormPhotos(0); setFormSizesText(''); setFormExtCost(0); }
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    const sizesArray = formSizesText.split('\n').filter(s => s.trim() !== '');
+    const notes = formSizesText.split('\n').filter(s => s.trim() !== '');
+    const sizesArray = formPhotos === 0 && formExtCost > 0 ? [`ext_cost:${formExtCost}`, ...notes] : notes;
     const data = { type: formType, price: formPrice, photo_count: formPhotos, sizes: sizesArray, color: editingPackage?.color || COLORS[packages.length % COLORS.length] };
     try { if (editingPackage) await updatePackage(editingPackage.id, data); else await createPackage(data); fetchPackages(); setIsModalOpen(false); setSelectedPreview(null); } catch (err) { console.error(err); }
   };
@@ -207,8 +215,15 @@ const PricingPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-baseline gap-1.5 mb-2"><span className="text-2xl font-extrabold text-foreground">{pkg.price}</span><span className="text-sm text-muted-foreground">{currentCurrency}/{t.perPhoto}</span></div>
-                        <div className="bg-emerald-500/10 text-emerald-600 text-xs font-bold px-3 py-1.5 rounded-lg mb-2 text-center">✓ {lang === 'ar' ? 'ربح صافي 100%' : '100% Net Profit'}</div>
-                        <div className="flex flex-wrap gap-1.5">{pkg.sizes.slice(0, 3).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">{s}</span>)}</div>
+                        {(() => { const ext = getExtCost(pkg); const profit = pkg.price - ext; return ext > 0 ? (
+                          <div className="flex justify-between text-xs mb-2 bg-muted/50 rounded-lg px-3 py-2">
+                            <span className="text-muted-foreground">{lang === 'ar' ? 'تكلفة طباعة' : 'Print cost'}: <strong className="text-destructive">{ext}</strong></span>
+                            <span className="font-bold text-emerald-600">{lang === 'ar' ? 'ربح' : 'Profit'}: {profit.toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <div className="bg-muted/50 text-muted-foreground text-xs px-3 py-1.5 rounded-lg mb-2 text-center">{lang === 'ar' ? 'لم يتم تحديد تكلفة الطباعة' : 'No print cost set'}</div>
+                        ); })()}
+                        <div className="flex flex-wrap gap-1.5">{getNotes(pkg).slice(0, 3).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">{s}</span>)}</div>
                       </motion.div>
                     ))}
                   </div>
@@ -261,7 +276,19 @@ const PricingPage: React.FC = () => {
                   </div>
                 </div>
                 <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.packageType}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Camera size={16} className="text-muted-foreground" /><input value={formType} onChange={e => setFormType(e.target.value)} placeholder={t.placeholderType} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
-                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.price} ({currentCurrency})</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><DollarSign size={16} className="text-muted-foreground" /><input type="number" value={formPrice} onChange={e => setFormPrice(Number(e.target.value))} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div></div>
+                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{lang === 'ar' ? 'سعر البيع للعميل' : 'Sell Price'} ({currentCurrency})</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><DollarSign size={16} className="text-muted-foreground" /><input type="number" value={formPrice} onChange={e => setFormPrice(Number(e.target.value))} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div></div>
+                {formPhotos === 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">{lang === 'ar' ? 'تكلفة الطباعة الخارجية' : 'External Print Cost'} ({currentCurrency})</label>
+                    <div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+                      <span className="text-muted-foreground text-sm">🖨️</span>
+                      <input type="number" step="0.01" value={formExtCost} onChange={e => setFormExtCost(Number(e.target.value))} placeholder="0" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" />
+                    </div>
+                    {formPrice > 0 && formExtCost > 0 && (
+                      <p className="text-xs mt-1.5 text-emerald-600 font-bold">{lang === 'ar' ? 'الربح للصورة' : 'Profit/photo'}: {(formPrice - formExtCost).toFixed(2)} {currentCurrency}</p>
+                    )}
+                  </div>
+                )}
                 <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.sizes}</label><textarea placeholder={lang === 'ar' ? 'ملاحظات إضافية...' : 'Additional notes...'} value={formSizesText} onChange={e => setFormSizesText(e.target.value)} className="w-full min-h-[70px] px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo resize-y" /></div>
               </div>
               <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
