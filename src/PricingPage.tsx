@@ -207,6 +207,7 @@ const PricingPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex items-baseline gap-1.5 mb-2"><span className="text-2xl font-extrabold text-foreground">{pkg.price}</span><span className="text-sm text-muted-foreground">{currentCurrency}/{t.perPhoto}</span></div>
+                        <div className="bg-emerald-500/10 text-emerald-600 text-xs font-bold px-3 py-1.5 rounded-lg mb-2 text-center">✓ {lang === 'ar' ? 'ربح صافي 100%' : '100% Net Profit'}</div>
                         <div className="flex flex-wrap gap-1.5">{pkg.sizes.slice(0, 3).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">{s}</span>)}</div>
                       </motion.div>
                     ))}
