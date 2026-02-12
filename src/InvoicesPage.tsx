@@ -185,20 +185,44 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4">
                                 <Camera size={16} className="text-primary" />{lang === 'ar' ? 'أسعار الصور حسب المقاس' : 'Photo Sizes & Prices'}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
-                                {packages.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground col-span-full text-center py-3">{lang === 'ar' ? 'لا توجد مقاسات' : 'No sizes'}</p>
-                                ) : packages.map(pkg => (
+                            
+                            {/* Urgent photos */}
+                            {packages.filter(p => p.photo_count === 1).length > 0 && (
+                              <div className="mb-4">
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-2">⚡ {lang === 'ar' ? 'تصوير مستعجل' : 'Urgent'}</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                  {packages.filter(p => p.photo_count === 1).map(pkg => (
+                                    <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
+                                        className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3.5 cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/10 transition-all group relative">
+                                        <span className="text-sm font-bold text-foreground block">⚡ {pkg.type}</span>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className="text-xs text-amber-600 font-semibold">{pkg.price} {settings.currency}/{lang === 'ar' ? 'صورة' : 'photo'}</span>
+                                        </div>
+                                        <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-amber-500 transition-all" />
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Regular photos */}
+                            {packages.filter(p => p.photo_count !== 1).length > 0 && (
+                              <div className="mb-4">
+                                <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-2">📷 {lang === 'ar' ? 'تصوير عادي' : 'Regular'}</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                  {packages.filter(p => p.photo_count !== 1).map(pkg => (
                                     <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
                                         className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/10 transition-all group relative">
-                                        <span className="text-sm font-bold text-foreground block">{pkg.type}</span>
+                                        <span className="text-sm font-bold text-foreground block">📷 {pkg.type}</span>
                                         <div className="flex justify-between items-center mt-1">
                                             <span className="text-xs text-primary font-semibold">{pkg.price} {settings.currency}/{lang === 'ar' ? 'صورة' : 'photo'}</span>
                                         </div>
                                         <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
                                     </motion.div>
-                                ))}
-                            </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4 mt-5">
                                 <Package size={16} className="text-primary" />{t.selectPackages}
