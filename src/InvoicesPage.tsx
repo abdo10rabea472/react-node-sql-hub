@@ -70,12 +70,8 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const addPackage = (pkg: PricingPackage) => {
         setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, inventory_item_id: 0, type: pkg.type, price: pkg.price, quantity: 1, is_package: true, package_id: pkg.id }]);
     };
-    const updatePkgQuantity = (tempId: number, qty: number) => {
-        if (qty < 1) return;
-        setSelectedPkgs(prev => prev.map(p => p.tempId === tempId ? { ...p, quantity: qty } : p));
-    };
     const removePkg = (tempId: number) => setSelectedPkgs(prev => prev.filter(p => p.tempId !== tempId));
-    const totalAmount = selectedPkgs.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalAmount = selectedPkgs.reduce((sum, item) => sum + item.price, 0);
     const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
     const currentUserName = user?.name || 'Admin';
 
@@ -183,46 +179,23 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         {/* Packages */}
                         <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4">
-                                <Camera size={16} className="text-primary" />{lang === 'ar' ? 'أسعار الصور حسب المقاس' : 'Photo Sizes & Prices'}
+                                <Camera size={16} className="text-primary" />{lang === 'ar' ? 'باقات التصوير' : 'Photography Packages'}
                             </h3>
-                            
-                            {/* Urgent photos */}
-                            {packages.filter(p => p.photo_count === 1).length > 0 && (
-                              <div className="mb-4">
-                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-wider mb-2">⚡ {lang === 'ar' ? 'تصوير مستعجل' : 'Urgent'}</p>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                                  {packages.filter(p => p.photo_count === 1).map(pkg => (
-                                    <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
-                                        className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3.5 cursor-pointer hover:border-amber-500/40 hover:bg-amber-500/10 transition-all group relative">
-                                        <span className="text-sm font-bold text-foreground block">⚡ {pkg.type}</span>
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-xs text-amber-600 font-semibold">{pkg.price} {settings.currency}/{lang === 'ar' ? 'صورة' : 'photo'}</span>
-                                        </div>
-                                        <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-amber-500 transition-all" />
-                                    </motion.div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Regular photos */}
-                            {packages.filter(p => p.photo_count !== 1).length > 0 && (
-                              <div className="mb-4">
-                                <p className="text-[10px] font-black text-primary uppercase tracking-wider mb-2">📷 {lang === 'ar' ? 'تصوير عادي' : 'Regular'}</p>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                                  {packages.filter(p => p.photo_count !== 1).map(pkg => (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+                                {packages.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground col-span-full text-center py-3">{lang === 'ar' ? 'لا توجد باقات' : 'No packages'}</p>
+                                ) : packages.map(pkg => (
                                     <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
                                         className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/10 transition-all group relative">
-                                        <span className="text-sm font-bold text-foreground block">📷 {pkg.type}</span>
+                                        <span className="text-sm font-bold text-foreground block">{pkg.type}</span>
                                         <div className="flex justify-between items-center mt-1">
-                                            <span className="text-xs text-primary font-semibold">{pkg.price} {settings.currency}/{lang === 'ar' ? 'صورة' : 'photo'}</span>
+                                            <span className="text-xs text-primary font-semibold">{pkg.price} {settings.currency}</span>
+                                            <span className="text-[10px] text-muted-foreground">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'}</span>
                                         </div>
                                         <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
                                     </motion.div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                                ))}
+                            </div>
 
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4 mt-5">
                                 <Package size={16} className="text-primary" />{t.selectPackages}
@@ -272,17 +245,10 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 ) : selectedPkgs.map(item => (
                                     <motion.div key={item.tempId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                         className="flex justify-between items-center py-2.5 px-3 bg-muted/50 rounded-lg group hover:bg-muted transition-all">
-                                        <div className="flex-1">
+                                        <div>
                                             <span className="text-sm font-bold text-foreground">{item.type}</span>
-                                            <span className="text-xs text-muted-foreground block">{item.price} × {item.quantity} = {(item.price * item.quantity).toFixed(0)} {settings.currency}</span>
+                                            <span className="text-xs text-muted-foreground block">{item.price} {settings.currency}</span>
                                         </div>
-                                        {item.is_package && (
-                                            <div className="flex items-center gap-1 mx-2">
-                                                <button onClick={() => updatePkgQuantity(item.tempId, item.quantity - 1)} className="w-6 h-6 rounded bg-muted border border-border text-foreground flex items-center justify-center text-xs font-bold hover:bg-primary/10 transition-all">-</button>
-                                                <input type="number" value={item.quantity} onChange={e => updatePkgQuantity(item.tempId, parseInt(e.target.value) || 1)} className="w-12 text-center text-sm font-bold bg-card border border-border rounded py-0.5 outline-none focus:border-primary/50" min={1} />
-                                                <button onClick={() => updatePkgQuantity(item.tempId, item.quantity + 1)} className="w-6 h-6 rounded bg-muted border border-border text-foreground flex items-center justify-center text-xs font-bold hover:bg-primary/10 transition-all">+</button>
-                                            </div>
-                                        )}
                                         <button onClick={() => removePkg(item.tempId)} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                                             <X size={14} />
                                         </button>

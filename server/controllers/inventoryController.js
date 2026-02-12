@@ -21,10 +21,16 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory_categories (
         // Insert default categories
         const defaults = [
             ['frame', 'براويز', '#8B5CF6', 'Frame', 1],
+            ['paper', 'ورق', '#0EA5E9', 'FileText', 0],
+            ['ink', 'أحبار', '#F59E0B', 'Droplets', 0],
             ['tableau', 'طابلو', '#10B981', 'Image', 1],
-            ['expenses', 'مصاريف', '#F59E0B', 'Receipt', 0],
             ['other', 'أخرى', '#6B7280', 'Package', 1],
         ];
+        defaults.forEach(([name, name_ar, color, icon, is_sellable]) => {
+            db.query("INSERT IGNORE INTO inventory_categories (name, name_ar, color, icon, is_sellable) VALUES (?, ?, ?, ?, ?)", [name, name_ar, color, icon, is_sellable]);
+        });
+        // Update existing non-sellable categories
+        db.query("UPDATE inventory_categories SET is_sellable = 0 WHERE name IN ('paper', 'ink') AND is_sellable = 1");
     }
 });
 
@@ -44,18 +50,23 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
 )`, (err) => {
     if (err) console.error("Error creating inventory:", err);
     else {
-        const ensureCol = (col, def) => {
-            db.query(`SHOW COLUMNS FROM inventory LIKE '${col}'`, (err, results) => {
-                if (!err && results && results.length === 0) {
-                    db.query(`ALTER TABLE inventory ADD COLUMN ${col} ${def}`);
-                }
-            });
-        };
-        ensureCol('sell_price', 'DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost');
+        db.query("SHOW COLUMNS FROM inventory LIKE 'sell_price'", (err, results) => {
+            if (!err && results && results.length === 0) {
+                db.query("ALTER TABLE inventory ADD COLUMN sell_price DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost");
+            }
+        });
     }
 });
 
-// package_materials table removed - no longer needed
+// Package materials - links packages to consumable inventory items
+db.query(`CREATE TABLE IF NOT EXISTS package_materials (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    package_id INT NOT NULL,
+    package_type ENUM('studio', 'wedding_album', 'wedding_video') DEFAULT 'studio',
+    inventory_item_id INT NOT NULL,
+    quantity_needed INT DEFAULT 1,
+    UNIQUE KEY unique_pkg_item (package_id, package_type, inventory_item_id)
+)`, (err) => { if (err) console.error("Error creating package_materials:", err); });
 
 db.query(`CREATE TABLE IF NOT EXISTS inventory_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -205,7 +216,85 @@ exports.adjustStock = (req, res) => {
     });
 };
 
-// Package materials removed - no longer needed
+// ==================== Package Materials ====================
+exports.getPackageMaterials = (req, res) => {
+    const { packageId, packageType } = req.params;
+    db.query(`SELECT pm.*, i.item_name, i.unit_cost, i.quantity as available_qty, ic.name_ar as category_name
+              FROM package_materials pm
+              JOIN inventory i ON pm.inventory_item_id = i.id
+              LEFT JOIN inventory_categories ic ON i.category_id = ic.id
+              WHERE pm.package_id = ? AND pm.package_type = ?`,
+        [packageId, packageType || 'studio'], (err, results) => {
+            if (err) return res.status(500).json({ message: "خطأ في جلب المواد" });
+            res.json(results);
+        });
+};
+
+exports.setPackageMaterials = (req, res) => {
+    const { packageId, packageType } = req.params;
+    const { materials } = req.body;
+
+    db.query("DELETE FROM package_materials WHERE package_id = ? AND package_type = ?", [packageId, packageType || 'studio'], (err) => {
+        if (err) return res.status(500).json({ message: "خطأ" });
+        if (!materials || materials.length === 0) return res.json({ message: "تم حفظ المواد" });
+
+        const values = materials.map(m => [packageId, packageType || 'studio', m.inventory_item_id, m.quantity_needed || 1]);
+        db.query("INSERT INTO package_materials (package_id, package_type, inventory_item_id, quantity_needed) VALUES ?", [values], (err) => {
+            if (err) return res.status(500).json({ message: "خطأ في حفظ المواد" });
+            res.json({ message: "تم حفظ المواد بنجاح" });
+        });
+    });
+};
+
+// ==================== Deduct inventory for invoice ====================
+exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) => {
+    if (!items || items.length === 0) return callback && callback();
+
+    let processed = 0;
+    const totalItems = items.length;
+    
+    items.forEach(item => {
+        if (item.is_package) {
+            // For packages: deduct linked consumables
+            const packageId = item.package_id || item.id;
+            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed FROM package_materials pm WHERE pm.package_id = ? AND pm.package_type = 'studio'`,
+                [packageId], (err, materials) => {
+                    if (err || !materials || materials.length === 0) {
+                        processed++;
+                        if (processed === totalItems && callback) callback();
+                        return;
+                    }
+                    let matProcessed = 0;
+                    materials.forEach(mat => {
+                        const deductQty = mat.quantity_needed * (item.quantity || 1);
+                        db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
+                            if (!err) {
+                                db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                                    [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - باقة في فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                            }
+                            matProcessed++;
+                            if (matProcessed === materials.length) {
+                                processed++;
+                                if (processed === totalItems && callback) callback();
+                            }
+                        });
+                    });
+                });
+        } else {
+            // For direct inventory items: deduct directly
+            const deductQty = item.quantity || 1;
+            const inventoryId = item.inventory_item_id || item.id;
+            db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, inventoryId], (err) => {
+                if (!err) {
+                    db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                        [inventoryId, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                }
+                processed++;
+                if (processed === totalItems && callback) callback();
+            });
+        }
+    });
+};
 
 // Get transactions history
 exports.getTransactions = (req, res) => {

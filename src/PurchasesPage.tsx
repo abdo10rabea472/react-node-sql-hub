@@ -7,7 +7,7 @@ import { useSettings } from './SettingsContext';
 interface Category { id: number; name: string; name_ar: string; color: string; icon: string; is_sellable: number; }
 interface InventoryItem {
     id: number; item_name: string; category_id: number; quantity: number;
-    unit_cost: number; sell_price: number; sheets_per_package: number; min_stock: number; supplier: string; notes: string;
+    unit_cost: number; sell_price: number; min_stock: number; supplier: string; notes: string;
     created_by: string; created_at: string; updated_at: string;
     category_name: string; category_name_ar: string; category_color: string; category_icon: string;
 }
@@ -65,7 +65,6 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [quantity, setQuantity] = useState('0');
     const [unitCost, setUnitCost] = useState('');
     const [sellPrice, setSellPrice] = useState('');
-    // sheetsPerPackage removed
     const [minStock, setMinStock] = useState('5');
     const [supplier, setSupplier] = useState('');
     const [notes, setNotes] = useState('');
@@ -329,13 +328,13 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                         </button>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">
-                                        {lang === 'ar' ? '⚡ فئة المصاريف تُستخدم لتتبع المصاريف التشغيلية مثل الورق والأحبار' : '⚡ Expenses category is used to track operational costs like paper & ink'}
+                                        {lang === 'ar' ? '⚡ الفئات غير القابلة للبيع (مثل الورق والأحبار) تُستخدم كمواد استهلاكية مرتبطة بباقات التصوير' : '⚡ Non-sellable categories (like paper & ink) are used as consumables linked to photography packages'}
                                     </p>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                             <div>
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.quantity}</label>
                                 <input type="number" min="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
@@ -348,11 +347,6 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.sellPrice}</label>
                                 <input type="number" min="0" step="0.01" value={sellPrice} onChange={e => setSellPrice(e.target.value)} className={inputClass} placeholder="0.00" />
                             </div>
-                        </div>
-
-                        {/* Paper package settings removed */}
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.minStock}</label>
                                 <input type="number" min="0" value={minStock} onChange={e => setMinStock(e.target.value)} className={inputClass} />
