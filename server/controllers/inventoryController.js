@@ -7,21 +7,30 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory_categories (
     name_ar VARCHAR(255),
     color VARCHAR(20) DEFAULT '#6B7280',
     icon VARCHAR(50) DEFAULT 'Package',
+    is_sellable TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`, (err) => {
     if (err) console.error("Error creating inventory_categories:", err);
     else {
+        // Ensure is_sellable column exists
+        db.query("SHOW COLUMNS FROM inventory_categories LIKE 'is_sellable'", (err, results) => {
+            if (!err && results && results.length === 0) {
+                db.query("ALTER TABLE inventory_categories ADD COLUMN is_sellable TINYINT(1) DEFAULT 1");
+            }
+        });
         // Insert default categories
         const defaults = [
-            ['frame', 'براويز', '#8B5CF6', 'Frame'],
-            ['paper', 'ورق', '#0EA5E9', 'FileText'],
-            ['ink', 'أحبار', '#F59E0B', 'Droplets'],
-            ['tableau', 'طابلو', '#10B981', 'Image'],
-            ['other', 'أخرى', '#6B7280', 'Package'],
+            ['frame', 'براويز', '#8B5CF6', 'Frame', 1],
+            ['paper', 'ورق', '#0EA5E9', 'FileText', 0],
+            ['ink', 'أحبار', '#F59E0B', 'Droplets', 0],
+            ['tableau', 'طابلو', '#10B981', 'Image', 1],
+            ['other', 'أخرى', '#6B7280', 'Package', 1],
         ];
-        defaults.forEach(([name, name_ar, color, icon]) => {
-            db.query("INSERT IGNORE INTO inventory_categories (name, name_ar, color, icon) VALUES (?, ?, ?, ?)", [name, name_ar, color, icon]);
+        defaults.forEach(([name, name_ar, color, icon, is_sellable]) => {
+            db.query("INSERT IGNORE INTO inventory_categories (name, name_ar, color, icon, is_sellable) VALUES (?, ?, ?, ?, ?)", [name, name_ar, color, icon, is_sellable]);
         });
+        // Update existing non-sellable categories
+        db.query("UPDATE inventory_categories SET is_sellable = 0 WHERE name IN ('paper', 'ink') AND is_sellable = 1");
     }
 });
 
@@ -41,7 +50,6 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
 )`, (err) => {
     if (err) console.error("Error creating inventory:", err);
     else {
-        // Ensure sell_price column exists for older tables
         db.query("SHOW COLUMNS FROM inventory LIKE 'sell_price'", (err, results) => {
             if (!err && results && results.length === 0) {
                 db.query("ALTER TABLE inventory ADD COLUMN sell_price DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost");
@@ -50,6 +58,7 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
     }
 });
 
+// Package materials - links packages to consumable inventory items
 db.query(`CREATE TABLE IF NOT EXISTS package_materials (
     id INT AUTO_INCREMENT PRIMARY KEY,
     package_id INT NOT NULL,
@@ -80,16 +89,25 @@ exports.getCategories = (req, res) => {
 };
 
 exports.createCategory = (req, res) => {
-    const { name, name_ar, color, icon } = req.body;
+    const { name, name_ar, color, icon, is_sellable } = req.body;
     if (!name) return res.status(400).json({ message: "اسم الفئة مطلوب" });
-    db.query("INSERT INTO inventory_categories (name, name_ar, color, icon) VALUES (?, ?, ?, ?)",
-        [name, name_ar || name, color || '#6B7280', icon || 'Package'], (err, result) => {
+    db.query("INSERT INTO inventory_categories (name, name_ar, color, icon, is_sellable) VALUES (?, ?, ?, ?, ?)",
+        [name, name_ar || name, color || '#6B7280', icon || 'Package', is_sellable !== undefined ? is_sellable : 1], (err, result) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: "الفئة موجودة بالفعل" });
                 return res.status(500).json({ message: "خطأ في إضافة الفئة" });
             }
             res.json({ id: result.insertId, message: "تم إضافة الفئة بنجاح" });
         });
+};
+
+exports.updateCategory = (req, res) => {
+    const { id } = req.params;
+    const { is_sellable } = req.body;
+    db.query("UPDATE inventory_categories SET is_sellable = ? WHERE id = ?", [is_sellable ? 1 : 0, id], (err) => {
+        if (err) return res.status(500).json({ message: "خطأ في تحديث الفئة" });
+        res.json({ message: "تم تحديث الفئة" });
+    });
 };
 
 exports.deleteCategory = (req, res) => {
@@ -102,7 +120,7 @@ exports.deleteCategory = (req, res) => {
 
 // ==================== Inventory Items ====================
 exports.getItems = (req, res) => {
-    db.query(`SELECT i.*, ic.name as category_name, ic.name_ar as category_name_ar, ic.color as category_color, ic.icon as category_icon
+    db.query(`SELECT i.*, ic.name as category_name, ic.name_ar as category_name_ar, ic.color as category_color, ic.icon as category_icon, COALESCE(ic.is_sellable, 1) as is_sellable
               FROM inventory i LEFT JOIN inventory_categories ic ON i.category_id = ic.id
               ORDER BY i.updated_at DESC`, (err, results) => {
         if (err) return res.status(500).json({ message: "خطأ في جلب المخزون" });
@@ -118,8 +136,7 @@ exports.getStats = (req, res) => {
         COALESCE(SUM(quantity), 0) as total_quantity
     FROM inventory`, (err, results) => {
         if (err) return res.status(500).json({ message: "خطأ في جلب الإحصائيات" });
-        // Also get per-category stats
-        db.query(`SELECT ic.name, ic.name_ar, ic.color, COUNT(i.id) as item_count, COALESCE(SUM(i.quantity * i.unit_cost), 0) as category_value
+        db.query(`SELECT ic.name, ic.name_ar, ic.color, COALESCE(ic.is_sellable, 1) as is_sellable, COUNT(i.id) as item_count, COALESCE(SUM(i.quantity * i.unit_cost), 0) as category_value
                   FROM inventory_categories ic LEFT JOIN inventory i ON i.category_id = ic.id
                   GROUP BY ic.id ORDER BY ic.id`, (err2, catStats) => {
             if (err2) return res.json(results[0]);
@@ -140,7 +157,6 @@ exports.createItem = (req, res) => {
         [item_name, category_id || null, qty, cost, sell, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
         (err, result) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة الصنف" });
-            // Record transaction
             if (qty > 0) {
                 db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, notes, created_by) VALUES (?, 'purchase', ?, 'إضافة أولية', ?)",
                     [result.insertId, qty, created_by || 'Admin']);
@@ -203,7 +219,7 @@ exports.adjustStock = (req, res) => {
 // ==================== Package Materials ====================
 exports.getPackageMaterials = (req, res) => {
     const { packageId, packageType } = req.params;
-    db.query(`SELECT pm.*, i.item_name, ic.name_ar as category_name
+    db.query(`SELECT pm.*, i.item_name, i.unit_cost, i.quantity as available_qty, ic.name_ar as category_name
               FROM package_materials pm
               JOIN inventory i ON pm.inventory_item_id = i.id
               LEFT JOIN inventory_categories ic ON i.category_id = ic.id
@@ -216,7 +232,7 @@ exports.getPackageMaterials = (req, res) => {
 
 exports.setPackageMaterials = (req, res) => {
     const { packageId, packageType } = req.params;
-    const { materials } = req.body; // [{inventory_item_id, quantity_needed}]
+    const { materials } = req.body;
 
     db.query("DELETE FROM package_materials WHERE package_id = ? AND package_type = ?", [packageId, packageType || 'studio'], (err) => {
         if (err) return res.status(500).json({ message: "خطأ" });
@@ -232,23 +248,51 @@ exports.setPackageMaterials = (req, res) => {
 
 // ==================== Deduct inventory for invoice ====================
 exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) => {
-    // items: [{id (inventory_item_id), type, quantity}]
-    // Deduct directly from inventory for each item
     if (!items || items.length === 0) return callback && callback();
 
     let processed = 0;
+    const totalItems = items.length;
+    
     items.forEach(item => {
-        const deductQty = item.quantity || 1;
-        const inventoryId = item.inventory_item_id || item.id;
-        
-        db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, inventoryId], (err) => {
-            if (!err) {
-                db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
-                    [inventoryId, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
-            }
-            processed++;
-            if (processed === items.length && callback) callback();
-        });
+        if (item.is_package) {
+            // For packages: deduct linked consumables
+            const packageId = item.package_id || item.id;
+            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed FROM package_materials pm WHERE pm.package_id = ? AND pm.package_type = 'studio'`,
+                [packageId], (err, materials) => {
+                    if (err || !materials || materials.length === 0) {
+                        processed++;
+                        if (processed === totalItems && callback) callback();
+                        return;
+                    }
+                    let matProcessed = 0;
+                    materials.forEach(mat => {
+                        const deductQty = mat.quantity_needed * (item.quantity || 1);
+                        db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
+                            if (!err) {
+                                db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                                    [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - باقة في فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                            }
+                            matProcessed++;
+                            if (matProcessed === materials.length) {
+                                processed++;
+                                if (processed === totalItems && callback) callback();
+                            }
+                        });
+                    });
+                });
+        } else {
+            // For direct inventory items: deduct directly
+            const deductQty = item.quantity || 1;
+            const inventoryId = item.inventory_item_id || item.id;
+            db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, inventoryId], (err) => {
+                if (!err) {
+                    db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
+                        [inventoryId, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                }
+                processed++;
+                if (processed === totalItems && callback) callback();
+            });
+        }
     });
 };
 

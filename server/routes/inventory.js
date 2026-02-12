@@ -6,6 +6,7 @@ const { authMiddleware, adminMiddleware } = require("../controllers/authControll
 // Categories
 router.get("/categories", authMiddleware, controller.getCategories);
 router.post("/categories", authMiddleware, controller.createCategory);
+router.put("/categories/:id", authMiddleware, controller.updateCategory);
 router.delete("/categories/:id", authMiddleware, adminMiddleware, controller.deleteCategory);
 
 // Items
