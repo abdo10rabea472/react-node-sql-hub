@@ -5,8 +5,8 @@ import { useSettings } from './SettingsContext';
 import { getPackages, createPackage, updatePackage, deletePackage, getInventoryItems, getPackageMaterials, setPackageMaterials } from './api';
 
 interface PricingPackage { id: number; type: string; price: number; photo_count: number; sizes: string[]; color: string; }
-interface InventoryItem { id: number; item_name: string; category_name_ar: string; is_sellable: number; quantity: number; unit_cost: number; }
-interface MaterialLink { inventory_item_id: number; quantity_needed: number; item_name?: string; }
+interface InventoryItem { id: number; item_name: string; category_name_ar: string; category_name?: string; is_sellable: number; quantity: number; unit_cost: number; sheets_per_package: number; is_paper?: boolean; is_ink?: boolean; }
+interface MaterialLink { inventory_item_id: number; quantity_needed: number; cuts_per_sheet: number; cost_per_print: number; item_name?: string; category_key?: string; sheets_per_package?: number; unit_cost?: number; }
 
 const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6'];
 
@@ -81,7 +81,7 @@ const PricingPage: React.FC = () => {
   };
 
   const addMaterialRow = () => {
-    setLinkedMaterials(prev => [...prev, { inventory_item_id: 0, quantity_needed: 1 }]);
+    setLinkedMaterials(prev => [...prev, { inventory_item_id: 0, quantity_needed: 1, cuts_per_sheet: 1, cost_per_print: 0 }]);
   };
 
   const updateMaterialRow = (idx: number, field: string, value: any) => {
@@ -108,7 +108,19 @@ const PricingPage: React.FC = () => {
     const mats = packageMaterialsMap[pkg.id] || [];
     return mats.reduce((sum, m) => {
       const item = consumables.find(c => c.id === m.inventory_item_id);
-      return sum + (item ? item.unit_cost * m.quantity_needed : 0);
+      if (!item) return sum;
+      const catKey = (m as any).category_key || '';
+      if (catKey === 'paper') {
+        // Paper cost: (photos / cuts_per_sheet) * (package_cost / sheets_per_package)
+        const sheetsNeeded = Math.ceil(pkg.photo_count / (m.cuts_per_sheet || 1));
+        const costPerSheet = item.sheets_per_package > 0 ? item.unit_cost / item.sheets_per_package : item.unit_cost;
+        return sum + (sheetsNeeded * costPerSheet);
+      } else if (catKey === 'ink') {
+        // Ink: manual cost per print × number of photos
+        return sum + (m.cost_per_print * pkg.photo_count);
+      } else {
+        return sum + (item.unit_cost * m.quantity_needed);
+      }
     }, 0);
   };
 
@@ -243,19 +255,55 @@ const PricingPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-2">
-                      {linkedMaterials.map((mat, idx) => (
-                        <div key={idx} className="flex gap-2 items-center">
-                          <select value={mat.inventory_item_id} onChange={e => updateMaterialRow(idx, 'inventory_item_id', Number(e.target.value))}
-                            className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none">
-                            <option value={0}>{t.selectItem}</option>
-                            {consumables.map(c => <option key={c.id} value={c.id}>{c.item_name} ({c.category_name_ar}) - {lang === 'ar' ? 'متوفر' : 'Avail'}: {c.quantity}</option>)}
-                          </select>
-                          <input type="number" min="1" value={mat.quantity_needed} onChange={e => updateMaterialRow(idx, 'quantity_needed', parseInt(e.target.value) || 1)}
-                            className="w-20 px-3 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none text-center" placeholder={t.qty} />
-                          <button onClick={() => removeMaterialRow(idx)} className="w-9 h-9 rounded-lg text-destructive/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all"><Trash2 size={14} /></button>
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {linkedMaterials.map((mat, idx) => {
+                        const selectedItem = consumables.find(c => c.id === mat.inventory_item_id);
+                        const catName = selectedItem?.category_name || '';
+                        const isPaper = catName === 'paper' || catName === 'ورق';
+                        const isInk = catName === 'ink' || catName === 'أحبار';
+                        return (
+                          <div key={idx} className="bg-muted/30 border border-border rounded-xl p-3 space-y-2">
+                            <div className="flex gap-2 items-center">
+                              <select value={mat.inventory_item_id} onChange={e => updateMaterialRow(idx, 'inventory_item_id', Number(e.target.value))}
+                                className="flex-1 px-3 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none">
+                                <option value={0}>{t.selectItem}</option>
+                                {consumables.map(c => <option key={c.id} value={c.id}>{c.item_name} ({c.category_name_ar})</option>)}
+                              </select>
+                              <button onClick={() => removeMaterialRow(idx)} className="w-9 h-9 rounded-lg text-destructive/60 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all"><Trash2 size={14} /></button>
+                            </div>
+                            
+                            {isPaper && (
+                              <div className="flex gap-2 items-center bg-sky-500/5 rounded-lg p-2">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">📄 {lang === 'ar' ? 'قطع من الورقة:' : 'Cuts/sheet:'}</span>
+                                <input type="number" min="1" value={mat.cuts_per_sheet || 1} onChange={e => updateMaterialRow(idx, 'cuts_per_sheet', parseInt(e.target.value) || 1)}
+                                  className="w-16 px-2 py-1.5 bg-muted border border-border rounded-lg text-foreground text-xs outline-none text-center" />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {lang === 'ar' ? `= ${Math.ceil((materialsModal?.photo_count || 0) / (mat.cuts_per_sheet || 1))} ورقة مطلوبة` : `= ${Math.ceil((materialsModal?.photo_count || 0) / (mat.cuts_per_sheet || 1))} sheets needed`}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {isInk && (
+                              <div className="flex gap-2 items-center bg-amber-500/5 rounded-lg p-2">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">🖨️ {lang === 'ar' ? 'تكلفة الحبر/طبعة:' : 'Ink cost/print:'}</span>
+                                <input type="number" min="0" step="0.001" value={mat.cost_per_print || 0} onChange={e => updateMaterialRow(idx, 'cost_per_print', parseFloat(e.target.value) || 0)}
+                                  className="w-20 px-2 py-1.5 bg-muted border border-border rounded-lg text-foreground text-xs outline-none text-center" />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {lang === 'ar' ? `= ${((mat.cost_per_print || 0) * (materialsModal?.photo_count || 0)).toFixed(3)} إجمالي الحبر` : `= ${((mat.cost_per_print || 0) * (materialsModal?.photo_count || 0)).toFixed(3)} total ink`}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {!isPaper && !isInk && (
+                              <div className="flex gap-2 items-center">
+                                <span className="text-[10px] text-muted-foreground">{t.qty}:</span>
+                                <input type="number" min="1" value={mat.quantity_needed} onChange={e => updateMaterialRow(idx, 'quantity_needed', parseInt(e.target.value) || 1)}
+                                  className="w-20 px-2 py-1.5 bg-muted border border-border rounded-lg text-foreground text-xs outline-none text-center" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                     <button onClick={addMaterialRow} className="w-full py-2.5 border-2 border-dashed border-amber-500/30 rounded-xl text-amber-600 text-xs font-bold flex items-center justify-center gap-2 hover:bg-amber-500/5 transition-all">
                       <Plus size={14} />{t.addMaterial}
