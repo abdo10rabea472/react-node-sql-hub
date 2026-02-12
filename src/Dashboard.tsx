@@ -73,7 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
   useEffect(() => { document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; document.documentElement.lang = lang; }, [lang]);
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
-  useEffect(() => { if (activeNav === 0) { setStatsLoading(true); getStats().then(res => setStats(res.data)).catch(() => {}).finally(() => setStatsLoading(false)); } }, [activeNav]);
+  useEffect(() => { if (activeNav === 0) { setStatsLoading(true); getStats().then(res => setStats(res.data)).catch(() => { }).finally(() => setStatsLoading(false)); } }, [activeNav]);
 
   const toggleLang = () => updateSettings({ lang: settings.lang === 'ar' ? 'en' : 'ar' });
   const toggleTheme = () => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
@@ -261,3 +261,5 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     </div>
   );
 };
+
+export default Dashboard;
