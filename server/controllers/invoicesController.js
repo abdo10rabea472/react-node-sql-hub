@@ -1,5 +1,4 @@
 const db = require("../config/db");
-const { deductForInvoice } = require("./inventoryController");
 
 // Safe column check using whitelisted values only
 const ALLOWED_TABLES = ['invoices', 'wedding_invoices', 'wedding_invoice_items', 'studio_settings'];
@@ -116,8 +115,6 @@ exports.createInvoice = (req, res) => {
                             });
                         }
                         connection.release();
-                        // Deduct inventory
-                        deductForInvoice(invoice_id, 'studio', items, created_by);
                         res.json({ id: invoice_id, invoice_no, message: "Invoice created successfully" });
                     });
                 });
