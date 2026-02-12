@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Edit2, Search, Package, Loader, BarChart3, AlertTriangle, ArrowUp, ArrowDown, History, X, Tag } from 'lucide-react';
-import { getInventoryItems, getInventoryStats, createInventoryItem, updateInventoryItem, deleteInventoryItem, addStock, adjustStock, getInventoryCategories, createInventoryCategory, getInventoryTransactions } from './api';
+import { getInventoryItems, getInventoryStats, createInventoryItem, updateInventoryItem, deleteInventoryItem, addStock, adjustStock, getInventoryCategories, createInventoryCategory, updateInventoryCategory, getInventoryTransactions } from './api';
 import { useSettings } from './SettingsContext';
 
-interface Category { id: number; name: string; name_ar: string; color: string; icon: string; }
+interface Category { id: number; name: string; name_ar: string; color: string; icon: string; is_sellable: number; }
 interface InventoryItem {
     id: number; item_name: string; category_id: number; quantity: number;
     unit_cost: number; sell_price: number; min_stock: number; supplier: string; notes: string;
@@ -13,7 +13,7 @@ interface InventoryItem {
 }
 interface Stats {
     total_items: number; total_value: number; low_stock_count: number; total_quantity: number;
-    categories: { name: string; name_ar: string; color: string; item_count: number; category_value: number }[];
+    categories: { name: string; name_ar: string; color: string; is_sellable: number; item_count: number; category_value: number }[];
 }
 interface Transaction { id: number; type: string; quantity: number; notes: string; created_by: string; created_at: string; item_name: string; }
 
@@ -75,6 +75,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [newCatName, setNewCatName] = useState('');
     const [newCatNameAr, setNewCatNameAr] = useState('');
     const [newCatColor, setNewCatColor] = useState('#6B7280');
+    const [newCatSellable, setNewCatSellable] = useState(true);
 
     // Add stock modal
     const [stockModal, setStockModal] = useState<InventoryItem | null>(null);
@@ -153,9 +154,16 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const handleAddCategory = async () => {
         if (!newCatName) return;
         try {
-            await createInventoryCategory({ name: newCatName, name_ar: newCatNameAr || newCatName, color: newCatColor });
-            setShowNewCat(false); setNewCatName(''); setNewCatNameAr(''); setNewCatColor('#6B7280');
+            await createInventoryCategory({ name: newCatName, name_ar: newCatNameAr || newCatName, color: newCatColor, is_sellable: newCatSellable ? 1 : 0 });
+            setShowNewCat(false); setNewCatName(''); setNewCatNameAr(''); setNewCatColor('#6B7280'); setNewCatSellable(true);
             await fetchData(); toast(lang === 'ar' ? 'تم إضافة الفئة' : 'Category added');
+        } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
+    };
+
+    const handleToggleSellable = async (cat: Category) => {
+        try {
+            await updateInventoryCategory(cat.id, { is_sellable: cat.is_sellable ? 0 : 1 });
+            await fetchData();
         } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
     };
 
@@ -247,16 +255,24 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterCategory === 'all' ? 'border-primary/50 bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
                         {lang === 'ar' ? 'الكل' : 'All'}
                     </button>
-                    {stats.categories.map(c => (
-                        <button key={c.name} onClick={() => {
-                            const cat = categories.find(cc => cc.name === c.name);
-                            if (cat) setFilterCategory(filterCategory === cat.id ? 'all' : cat.id);
-                        }}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterCategory !== 'all' && categories.find(cc => cc.name === c.name)?.id === filterCategory ? 'border-primary/50 bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
-                            <span className="inline-block w-2 h-2 rounded-full me-1.5" style={{ backgroundColor: c.color }}></span>
-                            {lang === 'ar' ? c.name_ar : c.name} ({c.item_count})
-                        </button>
-                    ))}
+                    {stats.categories.map(c => {
+                        const cat = categories.find(cc => cc.name === c.name);
+                        const isSellable = Number(c.is_sellable) === 1;
+                        return (
+                            <button key={c.name} onClick={() => {
+                                if (cat) setFilterCategory(filterCategory === cat.id ? 'all' : cat.id);
+                            }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${filterCategory !== 'all' && cat?.id === filterCategory ? 'border-primary/50 bg-primary/10 text-foreground' : 'border-border bg-muted text-muted-foreground'}`}>
+                                <span className="inline-block w-2 h-2 rounded-full me-1.5" style={{ backgroundColor: c.color }}></span>
+                                {lang === 'ar' ? c.name_ar : c.name} ({c.item_count})
+                                <span className={`ms-1.5 text-[9px] px-1.5 py-0.5 rounded cursor-pointer`}
+                                    onClick={(e) => { e.stopPropagation(); if (cat) handleToggleSellable(cat); }}
+                                    style={{ background: isSellable ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: isSellable ? '#10B981' : '#F59E0B' }}>
+                                    {isSellable ? (lang === 'ar' ? 'قابل للبيع' : 'Sellable') : (lang === 'ar' ? 'مستهلك' : 'Consumable')}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
@@ -302,11 +318,18 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                     </div>
                                     <div className="flex gap-3 items-center">
                                         <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} className="w-10 h-10 rounded-lg border border-border cursor-pointer" />
+                                        <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground cursor-pointer select-none">
+                                            <input type="checkbox" checked={newCatSellable} onChange={e => setNewCatSellable(e.target.checked)} className="rounded" />
+                                            {lang === 'ar' ? 'قابل للبيع المباشر' : 'Directly Sellable'}
+                                        </label>
                                         <button onClick={handleAddCategory} disabled={!newCatName}
                                             className="flex-1 py-2.5 rounded-xl bg-accent text-accent-foreground font-bold text-xs hover:opacity-90 disabled:opacity-40 transition-all">
                                             {t.addCategory}
                                         </button>
                                     </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {lang === 'ar' ? '⚡ الفئات غير القابلة للبيع (مثل الورق والأحبار) تُستخدم كمواد استهلاكية مرتبطة بباقات التصوير' : '⚡ Non-sellable categories (like paper & ink) are used as consumables linked to photography packages'}
+                                    </p>
                                 </motion.div>
                             )}
                         </AnimatePresence>

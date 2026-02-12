@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash } from 'lucide-react';
-import { getInvoices, createInvoice, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
+import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash, Camera } from 'lucide-react';
+import { getInvoices, createInvoice, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage, getPackages } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
-interface InventoryProduct { id: number; item_name: string; sell_price: number; unit_cost: number; quantity: number; category_name_ar: string; category_color: string; }
+interface InventoryProduct { id: number; item_name: string; sell_price: number; unit_cost: number; quantity: number; category_name_ar: string; category_color: string; is_sellable: number; }
+interface PricingPackage { id: number; type: string; price: number; photo_count: number; color: string; }
 interface Invoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; participants: string; status: string; created_at: string; }
-interface SelectedPkg { tempId: number; id: number; inventory_item_id: number; type: string; price: number; quantity: number; }
+interface SelectedPkg { tempId: number; id: number; inventory_item_id: number; type: string; price: number; quantity: number; is_package?: boolean; package_id?: number; }
 interface InvoiceItem { package_name: string; item_price: number; }
 
 const translations = {
@@ -23,6 +24,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [products, setProducts] = useState<InventoryProduct[]>([]);
+    const [packages, setPackages] = useState<PricingPackage[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
     const [selectedPkgs, setSelectedPkgs] = useState<SelectedPkg[]>([]);
@@ -51,9 +53,10 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const fetchData = async () => {
         try {
-            const [custRes, prodRes, invRes] = await Promise.all([getCustomers(), getInventoryItems(), getInvoices()]);
+            const [custRes, prodRes, invRes, pkgRes] = await Promise.all([getCustomers(), getInventoryItems(), getInvoices(), getPackages()]);
             setCustomers(custRes.data);
-            setProducts(prodRes.data.filter((p: InventoryProduct) => p.sell_price > 0));
+            setProducts(prodRes.data.filter((p: InventoryProduct) => p.sell_price > 0 && Number(p.is_sellable) === 1));
+            setPackages(pkgRes.data);
             setInvoices(invRes.data);
         } catch (err) { console.error('Fetch error:', err); }
     };
@@ -62,7 +65,10 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const addPkg = (prod: InventoryProduct) => {
         if (prod.quantity <= 0) return;
-        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: prod.id, inventory_item_id: prod.id, type: prod.item_name, price: parseFloat(String(prod.sell_price)) || 0, quantity: 1 }]);
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: prod.id, inventory_item_id: prod.id, type: prod.item_name, price: parseFloat(String(prod.sell_price)) || 0, quantity: 1, is_package: false }]);
+    };
+    const addPackage = (pkg: PricingPackage) => {
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, inventory_item_id: 0, type: pkg.type, price: pkg.price, quantity: 1, is_package: true, package_id: pkg.id }]);
     };
     const removePkg = (tempId: number) => setSelectedPkgs(prev => prev.filter(p => p.tempId !== tempId));
     const totalAmount = selectedPkgs.reduce((sum, item) => sum + item.price, 0);
@@ -173,14 +179,33 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         {/* Packages */}
                         <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4">
+                                <Camera size={16} className="text-primary" />{lang === 'ar' ? 'باقات التصوير' : 'Photography Packages'}
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+                                {packages.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground col-span-full text-center py-3">{lang === 'ar' ? 'لا توجد باقات' : 'No packages'}</p>
+                                ) : packages.map(pkg => (
+                                    <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
+                                        className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/10 transition-all group relative">
+                                        <span className="text-sm font-bold text-foreground block">{pkg.type}</span>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className="text-xs text-primary font-semibold">{pkg.price} {settings.currency}</span>
+                                            <span className="text-[10px] text-muted-foreground">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'}</span>
+                                        </div>
+                                        <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                                    </motion.div>
+                                ))}
+                            </div>
+
+                            <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4 mt-5">
                                 <Package size={16} className="text-primary" />{t.selectPackages}
                                 <span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span>
                             </h3>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                                 {products.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground col-span-full text-center py-4">{lang === 'ar' ? 'لا توجد منتجات - أضف منتجات من المخزون أولاً' : 'No products - add items to inventory first'}</p>
+                                    <p className="text-sm text-muted-foreground col-span-full text-center py-4">{lang === 'ar' ? 'لا توجد منتجات قابلة للبيع' : 'No sellable products'}</p>
                                 ) : products.map(prod => (
-                                    <motion.div key={prod.id} whileTap={{ scale: 0.97 }} onClick={() => addPkg(prod)}
+                                    <motion.div key={`prod-${prod.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPkg(prod)}
                                         className={`bg-muted/50 border border-border rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group relative ${prod.quantity <= 0 ? 'opacity-40 cursor-not-allowed' : ''}`}>
                                         <span className="text-sm font-bold text-foreground block">{prod.item_name}</span>
                                         <div className="flex justify-between items-center mt-1">

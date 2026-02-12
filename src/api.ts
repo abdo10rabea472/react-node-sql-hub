@@ -106,6 +106,7 @@ export const addStock = (id: number, data: any) => api.post(`/inventory/${id}/ad
 export const adjustStock = (id: number, data: any) => api.post(`/inventory/${id}/adjust`, data);
 export const getInventoryCategories = () => api.get("/inventory/categories");
 export const createInventoryCategory = (data: any) => api.post("/inventory/categories", data);
+export const updateInventoryCategory = (id: number, data: any) => api.put(`/inventory/categories/${id}`, data);
 export const deleteInventoryCategory = (id: number) => api.delete(`/inventory/categories/${id}`);
 export const getPackageMaterials = (packageId: number, packageType: string) => api.get(`/inventory/materials/${packageId}/${packageType}`);
 export const setPackageMaterials = (packageId: number, packageType: string, materials: any[]) => api.post(`/inventory/materials/${packageId}/${packageType}`, { materials });
