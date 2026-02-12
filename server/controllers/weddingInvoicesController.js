@@ -1,11 +1,13 @@
 const db = require("../config/db");
 
-// Check and add columns if missing
+// Safe column check
+const ALLOWED_TABLES = ['wedding_invoices', 'wedding_invoice_items'];
 const ensureColumnExists = (table, column, definition) => {
-    db.query(`SHOW COLUMNS FROM ${table} LIKE '${column}'`, (err, results) => {
+    if (!ALLOWED_TABLES.includes(table)) return;
+    db.query(`SHOW COLUMNS FROM \`${table}\` LIKE ?`, [column], (err, results) => {
         if (err) return console.error(`Error checking ${column} in ${table}:`, err);
         if (results && results.length === 0) {
-            db.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err) => {
+            db.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`, (err) => {
                 if (err) console.error(`Error adding ${column} to ${table}:`, err);
                 else console.log(`✅ Column '${column}' added to table '${table}'`);
             });
@@ -31,7 +33,6 @@ db.query(`CREATE TABLE IF NOT EXISTS wedding_invoices (
 )`, (err) => {
     if (err) console.error("Error creating wedding_invoices table:", err);
     else {
-        // Run column checks after table creation
         ensureColumnExists('wedding_invoices', 'created_by', 'VARCHAR(255)');
         ensureColumnExists('wedding_invoices', 'venue', 'VARCHAR(255)');
         ensureColumnExists('wedding_invoices', 'notes', 'TEXT');
@@ -66,7 +67,10 @@ exports.getInvoices = (req, res) => {
         ORDER BY wi.created_at DESC
     `;
     db.query(query, (err, results) => {
-        if (err) return res.status(500).json({ message: "Error fetching wedding invoices", error: err });
+        if (err) {
+            console.error("[Wedding Invoices] Fetch error:", err);
+            return res.status(500).json({ message: "خطأ في جلب فواتير الأفراح" });
+        }
         res.json(results);
     });
 };
@@ -80,7 +84,10 @@ exports.getInvoiceDetails = (req, res) => {
         WHERE wit.invoice_id = ?
     `;
     db.query(query, [id], (err, results) => {
-        if (err) return res.status(500).json({ message: "Error fetching wedding invoice details", error: err });
+        if (err) {
+            console.error("[Wedding Invoices] Details error:", err);
+            return res.status(500).json({ message: "خطأ في جلب تفاصيل الفاتورة" });
+        }
         res.json(results);
     });
 };
@@ -89,13 +96,10 @@ exports.getInvoiceDetails = (req, res) => {
 exports.createInvoice = (req, res) => {
     const { customer_id, items, total_amount, paid_amount, created_by, wedding_date, venue, notes } = req.body;
 
-    // Robust numeric handling
     const total = parseFloat(total_amount) || 0;
     const paid = parseFloat(paid_amount) || 0;
     const remaining_amount = total - paid;
     const invoice_no = `WED-${Date.now()}`;
-
-    // Date handling: MySQL DATE column rejects empty strings
     const cleanWeddingDate = wedding_date && wedding_date.trim() !== '' ? wedding_date : null;
 
     let status = 'pending';
@@ -103,16 +107,19 @@ exports.createInvoice = (req, res) => {
     else if (paid > 0) status = 'partial';
 
     db.getConnection((err, connection) => {
-        if (err) return res.status(500).json({ message: "DB Connection Error" });
+        if (err) {
+            console.error("[Wedding Invoices] Connection error:", err);
+            return res.status(500).json({ message: "خطأ في الاتصال بقاعدة البيانات" });
+        }
 
         connection.beginTransaction(err => {
-            if (err) { connection.release(); return res.status(500).json({ message: "Transaction Error" }); }
+            if (err) { connection.release(); return res.status(500).json({ message: "خطأ في بدء العملية" }); }
 
             const invQuery = "INSERT INTO wedding_invoices (customer_id, invoice_no, total_amount, paid_amount, remaining_amount, created_by, wedding_date, venue, notes, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             connection.query(invQuery, [customer_id, invoice_no, total, paid, remaining_amount, created_by, cleanWeddingDate, venue, notes, status], (err, result) => {
                 if (err) {
-                    console.error("❌ Wedding Invoice Master Insert Error:", err);
-                    return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Error creating wedding invoice", error: err }); });
+                    console.error("[Wedding Invoices] Create error:", err);
+                    return connection.rollback(() => { connection.release(); res.status(500).json({ message: "خطأ في إنشاء الفاتورة" }); });
                 }
 
                 const invoice_id = result.insertId;
@@ -129,12 +136,12 @@ exports.createInvoice = (req, res) => {
 
                 connection.query(itemQuery, [itemData], (err) => {
                     if (err) {
-                        console.error("❌ Wedding Invoice Items Insert Error:", err);
-                        return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Error adding wedding invoice items", error: err }); });
+                        console.error("[Wedding Invoices] Items error:", err);
+                        return connection.rollback(() => { connection.release(); res.status(500).json({ message: "خطأ في إضافة عناصر الفاتورة" }); });
                     }
 
                     connection.commit(err => {
-                        if (err) { return connection.rollback(() => { connection.release(); res.status(500).json({ message: "Commit Error" }); }); }
+                        if (err) { return connection.rollback(() => { connection.release(); res.status(500).json({ message: "خطأ في حفظ الفاتورة" }); }); }
                         connection.release();
                         console.log("✅ Wedding Invoice Created:", invoice_no);
                         res.json({ id: invoice_id, invoice_no, message: "Wedding invoice created successfully" });
@@ -161,7 +168,10 @@ exports.updateInvoice = (req, res) => {
 
     const query = "UPDATE wedding_invoices SET paid_amount = ?, remaining_amount = ?, status = ?, wedding_date = ?, venue = ?, notes = ? WHERE id = ?";
     db.query(query, [paid, remaining_amount, status, cleanWeddingDate, venue, notes, id], (err) => {
-        if (err) return res.status(500).json({ message: "Error updating wedding invoice", error: err });
+        if (err) {
+            console.error("[Wedding Invoices] Update error:", err);
+            return res.status(500).json({ message: "خطأ في تحديث الفاتورة" });
+        }
         res.json({ message: "Wedding invoice updated successfully" });
     });
 };
@@ -170,7 +180,10 @@ exports.updateInvoice = (req, res) => {
 exports.deleteInvoice = (req, res) => {
     const { id } = req.params;
     db.query("DELETE FROM wedding_invoices WHERE id = ?", [id], (err) => {
-        if (err) return res.status(500).json({ message: "Error deleting wedding invoice", error: err });
+        if (err) {
+            console.error("[Wedding Invoices] Delete error:", err);
+            return res.status(500).json({ message: "خطأ في حذف الفاتورة" });
+        }
         res.json({ message: "Wedding invoice deleted successfully" });
     });
 };
