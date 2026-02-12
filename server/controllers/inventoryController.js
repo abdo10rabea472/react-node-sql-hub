@@ -311,7 +311,11 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                         if (mat.category_key === 'paper' && mat.sheets_per_package > 0) {
                             // Paper: track remaining sheets in current package (used_sheets = remaining)
                             const sheetsNeeded = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
-                            const currentRemaining = mat.used_sheets || 0;
+                            // If used_sheets is 0 but we have stock, initialize to full package
+                            let currentRemaining = mat.used_sheets || 0;
+                            if (currentRemaining === 0 && mat.available_qty > 0) {
+                                currentRemaining = mat.sheets_per_package;
+                            }
                             let newRemaining = currentRemaining - sheetsNeeded;
                             let packagesConsumed = 0;
                             
