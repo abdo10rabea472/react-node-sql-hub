@@ -42,6 +42,7 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
     unit_cost DECIMAL(10, 2) DEFAULT 0,
     sell_price DECIMAL(10, 2) DEFAULT 0,
     sheets_per_package INT DEFAULT 0,
+    used_sheets INT DEFAULT 0,
     min_stock INT DEFAULT 5,
     supplier VARCHAR(255),
     notes TEXT,
@@ -291,48 +292,73 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
     
     items.forEach(item => {
         if (item.is_package) {
-            // For packages: deduct linked consumables with sheet tracking
             const packageId = item.package_id || item.id;
             const photoCount = item.photo_count || item.quantity || 1;
+            console.log(`[DEDUCT] Package #${packageId}, photoCount=${photoCount}, itemQty=${item.quantity}`);
+            
             db.query(`SELECT pm.inventory_item_id, pm.quantity_needed, pm.cuts_per_sheet, pm.cost_per_print, 
-                      ic.name as category_key, i.sheets_per_package, i.used_sheets, i.quantity as available_qty
+                      ic.name as category_key, i.sheets_per_package, i.used_sheets, i.quantity as available_qty, i.item_name
                       FROM package_materials pm
                       JOIN inventory i ON pm.inventory_item_id = i.id
                       LEFT JOIN inventory_categories ic ON i.category_id = ic.id
-                      WHERE pm.package_id = ? AND pm.package_type = 'studio'`,
-                [packageId], (err, materials) => {
-                    if (err || !materials || materials.length === 0) {
+                      WHERE pm.package_id = ? AND pm.package_type = ?`,
+                [packageId, invoiceType === 'wedding' ? 'wedding_album' : 'studio'], (err, materials) => {
+                    if (err) {
+                        console.error("[DEDUCT] Materials query error:", err.message);
                         processed++;
                         if (processed === totalItems && callback) callback();
                         return;
                     }
+                    if (!materials || materials.length === 0) {
+                        console.log(`[DEDUCT] No materials linked to package #${packageId}`);
+                        processed++;
+                        if (processed === totalItems && callback) callback();
+                        return;
+                    }
+                    
                     let matProcessed = 0;
                     materials.forEach(mat => {
-                        if (mat.category_key === 'paper' && mat.sheets_per_package > 0) {
-                            // Paper: track remaining sheets in current package (used_sheets = remaining)
+                        console.log(`[DEDUCT] Material: ${mat.item_name}, category=${mat.category_key}, sheets_per_pkg=${mat.sheets_per_package}, used_sheets=${mat.used_sheets}, available=${mat.available_qty}, cuts_per_sheet=${mat.cuts_per_sheet}`);
+                        
+                        if (mat.sheets_per_package > 0) {
+                            // ===== PAPER/SHEET-BASED ITEM =====
+                            // used_sheets = remaining sheets in current open package
                             const sheetsNeeded = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
-                            // If used_sheets is 0 but we have stock, initialize to full package
-                            let currentRemaining = mat.used_sheets || 0;
-                            if (currentRemaining === 0 && mat.available_qty > 0) {
+                            
+                            // Initialize: if used_sheets is 0/null but we have packages, open one
+                            let currentRemaining = parseInt(mat.used_sheets) || 0;
+                            if (currentRemaining <= 0 && mat.available_qty > 0) {
                                 currentRemaining = mat.sheets_per_package;
+                                console.log(`[DEDUCT] Initializing used_sheets to ${mat.sheets_per_package} (opening first package)`);
                             }
+                            
                             let newRemaining = currentRemaining - sheetsNeeded;
                             let packagesConsumed = 0;
                             
-                            // If remaining goes negative, consume packages
-                            while (newRemaining <= 0 && mat.available_qty > packagesConsumed) {
-                                packagesConsumed++;
-                                newRemaining += mat.sheets_per_package;
-                            }
-                            // Ensure not negative
-                            if (newRemaining < 0) newRemaining = 0;
+                            console.log(`[DEDUCT] Sheets needed: ${sheetsNeeded}, current remaining: ${currentRemaining}, after deduct: ${newRemaining}`);
                             
-                            db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?), used_sheets = ? WHERE id = ?",
-                                [packagesConsumed, newRemaining, mat.inventory_item_id], (err) => {
-                                    if (!err) {
-                                        const note = packagesConsumed > 0
-                                            ? `خصم ${sheetsNeeded} ورقة (${packagesConsumed} بكج مفتوح) - فاتورة #${invoiceId} | متبقي ${newRemaining}/${mat.sheets_per_package} ورقة`
-                                            : `خصم ${sheetsNeeded} ورقة - فاتورة #${invoiceId} | متبقي ${newRemaining}/${mat.sheets_per_package} ورقة`;
+                            // Only consume a NEW package when remaining goes to 0 or below
+                            if (newRemaining < 0) {
+                                // Current package exhausted, need to open new one(s)
+                                while (newRemaining < 0) {
+                                    packagesConsumed++;
+                                    newRemaining += mat.sheets_per_package;
+                                }
+                            } else if (newRemaining === 0) {
+                                // Exactly finished current package - mark as empty, will open new on next deduction
+                                // Don't consume a package now - it was already counted when opened
+                            }
+                            
+                            console.log(`[DEDUCT] Result: packagesConsumed=${packagesConsumed}, newRemaining=${newRemaining}`);
+                            
+                            // ONLY update used_sheets, do NOT touch quantity unless packages are consumed
+                            db.query("UPDATE inventory SET used_sheets = ?, quantity = GREATEST(0, quantity - ?) WHERE id = ?",
+                                [Math.max(0, newRemaining), packagesConsumed, mat.inventory_item_id], (err) => {
+                                    if (err) {
+                                        console.error(`[DEDUCT] UPDATE error:`, err.message);
+                                    } else {
+                                        console.log(`[DEDUCT] ✅ Updated ${mat.item_name}: used_sheets=${Math.max(0, newRemaining)}, qty reduced by ${packagesConsumed}`);
+                                        const note = `خصم ${sheetsNeeded} ورقة - فاتورة #${invoiceId} | متبقي ${Math.max(0, newRemaining)}/${mat.sheets_per_package} ورقة${packagesConsumed > 0 ? ` (${packagesConsumed} بكج خلص)` : ''}`;
                                         db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
                                             [mat.inventory_item_id, -sheetsNeeded, invoiceId, invoiceType, note, createdBy || 'Admin']);
                                     }
@@ -343,14 +369,12 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                                     }
                                 });
                         } else {
-                            // Other consumables: deduct quantity directly
-                            const deductQty = mat.category_key === 'paper'
-                                ? Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1)
-                                : mat.quantity_needed * (item.quantity || 1);
+                            // ===== NON-SHEET ITEM (ink, etc) - deduct quantity directly =====
+                            const deductQty = mat.quantity_needed * (item.quantity || 1);
                             db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
                                 if (!err) {
                                     db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
-                                        [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - باقة في فاتورة #${invoiceId}`, createdBy || 'Admin']);
+                                        [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
                                 }
                                 matProcessed++;
                                 if (matProcessed === materials.length) {
@@ -362,7 +386,7 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                     });
                 });
         } else {
-            // For direct inventory items: deduct directly
+            // For direct inventory items (frames, etc): deduct quantity directly
             const deductQty = item.quantity || 1;
             const inventoryId = item.inventory_item_id || item.id;
             db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, inventoryId], (err) => {
