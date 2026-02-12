@@ -41,6 +41,7 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
     quantity INT DEFAULT 0,
     unit_cost DECIMAL(10, 2) DEFAULT 0,
     sell_price DECIMAL(10, 2) DEFAULT 0,
+    sheets_per_package INT DEFAULT 0,
     min_stock INT DEFAULT 5,
     supplier VARCHAR(255),
     notes TEXT,
@@ -50,11 +51,16 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
 )`, (err) => {
     if (err) console.error("Error creating inventory:", err);
     else {
-        db.query("SHOW COLUMNS FROM inventory LIKE 'sell_price'", (err, results) => {
-            if (!err && results && results.length === 0) {
-                db.query("ALTER TABLE inventory ADD COLUMN sell_price DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost");
-            }
-        });
+        // Ensure new columns exist
+        const ensureCol = (col, def) => {
+            db.query(`SHOW COLUMNS FROM inventory LIKE '${col}'`, (err, results) => {
+                if (!err && results && results.length === 0) {
+                    db.query(`ALTER TABLE inventory ADD COLUMN ${col} ${def}`);
+                }
+            });
+        };
+        ensureCol('sell_price', 'DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost');
+        ensureCol('sheets_per_package', 'INT DEFAULT 0 AFTER sell_price');
     }
 });
 
@@ -65,8 +71,23 @@ db.query(`CREATE TABLE IF NOT EXISTS package_materials (
     package_type ENUM('studio', 'wedding_album', 'wedding_video') DEFAULT 'studio',
     inventory_item_id INT NOT NULL,
     quantity_needed INT DEFAULT 1,
+    cuts_per_sheet INT DEFAULT 1,
+    cost_per_print DECIMAL(10, 4) DEFAULT 0,
     UNIQUE KEY unique_pkg_item (package_id, package_type, inventory_item_id)
-)`, (err) => { if (err) console.error("Error creating package_materials:", err); });
+)`, (err) => {
+    if (err) console.error("Error creating package_materials:", err);
+    else {
+        const ensureCol = (col, def) => {
+            db.query(`SHOW COLUMNS FROM package_materials LIKE '${col}'`, (err, results) => {
+                if (!err && results && results.length === 0) {
+                    db.query(`ALTER TABLE package_materials ADD COLUMN ${col} ${def}`);
+                }
+            });
+        };
+        ensureCol('cuts_per_sheet', 'INT DEFAULT 1 AFTER quantity_needed');
+        ensureCol('cost_per_print', 'DECIMAL(10, 4) DEFAULT 0 AFTER cuts_per_sheet');
+    }
+});
 
 db.query(`CREATE TABLE IF NOT EXISTS inventory_transactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -146,15 +167,16 @@ exports.getStats = (req, res) => {
 };
 
 exports.createItem = (req, res) => {
-    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes, created_by } = req.body;
     if (!item_name) return res.status(400).json({ message: "اسم الصنف مطلوب" });
 
     const qty = parseInt(quantity) || 0;
     const cost = parseFloat(unit_cost) || 0;
     const sell = parseFloat(sell_price) || 0;
+    const sheets = parseInt(sheets_per_package) || 0;
 
-    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [item_name, category_id || null, qty, cost, sell, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
+    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [item_name, category_id || null, qty, cost, sell, sheets, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
         (err, result) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة الصنف" });
             if (qty > 0) {
@@ -167,10 +189,10 @@ exports.createItem = (req, res) => {
 
 exports.updateItem = (req, res) => {
     const { id } = req.params;
-    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes } = req.body;
 
-    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, sell_price = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
-        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseFloat(sell_price) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
+    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, sell_price = ?, sheets_per_package = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
+        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseFloat(sell_price) || 0, parseInt(sheets_per_package) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
         (err) => {
             if (err) return res.status(500).json({ message: "خطأ في تحديث الصنف" });
             res.json({ message: "تم تحديث الصنف بنجاح" });
@@ -219,7 +241,7 @@ exports.adjustStock = (req, res) => {
 // ==================== Package Materials ====================
 exports.getPackageMaterials = (req, res) => {
     const { packageId, packageType } = req.params;
-    db.query(`SELECT pm.*, i.item_name, i.unit_cost, i.quantity as available_qty, ic.name_ar as category_name
+    db.query(`SELECT pm.*, i.item_name, i.unit_cost, i.quantity as available_qty, i.sheets_per_package, ic.name_ar as category_name, ic.name as category_key
               FROM package_materials pm
               JOIN inventory i ON pm.inventory_item_id = i.id
               LEFT JOIN inventory_categories ic ON i.category_id = ic.id
@@ -238,8 +260,8 @@ exports.setPackageMaterials = (req, res) => {
         if (err) return res.status(500).json({ message: "خطأ" });
         if (!materials || materials.length === 0) return res.json({ message: "تم حفظ المواد" });
 
-        const values = materials.map(m => [packageId, packageType || 'studio', m.inventory_item_id, m.quantity_needed || 1]);
-        db.query("INSERT INTO package_materials (package_id, package_type, inventory_item_id, quantity_needed) VALUES ?", [values], (err) => {
+        const values = materials.map(m => [packageId, packageType || 'studio', m.inventory_item_id, m.quantity_needed || 1, m.cuts_per_sheet || 1, m.cost_per_print || 0]);
+        db.query("INSERT INTO package_materials (package_id, package_type, inventory_item_id, quantity_needed, cuts_per_sheet, cost_per_print) VALUES ?", [values], (err) => {
             if (err) return res.status(500).json({ message: "خطأ في حفظ المواد" });
             res.json({ message: "تم حفظ المواد بنجاح" });
         });
@@ -255,9 +277,14 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
     
     items.forEach(item => {
         if (item.is_package) {
-            // For packages: deduct linked consumables
+            // For packages: deduct linked consumables (paper by sheets, ink by cost tracking)
             const packageId = item.package_id || item.id;
-            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed FROM package_materials pm WHERE pm.package_id = ? AND pm.package_type = 'studio'`,
+            const photoCount = item.photo_count || item.quantity || 1;
+            db.query(`SELECT pm.inventory_item_id, pm.quantity_needed, pm.cuts_per_sheet, pm.cost_per_print, ic.name as category_key
+                      FROM package_materials pm
+                      JOIN inventory i ON pm.inventory_item_id = i.id
+                      LEFT JOIN inventory_categories ic ON i.category_id = ic.id
+                      WHERE pm.package_id = ? AND pm.package_type = 'studio'`,
                 [packageId], (err, materials) => {
                     if (err || !materials || materials.length === 0) {
                         processed++;
@@ -266,7 +293,14 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                     }
                     let matProcessed = 0;
                     materials.forEach(mat => {
-                        const deductQty = mat.quantity_needed * (item.quantity || 1);
+                        let deductQty;
+                        if (mat.category_key === 'paper') {
+                            // Paper: deduct sheets. photos / cuts_per_sheet = sheets needed
+                            deductQty = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
+                        } else {
+                            // Other consumables: use quantity_needed directly
+                            deductQty = mat.quantity_needed * (item.quantity || 1);
+                        }
                         db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id], (err) => {
                             if (!err) {
                                 db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
