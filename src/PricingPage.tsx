@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Plus, Edit3, Trash2, Image as ImageIcon, DollarSign, FileText, X, Save, AlertCircle, Loader, Link2, Package } from 'lucide-react';
+import { Camera, Plus, Edit3, Trash2, DollarSign, X, Save, AlertCircle, Loader, Link2, Package, Image as ImageIcon } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { getPackages, createPackage, updatePackage, deletePackage, getInventoryItems, getPackageMaterials, setPackageMaterials } from './api';
 
 interface PricingPackage { id: number; type: string; price: number; photo_count: number; sizes: string[]; color: string; }
-// photo_count is repurposed: 1 = per photo pricing. "type" = size name (e.g. "4x6"), "sizes" = notes/description
+// photo_count: 1 = مستعجل (urgent, with materials), 0 = عادي (regular, no materials)
 interface InventoryItem { id: number; item_name: string; category_name_ar: string; category_name?: string; is_sellable: number; quantity: number; unit_cost: number; sheets_per_package: number; is_paper?: boolean; is_ink?: boolean; }
 interface MaterialLink { inventory_item_id: number; quantity_needed: number; cuts_per_sheet: number; cost_per_print: number; item_name?: string; category_key?: string; sheets_per_package?: number; unit_cost?: number; }
 
 const COLORS = ['#0ea5e9', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6'];
 
 const translations = {
-  ar: { title: 'أسعار الصور حسب المقاس', subtitle: 'حدد سعر الصورة الواحدة لكل مقاس - مع ربط تكلفة الورق والأحبار', addPackage: 'إضافة مقاس جديد', editPackage: 'تعديل المقاس', packageType: 'مقاس الصورة', price: 'سعر الصورة الواحدة', photosIncluded: 'صورة', sizes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', invoicePreview: 'معاينة', generateInvoice: 'اضغط على مقاس لعرض المعاينة', placeholderType: 'مثال: 4x6, 5x7, 8x10, A4...', empty: 'لا توجد مقاسات حالياً. ابدأ بإضافة واحد!', total: 'الإجمالي', date: 'التاريخ', invoiceNo: 'رقم الفاتورة', loading: 'جاري التحميل...', materials: 'المواد المستهلكة', linkMaterials: 'ربط المواد', addMaterial: 'إضافة مادة', qty: 'الكمية', selectItem: 'اختر مادة...', materialCost: 'تكلفة المواد', noConsumables: 'لا توجد مواد استهلاكية - أضف أصناف (ورق/أحبار) في المخزون أولاً', saveMaterials: 'حفظ الربط', perPhoto: 'للصورة', cutsPerSheet: 'قطع/ورقة', inkCost: 'تكلفة حبر/طبعة', profit: 'الربح' },
-  en: { title: 'Photo Pricing by Size', subtitle: 'Set price per photo for each size - with paper & ink cost linking', addPackage: 'Add New Size', editPackage: 'Edit Size', packageType: 'Photo Size', price: 'Price per Photo', photosIncluded: 'photo', sizes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete', invoicePreview: 'Preview', generateInvoice: 'Click a size to preview', placeholderType: 'e.g. 4x6, 5x7, 8x10, A4...', empty: 'No sizes yet. Start by adding one!', total: 'Total', date: 'Date', invoiceNo: 'Invoice No', loading: 'Loading...', materials: 'Consumable Materials', linkMaterials: 'Link Materials', addMaterial: 'Add Material', qty: 'Qty', selectItem: 'Select item...', materialCost: 'Material Cost', noConsumables: 'No consumables found - add items (paper/ink) to inventory first', saveMaterials: 'Save Links', perPhoto: '/photo', cutsPerSheet: 'cuts/sheet', inkCost: 'ink cost/print', profit: 'Profit' },
+  ar: { title: 'أسعار الصور حسب المقاس', subtitle: 'حدد سعر الصورة الواحدة لكل مقاس', addPackage: 'إضافة مقاس جديد', editPackage: 'تعديل المقاس', packageType: 'مقاس الصورة', price: 'سعر الصورة', photosIncluded: 'صورة', sizes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', invoicePreview: 'معاينة', generateInvoice: 'اضغط على مقاس لعرض المعاينة', placeholderType: 'مثال: 4x6, 5x7, 8x10...', empty: 'لا توجد مقاسات حالياً', total: 'الإجمالي', date: 'التاريخ', invoiceNo: 'رقم الفاتورة', loading: 'جاري التحميل...', materials: 'المواد المستهلكة', linkMaterials: 'ربط المواد', addMaterial: 'إضافة مادة', qty: 'الكمية', selectItem: 'اختر مادة...', materialCost: 'تكلفة المواد', noConsumables: 'لا توجد مواد استهلاكية', saveMaterials: 'حفظ الربط', perPhoto: 'للصورة', cutsPerSheet: 'قطع/ورقة', inkCost: 'تكلفة حبر/طبعة', profit: 'الربح', urgent: 'تصوير مستعجل', urgentDesc: 'أنت تطبع - يتم خصم المواد', regular: 'تصوير عادي', regularDesc: 'شخص آخر يطبع - بدون مواد', urgentSection: '⚡ تصوير مستعجل (طباعة محلية)', regularSection: '📷 تصوير عادي (طباعة خارجية)' },
+  en: { title: 'Photo Pricing by Size', subtitle: 'Set price per photo for each size', addPackage: 'Add New Size', editPackage: 'Edit Size', packageType: 'Photo Size', price: 'Price per Photo', photosIncluded: 'photo', sizes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete', invoicePreview: 'Preview', generateInvoice: 'Click a size to preview', placeholderType: 'e.g. 4x6, 5x7, 8x10...', empty: 'No sizes yet', total: 'Total', date: 'Date', invoiceNo: 'Invoice No', loading: 'Loading...', materials: 'Consumable Materials', linkMaterials: 'Link Materials', addMaterial: 'Add Material', qty: 'Qty', selectItem: 'Select item...', materialCost: 'Material Cost', noConsumables: 'No consumables found', saveMaterials: 'Save Links', perPhoto: '/photo', cutsPerSheet: 'cuts/sheet', inkCost: 'ink cost/print', profit: 'Profit', urgent: 'Urgent Print', urgentDesc: 'You print - materials deducted', regular: 'Regular', regularDesc: 'External print - no materials', urgentSection: '⚡ Urgent (Local Print)', regularSection: '📷 Regular (External Print)' },
 };
 
 const PricingPage: React.FC = () => {
@@ -137,57 +137,83 @@ const PricingPage: React.FC = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-4 sm:gap-6 items-start">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-6">
           {loading ? (
-            <div className="col-span-full flex flex-col items-center justify-center min-h-[300px] gap-3"><Loader className="animate-spin text-primary" size={28} /><p className="text-muted-foreground text-sm">{t.loading}</p></div>
+            <div className="flex flex-col items-center justify-center min-h-[300px] gap-3"><Loader className="animate-spin text-primary" size={28} /><p className="text-muted-foreground text-sm">{t.loading}</p></div>
           ) : packages.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center min-h-[300px] gap-3 text-muted-foreground"><AlertCircle size={40} /><p>{t.empty}</p></div>
+            <div className="flex flex-col items-center justify-center min-h-[300px] gap-3 text-muted-foreground"><AlertCircle size={40} /><p>{t.empty}</p></div>
           ) : (
-            packages.map((pkg, idx) => {
-              const mats = packageMaterialsMap[pkg.id] || [];
-              const matCost = getMaterialCost(pkg);
-              return (
-                <motion.div key={pkg.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}
-                  className="bg-card border border-border rounded-xl p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all relative overflow-hidden group"
-                  style={{ borderTopColor: pkg.color, borderTopWidth: 3 }} onClick={() => setSelectedPreview(pkg)}>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-foreground">{pkg.type}</h3>
-                    <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openMaterialsModal(pkg)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all" title={t.linkMaterials}><Link2 size={14} /></button>
-                      <button onClick={() => openModal(pkg)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
-                      <button onClick={() => handleDelete(pkg.id)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
-                    </div>
+            <>
+              {/* Urgent Section */}
+              {packages.filter(p => p.photo_count === 1).length > 0 && (
+                <div>
+                  <h2 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">{t.urgentSection}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {packages.filter(p => p.photo_count === 1).map((pkg, idx) => {
+                      const mats = packageMaterialsMap[pkg.id] || [];
+                      const matCost = getMaterialCost(pkg);
+                      return (
+                        <motion.div key={pkg.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}
+                          className="bg-card border border-border rounded-xl p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all relative overflow-hidden group border-l-4 border-l-amber-500"
+                          onClick={() => setSelectedPreview(pkg)}>
+                          <div className="flex justify-between items-center mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-500 text-lg">⚡</span>
+                              <h3 className="font-bold text-foreground">{pkg.type}</h3>
+                            </div>
+                            <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => openMaterialsModal(pkg)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 transition-all" title={t.linkMaterials}><Link2 size={14} /></button>
+                              <button onClick={() => openModal(pkg)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
+                              <button onClick={() => handleDelete(pkg.id)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
+                            </div>
+                          </div>
+                          <div className="flex items-baseline gap-1.5 mb-2"><span className="text-2xl font-extrabold text-foreground">{pkg.price}</span><span className="text-sm text-muted-foreground">{currentCurrency}/{t.perPhoto}</span></div>
+                          {matCost > 0 && (
+                            <div className="flex justify-between text-xs mb-2 bg-amber-500/5 rounded-lg px-3 py-2">
+                              <span className="text-muted-foreground">{t.materialCost}: <strong className="text-amber-600">{matCost.toFixed(2)}</strong></span>
+                              <span className="font-bold text-emerald-600">{t.profit}: {(pkg.price - matCost).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {(() => { const mats2 = packageMaterialsMap[pkg.id] || []; const paperMat = mats2.find((m: any) => m.category_key === 'paper'); const inkMat = mats2.find((m: any) => m.category_key === 'ink'); return (<div className="flex flex-wrap gap-2 text-xs">{paperMat && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full">{paperMat.cuts_per_sheet} {t.cutsPerSheet}</span>}{inkMat && <span className="bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full">{t.inkCost}: {inkMat.cost_per_print}</span>}</div>); })()}
+                          {mats.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {mats.map((m, i) => <span key={i} className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"><Package size={10} />{m.item_name}</span>)}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-baseline gap-1.5 mb-3"><span className="text-3xl font-extrabold text-foreground tracking-tight">{pkg.price}</span><span className="text-base font-semibold text-muted-foreground">{currentCurrency}</span><span className="text-xs text-muted-foreground">/{t.perPhoto || t.photosIncluded}</span></div>
-                  
-                  {matCost > 0 && (
-                    <div className="flex justify-between text-xs mb-3 bg-muted/50 rounded-lg px-3 py-2">
-                      <span className="text-muted-foreground">{t.materialCost}</span>
-                      <span className="font-bold text-amber-600">{matCost.toFixed(2)} {currentCurrency}</span>
-                      <span className="font-bold text-emerald-600">{lang === 'ar' ? 'ربح' : 'Profit'}: {(pkg.price - matCost).toFixed(2)}</span>
-                    </div>
-                  )}
+                </div>
+              )}
 
-                  <div className="space-y-3 mb-3">
-                    {/* Show cuts info from linked materials */}
-                    {(() => { const mats2 = packageMaterialsMap[pkg.id] || []; const paperMat = mats2.find((m: any) => m.category_key === 'paper'); const inkMat = mats2.find((m: any) => m.category_key === 'ink'); return (<div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{paperMat && <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full">{paperMat.cuts_per_sheet} {t.cutsPerSheet || 'قطع/ورقة'}</span>}{inkMat && <span className="bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full">{t.inkCost || 'حبر'}: {inkMat.cost_per_print}</span>}</div>); })()}
-                    <div className="flex flex-wrap gap-1.5">{pkg.sizes.slice(0, 2).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">{s}</span>)}{pkg.sizes.length > 2 && <span className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">+{pkg.sizes.length - 2}</span>}</div>
+              {/* Regular Section */}
+              {packages.filter(p => p.photo_count !== 1).length > 0 && (
+                <div>
+                  <h2 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">{t.regularSection}</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {packages.filter(p => p.photo_count !== 1).map((pkg, idx) => (
+                      <motion.div key={pkg.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.08 }}
+                        className="bg-card border border-border rounded-xl p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all relative overflow-hidden group"
+                        style={{ borderTopColor: pkg.color, borderTopWidth: 3 }} onClick={() => setSelectedPreview(pkg)}>
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📷</span>
+                            <h3 className="font-bold text-foreground">{pkg.type}</h3>
+                          </div>
+                          <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => openModal(pkg)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
+                            <button onClick={() => handleDelete(pkg.id)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                        <div className="flex items-baseline gap-1.5 mb-2"><span className="text-2xl font-extrabold text-foreground">{pkg.price}</span><span className="text-sm text-muted-foreground">{currentCurrency}/{t.perPhoto}</span></div>
+                        <div className="flex flex-wrap gap-1.5">{pkg.sizes.slice(0, 3).map(s => <span key={s} className="bg-muted text-muted-foreground text-[10px] font-bold px-2.5 py-1 rounded-full">{s}</span>)}</div>
+                      </motion.div>
+                    ))}
                   </div>
-
-                  {mats.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {mats.map((m, i) => (
-                        <span key={i} className="bg-amber-500/10 text-amber-600 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Package size={10} />{m.item_name} ×{m.quantity_needed}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <button className="w-full py-2.5 border-2 border-dashed border-border rounded-lg text-muted-foreground text-xs font-semibold flex items-center justify-center gap-2 hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all"><FileText size={14} />{t.invoicePreview}</button>
-                </motion.div>
-              );
-            })
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -219,12 +245,23 @@ const PricingPage: React.FC = () => {
             <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center px-6 py-4 border-b border-border"><h2 className="font-bold text-foreground">{editingPackage ? t.editPackage : t.addPackage}</h2><button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button></div>
               <div className="p-6 space-y-4">
-                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.packageType}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Camera size={16} className="text-muted-foreground" /><input value={formType} onChange={e => setFormType(e.target.value)} placeholder={t.placeholderType} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.price} ({currentCurrency})</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><DollarSign size={16} className="text-muted-foreground" /><input type="number" value={formPrice} onChange={e => setFormPrice(Number(e.target.value))} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div></div>
-                  <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.photosIncluded}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><ImageIcon size={16} className="text-muted-foreground" /><input type="number" value={formPhotos} onChange={e => setFormPhotos(Number(e.target.value))} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div></div>
+                {/* Type Toggle: Urgent vs Regular */}
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'نوع التصوير' : 'Print Type'}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setFormPhotos(1)} className={`p-3 rounded-xl border-2 text-start transition-all ${formPhotos === 1 ? 'border-amber-500 bg-amber-500/10' : 'border-border bg-muted hover:border-muted-foreground/30'}`}>
+                      <span className="text-sm font-bold text-foreground block">⚡ {t.urgent}</span>
+                      <span className="text-[10px] text-muted-foreground">{t.urgentDesc}</span>
+                    </button>
+                    <button type="button" onClick={() => setFormPhotos(0)} className={`p-3 rounded-xl border-2 text-start transition-all ${formPhotos === 0 ? 'border-primary bg-primary/10' : 'border-border bg-muted hover:border-muted-foreground/30'}`}>
+                      <span className="text-sm font-bold text-foreground block">📷 {t.regular}</span>
+                      <span className="text-[10px] text-muted-foreground">{t.regularDesc}</span>
+                    </button>
+                  </div>
                 </div>
-                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.sizes}</label><textarea placeholder="4x6 Prints&#10;12x18 Canvas&#10;Digital USB..." value={formSizesText} onChange={e => setFormSizesText(e.target.value)} className="w-full min-h-[100px] px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo resize-y" /></div>
+                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.packageType}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Camera size={16} className="text-muted-foreground" /><input value={formType} onChange={e => setFormType(e.target.value)} placeholder={t.placeholderType} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.price} ({currentCurrency})</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><DollarSign size={16} className="text-muted-foreground" /><input type="number" value={formPrice} onChange={e => setFormPrice(Number(e.target.value))} className="flex-1 bg-transparent border-none outline-none text-foreground text-sm" /></div></div>
+                <div><label className="block text-xs font-semibold text-foreground mb-1.5">{t.sizes}</label><textarea placeholder={lang === 'ar' ? 'ملاحظات إضافية...' : 'Additional notes...'} value={formSizesText} onChange={e => setFormSizesText(e.target.value)} className="w-full min-h-[70px] px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo resize-y" /></div>
               </div>
               <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted transition-all">{t.cancel}</button>
