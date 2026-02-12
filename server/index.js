@@ -5,7 +5,7 @@ const app = express();
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
-  : ["http://localhost:5173", "http://localhost:5174", "https://dev-sync-spot.lovable.app"];
+  : ["http://localhost:5173", "http://localhost:5174", "https://dev-sync-spot.lovable.app", "https://id-preview--8221da28-221b-4d0c-ab54-84da531691bb.lovable.app"];
 
 app.use(cors({
   origin: function (origin, callback) {
