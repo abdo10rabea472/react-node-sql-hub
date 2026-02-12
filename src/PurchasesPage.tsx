@@ -7,7 +7,7 @@ import { useSettings } from './SettingsContext';
 interface Category { id: number; name: string; name_ar: string; color: string; icon: string; }
 interface InventoryItem {
     id: number; item_name: string; category_id: number; quantity: number;
-    unit_cost: number; min_stock: number; supplier: string; notes: string;
+    unit_cost: number; sell_price: number; min_stock: number; supplier: string; notes: string;
     created_by: string; created_at: string; updated_at: string;
     category_name: string; category_name_ar: string; category_color: string; category_icon: string;
 }
@@ -19,7 +19,7 @@ interface Transaction { id: number; type: string; quantity: number; notes: strin
 
 const t_ar = {
     title: 'المخزون', addNew: 'إضافة صنف', list: 'سجل المخزون', itemName: 'اسم الصنف',
-    category: 'الفئة', quantity: 'الكمية', unitCost: 'سعر الوحدة', totalValue: 'القيمة الإجمالية',
+    category: 'الفئة', quantity: 'الكمية', unitCost: 'سعر الشراء', sellPrice: 'سعر البيع', totalValue: 'القيمة الإجمالية',
     supplier: 'المورد', notes: 'ملاحظات', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف',
     deleteConfirm: 'هل أنت متأكد من حذف هذا الصنف؟', search: 'بحث...',
     totalItems: 'إجمالي الأصناف', totalVal: 'قيمة المخزون', lowStock: 'مخزون منخفض',
@@ -27,11 +27,11 @@ const t_ar = {
     date: 'التاريخ', minStock: 'الحد الأدنى', addStock: 'إضافة مخزون', adjust: 'تعديل يدوي',
     newCategory: 'فئة جديدة', categoryName: 'اسم الفئة', categoryNameAr: 'الاسم بالعربي',
     addCategory: 'إضافة فئة', history: 'السجل', inStock: 'متوفر', lowStockLabel: 'منخفض',
-    outOfStock: 'نفذ', stockQty: 'كمية الإضافة',
+    outOfStock: 'نفذ', stockQty: 'كمية الإضافة', profit: 'الربح',
 };
 const t_en = {
     title: 'Inventory', addNew: 'Add Item', list: 'Inventory List', itemName: 'Item Name',
-    category: 'Category', quantity: 'Quantity', unitCost: 'Unit Cost', totalValue: 'Total Value',
+    category: 'Category', quantity: 'Quantity', unitCost: 'Purchase Price', sellPrice: 'Sell Price', totalValue: 'Total Value',
     supplier: 'Supplier', notes: 'Notes', save: 'Save', cancel: 'Cancel', delete: 'Delete',
     deleteConfirm: 'Are you sure you want to delete this item?', search: 'Search...',
     totalItems: 'Total Items', totalVal: 'Inventory Value', lowStock: 'Low Stock',
@@ -39,7 +39,7 @@ const t_en = {
     date: 'Date', minStock: 'Min Stock', addStock: 'Add Stock', adjust: 'Manual Adjust',
     newCategory: 'New Category', categoryName: 'Category Name', categoryNameAr: 'Arabic Name',
     addCategory: 'Add Category', history: 'History', inStock: 'In Stock', lowStockLabel: 'Low',
-    outOfStock: 'Out', stockQty: 'Quantity to Add',
+    outOfStock: 'Out', stockQty: 'Quantity to Add', profit: 'Profit',
 };
 
 const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -64,6 +64,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [categoryId, setCategoryId] = useState<number | ''>('');
     const [quantity, setQuantity] = useState('0');
     const [unitCost, setUnitCost] = useState('');
+    const [sellPrice, setSellPrice] = useState('');
     const [minStock, setMinStock] = useState('5');
     const [supplier, setSupplier] = useState('');
     const [notes, setNotes] = useState('');
@@ -103,14 +104,14 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const resetForm = () => {
         setEditId(null); setItemName(''); setCategoryId('');
-        setQuantity('0'); setUnitCost(''); setMinStock('5'); setSupplier(''); setNotes('');
+        setQuantity('0'); setUnitCost(''); setSellPrice(''); setMinStock('5'); setSupplier(''); setNotes('');
     };
 
     const handleSave = async () => {
         if (!itemName) return;
         setSaving(true);
         try {
-            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
+            const data = { item_name: itemName, category_id: categoryId || null, quantity: parseInt(quantity) || 0, unit_cost: parseFloat(unitCost) || 0, sell_price: parseFloat(sellPrice) || 0, min_stock: parseInt(minStock) || 5, supplier, notes, created_by: user?.name || 'Admin' };
             if (editId) {
                 await updateInventoryItem(editId, data);
                 toast(lang === 'ar' ? 'تم تحديث الصنف' : 'Item updated');
@@ -125,7 +126,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const handleEdit = (p: InventoryItem) => {
         setEditId(p.id); setItemName(p.item_name); setCategoryId(p.category_id || '');
-        setQuantity(String(p.quantity)); setUnitCost(String(p.unit_cost));
+        setQuantity(String(p.quantity)); setUnitCost(String(p.unit_cost)); setSellPrice(String(p.sell_price || 0));
         setMinStock(String(p.min_stock)); setSupplier(p.supplier || ''); setNotes(p.notes || '');
         setActiveTab('add');
     };
@@ -310,7 +311,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             )}
                         </AnimatePresence>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                             <div>
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.quantity}</label>
                                 <input type="number" min="0" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
@@ -320,13 +321,17 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <input type="number" min="0" step="0.01" value={unitCost} onChange={e => setUnitCost(e.target.value)} className={inputClass} placeholder="0.00" />
                             </div>
                             <div>
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.sellPrice}</label>
+                                <input type="number" min="0" step="0.01" value={sellPrice} onChange={e => setSellPrice(e.target.value)} className={inputClass} placeholder="0.00" />
+                            </div>
+                            <div>
                                 <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.minStock}</label>
                                 <input type="number" min="0" value={minStock} onChange={e => setMinStock(e.target.value)} className={inputClass} />
                             </div>
                             <div>
-                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.totalValue}</label>
-                                <div className="px-3.5 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-bold text-foreground">
-                                    {((parseFloat(quantity) || 0) * (parseFloat(unitCost) || 0)).toFixed(2)} {settings.currency}
+                                <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">{t.profit}</label>
+                                <div className="px-3.5 py-2.5 bg-muted/50 border border-border rounded-xl text-sm font-bold text-emerald-500">
+                                    {((parseFloat(sellPrice) || 0) - (parseFloat(unitCost) || 0)).toFixed(2)} {settings.currency}
                                 </div>
                             </div>
                         </div>
@@ -375,7 +380,7 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border bg-muted/30">
-                                            {[t.itemName, t.category, t.quantity, '', t.unitCost, t.totalValue, t.supplier, ''].map((h, i) => (
+                                            {[t.itemName, t.category, t.quantity, '', t.unitCost, t.sellPrice, t.profit, t.supplier, ''].map((h, i) => (
                                                 <th key={i} className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase">{h}</th>
                                             ))}
                                         </tr>
@@ -399,7 +404,10 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                                         {item.quantity <= item.min_stock && item.quantity > 0 && <AlertTriangle size={12} className="inline-block ms-1 text-amber-500" />}
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">{item.unit_cost} {settings.currency}</td>
-                                                    <td className="px-4 py-3 text-sm font-bold text-foreground tabular-nums">{(item.quantity * item.unit_cost).toFixed(2)} {settings.currency}</td>
+                                                    <td className="px-4 py-3 text-sm font-bold text-foreground tabular-nums">{item.sell_price || 0} {settings.currency}</td>
+                                                    <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: ((item.sell_price || 0) - item.unit_cost) >= 0 ? '#10B981' : '#EF4444' }}>
+                                                        {((item.sell_price || 0) - item.unit_cost).toFixed(2)} {settings.currency}
+                                                    </td>
                                                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.supplier || '-'}</td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex gap-1">
@@ -450,7 +458,8 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                             </div>
                                             <div className="flex justify-between text-xs text-muted-foreground">
                                                 <span>{t.quantity}: <strong className="text-foreground">{item.quantity}</strong></span>
-                                                <span className="font-bold text-foreground">{(item.quantity * item.unit_cost).toFixed(2)} {settings.currency}</span>
+                                                <span>{t.unitCost}: <strong>{item.unit_cost}</strong></span>
+                                                <span>{t.sellPrice}: <strong className="text-foreground">{item.sell_price || 0}</strong> {settings.currency}</span>
                                             </div>
                                         </motion.div>
                                     );

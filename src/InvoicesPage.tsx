@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash } from 'lucide-react';
-import { getInvoices, createInvoice, getCustomers, getPackages, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
+import { getInvoices, createInvoice, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
-interface PricingPackage { id: number; type: string; price: number; }
+interface InventoryProduct { id: number; item_name: string; sell_price: number; unit_cost: number; quantity: number; category_name_ar: string; category_color: string; }
 interface Invoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; participants: string; status: string; created_at: string; }
-interface SelectedPkg { tempId: number; id: number; type: string; price: number; }
+interface SelectedPkg { tempId: number; id: number; inventory_item_id: number; type: string; price: number; quantity: number; }
 interface InvoiceItem { package_name: string; item_price: number; }
 
 const translations = {
-    ar: { title: 'نظام الفواتير', createTab: 'إنشاء فاتورة', listTab: 'سجل الفواتير', selectCustomer: 'بيانات العميل', selectPackages: 'اختر الباقات', multiplePackagesHint: 'يمكنك اختيار أكثر من باقة', participants: 'المشاركين (اختياري)', participantsHint: 'ادخل أسماء المشاركين هنا...', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار باقات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'المتبقي', createBtn: 'إصدار الفاتورة', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المبلغ', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', paid_label: 'مدفوع', pending: 'معلق', partial: 'جزئي', actions: 'الإجراءات', createdBy: 'المسؤول', print: 'طباعة', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', close: 'إغلاق', studioName: 'استوديو التصوير', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات', search: 'بحث...', noInvoices: 'لا توجد فواتير حالياً', addCustomer: 'إضافة عميل جديد' },
-    en: { title: 'Invoicing System', createTab: 'Create Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Packages', multiplePackagesHint: 'You can add multiple packages', participants: 'Participants (Optional)', participantsHint: 'Enter names of participants...', invoiceSummary: 'Invoice Summary', noItems: 'No packages selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Amount', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', paid_label: 'Paid', pending: 'Pending', partial: 'Partial', actions: 'Actions', createdBy: 'Manager', print: 'Print', deleteConfirm: 'Are you sure you want to delete this invoice?', close: 'Close', studioName: 'Photography Studio', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes', search: 'Search...', noInvoices: 'No invoices found', addCustomer: 'Add new customer' },
+    ar: { title: 'نظام الفواتير', createTab: 'إنشاء فاتورة', listTab: 'سجل الفواتير', selectCustomer: 'بيانات العميل', selectPackages: 'اختر المنتجات', multiplePackagesHint: 'يمكنك اختيار أكثر من منتج', participants: 'المشاركين (اختياري)', participantsHint: 'ادخل أسماء المشاركين هنا...', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار منتجات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'المتبقي', createBtn: 'إصدار الفاتورة', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المبلغ', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', paid_label: 'مدفوع', pending: 'معلق', partial: 'جزئي', actions: 'الإجراءات', createdBy: 'المسؤول', print: 'طباعة', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', close: 'إغلاق', studioName: 'استوديو التصوير', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات', search: 'بحث...', noInvoices: 'لا توجد فواتير حالياً', addCustomer: 'إضافة عميل جديد', inStock: 'متوفر', outOfStock: 'نفذ' },
+    en: { title: 'Invoicing System', createTab: 'Create Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Products', multiplePackagesHint: 'You can add multiple products', participants: 'Participants (Optional)', participantsHint: 'Enter names of participants...', invoiceSummary: 'Invoice Summary', noItems: 'No products selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Amount', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', paid_label: 'Paid', pending: 'Pending', partial: 'Partial', actions: 'Actions', createdBy: 'Manager', print: 'Print', deleteConfirm: 'Are you sure you want to delete this invoice?', close: 'Close', studioName: 'Photography Studio', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes', search: 'Search...', noInvoices: 'No invoices found', addCustomer: 'Add new customer', inStock: 'In Stock', outOfStock: 'Out' },
 };
 
 const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -22,7 +22,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
     const [customers, setCustomers] = useState<Customer[]>([]);
-    const [packages, setPackages] = useState<PricingPackage[]>([]);
+    const [products, setProducts] = useState<InventoryProduct[]>([]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
     const [selectedPkgs, setSelectedPkgs] = useState<SelectedPkg[]>([]);
@@ -51,17 +51,18 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const fetchData = async () => {
         try {
-            const [custRes, pkgRes, invRes] = await Promise.all([getCustomers(), getPackages(), getInvoices()]);
+            const [custRes, prodRes, invRes] = await Promise.all([getCustomers(), getInventoryItems(), getInvoices()]);
             setCustomers(custRes.data);
-            setPackages(pkgRes.data);
+            setProducts(prodRes.data.filter((p: InventoryProduct) => p.sell_price > 0));
             setInvoices(invRes.data);
         } catch (err) { console.error('Fetch error:', err); }
     };
 
     useEffect(() => { fetchData(); }, []);
 
-    const addPkg = (pkg: PricingPackage) => {
-        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, type: pkg.type, price: parseFloat(String(pkg.price)) || 0 }]);
+    const addPkg = (prod: InventoryProduct) => {
+        if (prod.quantity <= 0) return;
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: prod.id, inventory_item_id: prod.id, type: prod.item_name, price: parseFloat(String(prod.sell_price)) || 0, quantity: 1 }]);
     };
     const removePkg = (tempId: number) => setSelectedPkgs(prev => prev.filter(p => p.tempId !== tempId));
     const totalAmount = selectedPkgs.reduce((sum, item) => sum + item.price, 0);
@@ -176,11 +177,19 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 <span className="ms-auto text-xs text-muted-foreground font-normal">{t.multiplePackagesHint}</span>
                             </h3>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                                {packages.map(pkg => (
-                                    <motion.div key={pkg.id} whileTap={{ scale: 0.97 }} onClick={() => addPkg(pkg)}
-                                        className="bg-muted/50 border border-border rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group relative">
-                                        <span className="text-sm font-bold text-foreground block">{pkg.type}</span>
-                                        <span className="text-xs text-muted-foreground font-semibold mt-1 block">{pkg.price} {settings.currency}</span>
+                                {products.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground col-span-full text-center py-4">{lang === 'ar' ? 'لا توجد منتجات - أضف منتجات من المخزون أولاً' : 'No products - add items to inventory first'}</p>
+                                ) : products.map(prod => (
+                                    <motion.div key={prod.id} whileTap={{ scale: 0.97 }} onClick={() => addPkg(prod)}
+                                        className={`bg-muted/50 border border-border rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group relative ${prod.quantity <= 0 ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                                        <span className="text-sm font-bold text-foreground block">{prod.item_name}</span>
+                                        <div className="flex justify-between items-center mt-1">
+                                            <span className="text-xs text-muted-foreground font-semibold">{prod.sell_price} {settings.currency}</span>
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${prod.quantity > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                {prod.quantity > 0 ? `${prod.quantity} ${t.inStock}` : t.outOfStock}
+                                            </span>
+                                        </div>
+                                        {prod.category_name_ar && <span className="text-[10px] mt-1 block" style={{ color: prod.category_color || '#6B7280' }}>{prod.category_name_ar}</span>}
                                         <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
                                     </motion.div>
                                 ))}

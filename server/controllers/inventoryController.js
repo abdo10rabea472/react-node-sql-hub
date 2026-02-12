@@ -31,13 +31,24 @@ db.query(`CREATE TABLE IF NOT EXISTS inventory (
     category_id INT,
     quantity INT DEFAULT 0,
     unit_cost DECIMAL(10, 2) DEFAULT 0,
+    sell_price DECIMAL(10, 2) DEFAULT 0,
     min_stock INT DEFAULT 5,
     supplier VARCHAR(255),
     notes TEXT,
     created_by VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-)`, (err) => { if (err) console.error("Error creating inventory:", err); });
+)`, (err) => {
+    if (err) console.error("Error creating inventory:", err);
+    else {
+        // Ensure sell_price column exists for older tables
+        db.query("SHOW COLUMNS FROM inventory LIKE 'sell_price'", (err, results) => {
+            if (!err && results && results.length === 0) {
+                db.query("ALTER TABLE inventory ADD COLUMN sell_price DECIMAL(10, 2) DEFAULT 0 AFTER unit_cost");
+            }
+        });
+    }
+});
 
 db.query(`CREATE TABLE IF NOT EXISTS package_materials (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -118,14 +129,15 @@ exports.getStats = (req, res) => {
 };
 
 exports.createItem = (req, res) => {
-    const { item_name, category_id, quantity, unit_cost, min_stock, supplier, notes, created_by } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by } = req.body;
     if (!item_name) return res.status(400).json({ message: "اسم الصنف مطلوب" });
 
     const qty = parseInt(quantity) || 0;
     const cost = parseFloat(unit_cost) || 0;
+    const sell = parseFloat(sell_price) || 0;
 
-    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [item_name, category_id || null, qty, cost, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
+    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [item_name, category_id || null, qty, cost, sell, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
         (err, result) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة الصنف" });
             // Record transaction
@@ -139,10 +151,10 @@ exports.createItem = (req, res) => {
 
 exports.updateItem = (req, res) => {
     const { id } = req.params;
-    const { item_name, category_id, quantity, unit_cost, min_stock, supplier, notes } = req.body;
+    const { item_name, category_id, quantity, unit_cost, sell_price, min_stock, supplier, notes } = req.body;
 
-    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
-        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
+    db.query("UPDATE inventory SET item_name = ?, category_id = ?, quantity = ?, unit_cost = ?, sell_price = ?, min_stock = ?, supplier = ?, notes = ? WHERE id = ?",
+        [item_name, category_id || null, parseInt(quantity) || 0, parseFloat(unit_cost) || 0, parseFloat(sell_price) || 0, parseInt(min_stock) || 5, supplier || null, notes || null, id],
         (err) => {
             if (err) return res.status(500).json({ message: "خطأ في تحديث الصنف" });
             res.json({ message: "تم تحديث الصنف بنجاح" });
@@ -220,38 +232,22 @@ exports.setPackageMaterials = (req, res) => {
 
 // ==================== Deduct inventory for invoice ====================
 exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) => {
-    // items: [{id (package_id), type}]
-    // For each package, find its materials and deduct from inventory
-    const packageType = invoiceType === 'wedding' ? 'wedding_album' : 'studio';
-
-    // Collect all package IDs
-    const pkgIds = items.map(i => i.id).filter(Boolean);
-    if (pkgIds.length === 0) return callback && callback();
-
-    // Also handle video type
-    const allQueries = [];
-    items.forEach(item => {
-        let pType = packageType;
-        if (item.type === 'video') pType = 'wedding_video';
-        allQueries.push({ packageId: item.id, packageType: pType });
-    });
+    // items: [{id (inventory_item_id), type, quantity}]
+    // Deduct directly from inventory for each item
+    if (!items || items.length === 0) return callback && callback();
 
     let processed = 0;
-    allQueries.forEach(({ packageId, packageType: pType }) => {
-        db.query("SELECT * FROM package_materials WHERE package_id = ? AND package_type = ?", [packageId, pType], (err, materials) => {
-            if (err || !materials || materials.length === 0) {
-                processed++;
-                if (processed === allQueries.length && callback) callback();
-                return;
-            }
-            materials.forEach(mat => {
-                const deductQty = mat.quantity_needed;
-                db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, mat.inventory_item_id]);
+    items.forEach(item => {
+        const deductQty = item.quantity || 1;
+        const inventoryId = item.inventory_item_id || item.id;
+        
+        db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?) WHERE id = ?", [deductQty, inventoryId], (err) => {
+            if (!err) {
                 db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
-                    [mat.inventory_item_id, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
-            });
+                    [inventoryId, -deductQty, invoiceId, invoiceType, `خصم تلقائي - فاتورة #${invoiceId}`, createdBy || 'Admin']);
+            }
             processed++;
-            if (processed === allQueries.length && callback) callback();
+            if (processed === items.length && callback) callback();
         });
     });
 };

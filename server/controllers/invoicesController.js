@@ -95,7 +95,7 @@ exports.createInvoice = (req, res) => {
                 }
 
                 const invoice_id = result.insertId;
-                const itemData = items.map(item => [invoice_id, item.id, item.type, item.price]);
+                const itemData = items.map(item => [invoice_id, item.inventory_item_id || item.id, item.type, item.price]);
                 const itemQuery = "INSERT INTO invoice_items (invoice_id, package_id, package_name, price) VALUES ?";
 
                 connection.query(itemQuery, [itemData], (err) => {
