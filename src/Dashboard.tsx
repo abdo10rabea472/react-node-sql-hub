@@ -9,14 +9,15 @@ import CustomersPage from './CustomersPage';
 import InvoicesPage from './InvoicesPage';
 import WeddingPricingPage from './WeddingPricingPage';
 import WeddingInvoicesPage from './WeddingInvoicesPage';
+import PurchasesPage from './PurchasesPage';
 import { useSettings } from './SettingsContext';
 import type { User } from './App';
 
 interface DashboardProps { user: User; onLogout: () => void; }
 
 const translations = {
-  ar: { dashboard: "لوحة التحكم", users: "المستخدمين", settings: "الإعدادات", logout: "تسجيل خروج", welcome: "مرحباً بك، استوديو", stats: "نظرة عامة على الأداء والإحصائيات المتقدمة", activeUsers: "المستخدمين النشطين", totalOrders: "الطلبات المكتملة", revenue: "إجمالي الأرباح", conversion: "معدل التحويل", theme: "المظهر", language: "اللغة", search: "ابحث هنا...", recentActivity: "النشاط الأخير", viewAll: "عرض الكل", weekly: "أسبوعي", monthly: "شهري", yearly: "سنوي", salesOverview: "نظرة عامة على المبيعات", visitors: "الزوار", sales: "المبيعات", pricing: "اسعار الصاله", customers: "العملاء", invoices: "الفواتير", weddingPricing: "أسعار الزفاف", weddingInvoices: "فواتير الزفاف" },
-  en: { dashboard: "Dashboard", users: "Users", settings: "Settings", logout: "Sign Out", welcome: "Welcome back, Studio", stats: "Here's what's happening with your projects today", activeUsers: "Active Users", totalOrders: "Total Orders", revenue: "Revenue", conversion: "Conversion Rate", theme: "Theme", language: "Language", search: "Search anything...", recentActivity: "Recent Activity", viewAll: "View All", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly", salesOverview: "Sales Overview", visitors: "Visitors", sales: "Sales", pricing: "Pricing", customers: "Customers", invoices: "Invoices", weddingPricing: "Wedding Pricing", weddingInvoices: "Wedding Invoices" },
+  ar: { dashboard: "لوحة التحكم", users: "المستخدمين", settings: "الإعدادات", logout: "تسجيل خروج", welcome: "مرحباً بك، استوديو", stats: "نظرة عامة على الأداء والإحصائيات المتقدمة", activeUsers: "المستخدمين النشطين", totalOrders: "الطلبات المكتملة", revenue: "إجمالي الأرباح", conversion: "معدل التحويل", theme: "المظهر", language: "اللغة", search: "ابحث هنا...", recentActivity: "النشاط الأخير", viewAll: "عرض الكل", weekly: "أسبوعي", monthly: "شهري", yearly: "سنوي", salesOverview: "نظرة عامة على المبيعات", visitors: "الزوار", sales: "المبيعات", pricing: "اسعار الصاله", customers: "العملاء", invoices: "الفواتير", weddingPricing: "أسعار الزفاف", weddingInvoices: "فواتير الزفاف", purchases: "المشتريات" },
+  en: { dashboard: "Dashboard", users: "Users", settings: "Settings", logout: "Sign Out", welcome: "Welcome back, Studio", stats: "Here's what's happening with your projects today", activeUsers: "Active Users", totalOrders: "Total Orders", revenue: "Revenue", conversion: "Conversion Rate", theme: "Theme", language: "Language", search: "Search anything...", recentActivity: "Recent Activity", viewAll: "View All", weekly: "Weekly", monthly: "Monthly", yearly: "Yearly", salesOverview: "Sales Overview", visitors: "Visitors", sales: "Sales", pricing: "Pricing", customers: "Customers", invoices: "Invoices", weddingPricing: "Wedding Pricing", weddingInvoices: "Wedding Invoices", purchases: "Purchases" },
 };
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { icon: Users, key: 'customers' as const },
   { icon: FileText, key: 'invoices' as const },
   { icon: Camera, key: 'pricing' as const },
+  { icon: ShoppingCart, key: 'purchases' as const },
   { icon: Sparkles, key: 'weddingPricing' as const },
   { icon: Heart, key: 'weddingInvoices' as const },
   { icon: UserCog, key: 'users' as const },
@@ -95,10 +97,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     if (activeNav === 1) return <CustomersPage />;
     if (activeNav === 2) return <InvoicesPage user={user} />;
     if (activeNav === 3) return <PricingPage />;
-    if (activeNav === 4) return <WeddingPricingPage />;
-    if (activeNav === 5) return <WeddingInvoicesPage user={user} />;
-    if (activeNav === 6) return <UsersPage />;
-    if (activeNav === 7) return <SettingsPage />;
+    if (activeNav === 4) return <PurchasesPage user={user} />;
+    if (activeNav === 5) return <WeddingPricingPage />;
+    if (activeNav === 6) return <WeddingInvoicesPage user={user} />;
+    if (activeNav === 7) return <UsersPage />;
+    if (activeNav === 8) return <SettingsPage />;
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="dashboard">
