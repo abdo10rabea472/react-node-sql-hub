@@ -20,9 +20,7 @@ router.delete("/:id", authMiddleware, adminMiddleware, controller.deleteItem);
 router.post("/:id/add-stock", authMiddleware, controller.addStock);
 router.post("/:id/adjust", authMiddleware, controller.adjustStock);
 
-// Package materials
-router.get("/materials/:packageId/:packageType", authMiddleware, controller.getPackageMaterials);
-router.post("/materials/:packageId/:packageType", authMiddleware, controller.setPackageMaterials);
+// Package materials removed
 
 // Transactions
 router.get("/transactions/:itemId", authMiddleware, controller.getTransactions);
