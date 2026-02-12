@@ -176,8 +176,8 @@ exports.createItem = (req, res) => {
     const sell = parseFloat(sell_price) || 0;
     const sheets = parseInt(sheets_per_package) || 0;
 
-    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [item_name, category_id || null, qty, cost, sell, sheets, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
+    db.query("INSERT INTO inventory (item_name, category_id, quantity, unit_cost, sell_price, sheets_per_package, used_sheets, min_stock, supplier, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [item_name, category_id || null, qty, cost, sell, sheets, qty > 0 ? sheets : 0, parseInt(min_stock) || 5, supplier || null, notes || null, created_by || 'Admin'],
         (err, result) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة الصنف" });
             if (qty > 0) {
@@ -215,13 +215,26 @@ exports.addStock = (req, res) => {
     const qty = parseInt(quantity) || 0;
     if (qty <= 0) return res.status(400).json({ message: "الكمية يجب أن تكون أكبر من صفر" });
 
-    db.query("UPDATE inventory SET quantity = quantity + ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?",
-        [qty, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id], (err) => {
+    // When adding stock to paper items, reset used_sheets to sheets_per_package (full package ready)
+    db.query("SELECT sheets_per_package FROM inventory WHERE id = ?", [id], (err, results) => {
+        if (err) return res.status(500).json({ message: "خطأ" });
+        const sheetsPerPkg = results && results[0] ? results[0].sheets_per_package : 0;
+        
+        const updateQuery = sheetsPerPkg > 0
+            ? "UPDATE inventory SET quantity = quantity + ?, used_sheets = ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?"
+            : "UPDATE inventory SET quantity = quantity + ?, unit_cost = COALESCE(?, unit_cost), supplier = COALESCE(?, supplier) WHERE id = ?";
+        
+        const params = sheetsPerPkg > 0
+            ? [qty, sheetsPerPkg, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id]
+            : [qty, unit_cost ? parseFloat(unit_cost) : null, supplier || null, id];
+        
+        db.query(updateQuery, params, (err) => {
             if (err) return res.status(500).json({ message: "خطأ في إضافة المخزون" });
             db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, notes, created_by) VALUES (?, 'purchase', ?, ?, ?)",
                 [id, qty, notes || 'إضافة مخزون', created_by || 'Admin']);
             res.json({ message: "تم إضافة المخزون بنجاح" });
         });
+    });
 };
 
 // Manual adjust
@@ -296,23 +309,26 @@ exports.deductForInvoice = (invoiceId, invoiceType, items, createdBy, callback) 
                     let matProcessed = 0;
                     materials.forEach(mat => {
                         if (mat.category_key === 'paper' && mat.sheets_per_package > 0) {
-                            // Paper: track sheets used per package
+                            // Paper: track remaining sheets in current package (used_sheets = remaining)
                             const sheetsNeeded = Math.ceil(photoCount / (mat.cuts_per_sheet || 1)) * (item.quantity || 1);
-                            const currentUsed = mat.used_sheets || 0;
-                            const newUsed = currentUsed + sheetsNeeded;
-                            const sheetsPerPkg = mat.sheets_per_package;
+                            const currentRemaining = mat.used_sheets || 0;
+                            let newRemaining = currentRemaining - sheetsNeeded;
+                            let packagesConsumed = 0;
                             
-                            // Calculate how many full packages are consumed
-                            const packagesConsumed = Math.floor(newUsed / sheetsPerPkg);
-                            const remainingSheets = newUsed % sheetsPerPkg;
+                            // If remaining goes negative, consume packages
+                            while (newRemaining <= 0 && mat.available_qty > packagesConsumed) {
+                                packagesConsumed++;
+                                newRemaining += mat.sheets_per_package;
+                            }
+                            // Ensure not negative
+                            if (newRemaining < 0) newRemaining = 0;
                             
-                            // Update: deduct full packages from quantity, set remaining used_sheets
                             db.query("UPDATE inventory SET quantity = GREATEST(0, quantity - ?), used_sheets = ? WHERE id = ?",
-                                [packagesConsumed, remainingSheets, mat.inventory_item_id], (err) => {
+                                [packagesConsumed, newRemaining, mat.inventory_item_id], (err) => {
                                     if (!err) {
                                         const note = packagesConsumed > 0
-                                            ? `خصم ${sheetsNeeded} ورقة (${packagesConsumed} بكج كامل) - فاتورة #${invoiceId} | متبقي ${remainingSheets}/${sheetsPerPkg} ورقة من البكج الحالي`
-                                            : `استخدام ${sheetsNeeded} ورقة - فاتورة #${invoiceId} | مستخدم ${remainingSheets}/${sheetsPerPkg} من البكج الحالي`;
+                                            ? `خصم ${sheetsNeeded} ورقة (${packagesConsumed} بكج مفتوح) - فاتورة #${invoiceId} | متبقي ${newRemaining}/${mat.sheets_per_package} ورقة`
+                                            : `خصم ${sheetsNeeded} ورقة - فاتورة #${invoiceId} | متبقي ${newRemaining}/${mat.sheets_per_package} ورقة`;
                                         db.query("INSERT INTO inventory_transactions (inventory_item_id, type, quantity, reference_id, reference_type, notes, created_by) VALUES (?, 'invoice_deduct', ?, ?, ?, ?, ?)",
                                             [mat.inventory_item_id, -sheetsNeeded, invoiceId, invoiceType, note, createdBy || 'Admin']);
                                     }
