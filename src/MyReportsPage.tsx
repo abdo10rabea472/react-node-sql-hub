@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Search, Filter, Calendar, User as UserIcon, Eye, X, Loader, AlertTriangle, ChevronLeft, ChevronRight, Clock, Info, ShoppingCart, DollarSign } from 'lucide-react';
-import axios from 'axios';
+import api from './api';
 import { useSettings } from './SettingsContext';
 import { getStats } from './api';
-
-const API_URL = "/api";
 
 interface Activity {
     id: number;
@@ -113,15 +111,11 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
         setLoading(true);
         setError(false);
         try {
-            const token = localStorage.getItem("token");
             const [resAct, resPur, resStats] = await Promise.all([
-                axios.get(`${API_URL}/activity`, {
-                    headers: { Authorization: `Bearer ${token}` },
+                api.get(`/activity.php`, {
                     params: { user_id: userId }
                 }),
-                axios.get(`${API_URL}/purchases`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                }),
+                api.get(`/purchases.php`),
                 getStats()
             ]);
             setActivities(resAct.data);
