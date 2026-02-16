@@ -7,8 +7,9 @@ import { useSettings } from './SettingsContext';
 interface Customer { id: number; name: string; phone: string; }
 interface Album { id: number; description: string; price: number; photo_count: number; size: string; }
 interface Video { id: number; description: string; price: number; type: string; }
+interface Video { id: number; description: string; price: number; type: string; }
 interface WeddingInvoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; wedding_date: string; venue: string; notes: string; status: string; created_at: string; }
-interface SelectedItem { tempId: number; id: number; package_name: string; price: number; type: 'album' | 'video'; hours?: number; }
+interface SelectedItem { tempId: number; id: number; package_name: string; price: number; type: 'album' | 'video' | 'product'; hours?: number; }
 
 const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
   const { settings } = useSettings();
@@ -71,6 +72,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
     customerPhone: lang === 'ar' ? 'الهاتف' : 'Phone',
     albums: lang === 'ar' ? 'الألبومات' : 'Albums',
     videos: lang === 'ar' ? 'الفيديو' : 'Videos',
+    products: lang === 'ar' ? 'المنتجات' : 'Products',
     studioName: lang === 'ar' ? 'استوديو التصوير' : 'Studio',
     search: lang === 'ar' ? 'بحث...' : 'Search...',
     noInvoices: lang === 'ar' ? 'لا توجد فواتير' : 'No invoices found',
@@ -93,8 +95,8 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
 
   useEffect(() => { fetchData(); }, []);
 
-  const addItem = (item: any, type: 'album' | 'video') => {
-    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: item.id, package_name: item.description, price: parseFloat(item.price) || 0, type }]);
+  const addItem = (item: any, type: 'album' | 'video' | 'product') => {
+    setSelectedItems(prev => [...prev, { tempId: Date.now() + Math.random(), id: item.id, package_name: item.description || item.item_name, price: parseFloat(item.price || item.sell_price) || 0, type }]);
   };
   const addVideoWithHours = (video: Video, hours: number) => {
     if (hours <= 0) return;
@@ -102,7 +104,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
     // Remove existing entry for this video and replace with new hours
     setSelectedItems(prev => {
       const filtered = prev.filter(i => !(i.type === 'video' && i.id === video.id));
-      return [...filtered, { tempId: Date.now() + Math.random(), id: video.id, package_name: `${video.description} - ${hours} ${lang === 'ar' ? 'ساعة فيديو' : 'hours'}`, price: pricePerHour * hours, type: 'video', hours }];
+      return [...filtered, { tempId: Date.now() + Math.random(), id: video.id, package_name: `${video.description} - ${hours} ${lang === 'ar' ? 'ساعة فيديو' : 'hours'} `, price: pricePerHour * hours, type: 'video', hours }];
     });
   };
   const removeVideoById = (videoId: number) => {
@@ -128,8 +130,8 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       }
       const detailsRes = await getWeddingInvoiceDetails(inv.id);
       const items = detailsRes.data;
-      const itemsText = items.map((it: any) => `- ${it.package_name}: ${it.item_price || it.price} ${settings.currency}`).join('\n');
-      const text = `*${settings.studioName || t.studioName}*\n${settings.address ? settings.address + '\n' : ''}${settings.phone ? settings.phone + '\n' : ''}\n*${t.invoiceNo}: ${inv.invoice_no}*\n*${t.customerName}:* ${inv.customer_name}\n*${t.customerPhone}:* ${inv.customer_phone}\n${inv.wedding_date ? `*${t.weddingDate}:* ${inv.wedding_date}\n` : ''}${inv.venue ? `*${t.venue}:* ${inv.venue}\n` : ''}\n*${t.items}:*\n${itemsText}\n\n*${t.total}:* ${inv.total_amount} ${settings.currency}\n*${t.paid}:* ${inv.paid_amount} ${settings.currency}\n*${t.remaining}:* ${inv.remaining_amount} ${settings.currency}`;
+      const itemsText = items.map((it: any) => `- ${it.package_name}: ${it.item_price || it.price} ${settings.currency} `).join('\n');
+      const text = `* ${settings.studioName || t.studioName}*\n${settings.address ? settings.address + '\n' : ''}${settings.phone ? settings.phone + '\n' : ''} \n * ${t.invoiceNo}: ${inv.invoice_no}*\n * ${t.customerName}:* ${inv.customer_name} \n * ${t.customerPhone}:* ${inv.customer_phone} \n${inv.wedding_date ? `*${t.weddingDate}:* ${inv.wedding_date}\n` : ''}${inv.venue ? `*${t.venue}:* ${inv.venue}\n` : ''} \n * ${t.items}:*\n${itemsText} \n\n * ${t.total}:* ${inv.total_amount} ${settings.currency} \n * ${t.paid}:* ${inv.paid_amount} ${settings.currency} \n * ${t.remaining}:* ${inv.remaining_amount} ${settings.currency} `;
       await sendWhatsAppMessage({ phone: inv.customer_phone, message: text });
       showToastMessage(lang === 'ar' ? '✓ تم إرسال الفاتورة عبر الواتساب' : '✓ Invoice sent via WhatsApp');
     } catch (err) { console.error(err); showToastMessage(lang === 'ar' ? 'فشل الإرسال' : 'Failed to send', 'error'); }
@@ -137,9 +139,25 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
 
   const handleCreateInvoice = async () => {
     if (!selectedCustomerId || selectedItems.length === 0 || isSaving) return;
+
+    if ((parseFloat(paidAmount) || 0) <= 0) {
+      showToastMessage(lang === 'ar' ? 'يجب إدخال المبلغ المدفوع لإتمام العملية' : 'Paid amount is required to complete the transaction', 'error');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: selectedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
+      // تحويل البيانات لتطابق ما يتوقعه الـ Backend
+      const formattedItems = selectedItems.map(item => ({
+        id: item.id,
+        package_name: item.package_name,
+        item_type: item.type,
+        quantity: 1,
+        unit_price: item.price,
+        price: item.price
+      }));
+
+      const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: formattedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
       const invRes = await getWeddingInvoices(); setInvoices(invRes.data);
       const newInv = invRes.data.find((i: WeddingInvoice) => i.id === res.data?.id);
       if (newInv) await handleSendWhatsAppAuto(newInv);
@@ -184,10 +202,10 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
             </h2>
           </div>
           <div className="flex gap-1 bg-muted p-1 rounded-xl w-full sm:w-auto">
-            <button onClick={() => setActiveTab('create')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'create' ? 'bg-card text-rose-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+            <button onClick={() => setActiveTab('create')} className={`flex - 1 sm: flex - none px - 5 py - 2.5 rounded - lg text - sm font - bold transition - all ${activeTab === 'create' ? 'bg-card text-rose-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'} `}>
               <Plus size={16} className="inline-block me-1.5 -mt-0.5" />{t.createTab}
             </button>
-            <button onClick={() => setActiveTab('list')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'list' ? 'bg-card text-rose-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+            <button onClick={() => setActiveTab('list')} className={`flex - 1 sm: flex - none px - 5 py - 2.5 rounded - lg text - sm font - bold transition - all ${activeTab === 'list' ? 'bg-card text-rose-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'} `}>
               <Heart size={16} className="inline-block me-1.5 -mt-0.5" />{t.listTab}
             </button>
           </div>
@@ -235,7 +253,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 {videos.map(v => {
                   const hours = getVideoHours(v.id);
                   return (
-                    <div key={v.id} className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${hours > 0 ? 'bg-rose-500/5 border-rose-400/40' : 'bg-muted/50 border-border'}`}>
+                    <div key={v.id} className={`flex items - center justify - between p - 3.5 rounded - xl border transition - all ${hours > 0 ? 'bg-rose-500/5 border-rose-400/40' : 'bg-muted/50 border-border'} `}>
                       <div className="flex-1">
                         <span className="text-sm font-bold text-foreground block">{v.description}</span>
                         <span className="text-xs text-muted-foreground font-semibold">{v.price} {settings.currency}/{lang === 'ar' ? 'ساعة' : 'hr'}</span>
@@ -243,10 +261,10 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                       </div>
                       <div className="flex items-center gap-2">
                         <button onClick={() => { if (hours > 0) { if (hours === 1) removeVideoById(v.id); else addVideoWithHours(v, hours - 1); } }}
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${hours > 0 ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-muted text-muted-foreground/30 cursor-not-allowed'}`}>
+                          className={`w - 9 h - 9 rounded - xl flex items - center justify - center text - sm font - bold transition - all ${hours > 0 ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' : 'bg-muted text-muted-foreground/30 cursor-not-allowed'} `}>
                           <Minus size={16} />
                         </button>
-                        <span className={`w-10 text-center text-lg font-black font-mono ${hours > 0 ? 'text-foreground' : 'text-muted-foreground/40'}`}>{hours}</span>
+                        <span className={`w - 10 text - center text - lg font - black font - mono ${hours > 0 ? 'text-foreground' : 'text-muted-foreground/40'} `}>{hours}</span>
                         <button onClick={() => addVideoWithHours(v, hours + 1)}
                           className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 flex items-center justify-center text-sm font-bold transition-all">
                           <Plus size={16} />
@@ -257,6 +275,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 })}
               </div>
             </section>
+
 
             {/* Wedding Details */}
             <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
@@ -274,7 +293,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase mb-1.5 block">{t.notes}</label>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)} className={`${inputClass} min-h-[60px] resize-y`} />
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} className={`${inputClass} min - h - [60px] resize - y`} />
                 </div>
               </div>
             </section>
@@ -318,7 +337,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-border/50">
                   <span className="text-xs font-bold text-muted-foreground">{t.remaining}</span>
-                  <span className={`text-lg font-black font-mono ${remainingAmountCalc > 0 ? 'text-destructive' : 'text-emerald-500'}`}>{remainingAmountCalc} {settings.currency}</span>
+                  <span className={`text - lg font - black font - mono ${remainingAmountCalc > 0 ? 'text-destructive' : 'text-emerald-500'} `}>{remainingAmountCalc} {settings.currency}</span>
                 </div>
               </div>
 
@@ -335,7 +354,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
           <div className="mb-4">
             <div className="relative max-w-md">
               <Search size={16} className="absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t.search} className={`${inputClass} ps-10`} />
+              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={t.search} className={`${inputClass} ps - 10`} />
             </div>
           </div>
 
@@ -366,9 +385,9 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                       <span className="text-[10px] text-muted-foreground font-mono block mt-0.5">{inv.customer_phone}</span>
                     </td>
                     <td className="px-5 py-4 font-black text-sm font-mono">{inv.total_amount} {settings.currency}</td>
-                    <td className={`px-5 py-4 font-black text-sm font-mono ${inv.remaining_amount > 0 ? 'text-destructive' : 'text-emerald-500'}`}>{inv.remaining_amount} {settings.currency}</td>
+                    <td className={`px - 5 py - 4 font - black text - sm font - mono ${inv.remaining_amount > 0 ? 'text-destructive' : 'text-emerald-500'} `}>{inv.remaining_amount} {settings.currency}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusConfig(inv.status)}`}>{getStatusLabel(inv.status)}</span>
+                      <span className={`inline - flex px - 2.5 py - 1 rounded - full text - [11px] font - bold border ${statusConfig(inv.status)} `}>{getStatusLabel(inv.status)}</span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-1.5">
@@ -399,7 +418,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                     </div>
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1 ms-5"><Calendar size={10} />{new Date(inv.created_at).toLocaleDateString()}</span>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusConfig(inv.status)}`}>{getStatusLabel(inv.status)}</span>
+                  <span className={`px - 2.5 py - 1 rounded - full text - [10px] font - bold border ${statusConfig(inv.status)} `}>{getStatusLabel(inv.status)}</span>
                 </div>
 
                 <div className="flex items-center gap-2 mb-3 text-sm">
@@ -425,7 +444,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                   </div>
                   <div className="text-center">
                     <span className="text-[10px] text-muted-foreground font-bold block">{t.remaining}</span>
-                    <span className={`text-sm font-black font-mono ${inv.remaining_amount > 0 ? 'text-destructive' : 'text-emerald-500'}`}>{inv.remaining_amount}</span>
+                    <span className={`text - sm font - black font - mono ${inv.remaining_amount > 0 ? 'text-destructive' : 'text-emerald-500'} `}>{inv.remaining_amount}</span>
                   </div>
                 </div>
 
@@ -478,7 +497,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
               </div>
               <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2.5 no-print">
                 <button onClick={() => setShowPrintModal(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all">{t.close}</button>
-                
+
                 <button onClick={() => window.print()} className="flex-[2] py-3 bg-rose-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-rose-600 active:scale-95 transition-all"><Printer size={16} />{t.print}</button>
               </div>
             </motion.div>
@@ -500,14 +519,14 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
                 <input type="number" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} className={inputClass} />
                 <div className="flex justify-between mt-2 px-1">
                   <small className="text-[10px] text-muted-foreground">{t.total}: {editingInvoice.total_amount}</small>
-                  <small className={`text-[10px] font-bold ${editingInvoice.total_amount - (parseFloat(editPaidAmount) || 0) > 0 ? 'text-destructive' : 'text-emerald-600'}`}>{t.remaining}: {Math.max(0, editingInvoice.total_amount - (parseFloat(editPaidAmount) || 0))}</small>
+                  <small className={`text - [10px] font - bold ${editingInvoice.total_amount - (parseFloat(editPaidAmount) || 0) > 0 ? 'text-destructive' : 'text-emerald-600'} `}>{t.remaining}: {Math.max(0, editingInvoice.total_amount - (parseFloat(editPaidAmount) || 0))}</small>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold text-muted-foreground mb-1 block">{t.weddingDate}</label><input type="date" value={editWeddingDate} onChange={e => setEditWeddingDate(e.target.value)} className={inputClass} /></div>
                 <div><label className="text-xs font-bold text-muted-foreground mb-1 block">{t.venue}</label><input type="text" value={editVenue} onChange={e => setEditVenue(e.target.value)} className={inputClass} /></div>
               </div>
-              <div><label className="text-xs font-bold text-muted-foreground mb-1 block">{t.notes}</label><textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputClass} min-h-[60px] resize-y`} /></div>
+              <div><label className="text-xs font-bold text-muted-foreground mb-1 block">{t.notes}</label><textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputClass} min - h - [60px] resize - y`} /></div>
             </div>
             <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
               <button onClick={() => setEditingInvoice(null)} className="px-4 py-2.5 border border-border rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition-all">{t.close}</button>
@@ -521,7 +540,7 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
       <AnimatePresence>
         {showToast && (
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
-            className={`fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl text-white font-bold text-sm shadow-2xl z-[5000] flex items-center gap-2.5 ${toastType === 'success' ? 'bg-emerald-600' : 'bg-destructive'}`}>
+            className={`fixed bottom - 6 left - 1 / 2 - translate - x - 1 / 2 px - 6 py - 3.5 rounded - 2xl text - white font - bold text - sm shadow - 2xl z - [5000] flex items - center gap - 2.5 ${toastType === 'success' ? 'bg-emerald-600' : 'bg-destructive'} `}>
             {toastType === 'success' ? <CheckCircle size={18} /> : <X size={18} />}{toastMessage}
           </motion.div>
         )}

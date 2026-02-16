@@ -81,10 +81,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const toggleTheme = () => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' });
 
   const statCards = useMemo(() => [
-    { icon: Users, title: t.activeUsers, value: stats ? stats.totalUsers.toLocaleString() : '...', change: `${stats?.activeUsers || 0} ${lang === 'ar' ? 'نشط' : 'active'}`, positive: true, color: '#0ea5e9', data: [30, 40, 35, 50, 49, 60, 70, 91, 85, stats?.totalUsers || 95] },
-    { icon: ShoppingCart, title: t.totalOrders, value: stats ? stats.activeUsers.toLocaleString() : '...', change: `+${stats?.admins || 0} ${lang === 'ar' ? 'مدير' : 'admins'}`, positive: true, color: '#10b981', data: [20, 25, 30, 28, 35, 40, 38, 42, 45, stats?.activeUsers || 50] },
-    { icon: DollarSign, title: t.revenue, value: stats ? stats.editors.toLocaleString() : '...', change: lang === 'ar' ? 'محررين' : 'editors', positive: true, color: '#f59e0b', data: [45, 52, 49, 55, 60, 58, 65, 70, 68, stats?.editors || 5] },
-    { icon: TrendingUp, title: t.conversion, value: stats ? stats.bannedUsers.toLocaleString() : '...', change: `${stats?.inactiveUsers || 0} ${lang === 'ar' ? 'غير نشط' : 'inactive'}`, positive: (stats?.bannedUsers || 0) === 0, color: '#ef4444', data: [5, 4, 5, 4, 4, 3, 4, 3, 2, stats?.bannedUsers || 0] },
+    { icon: Users, title: t.activeUsers, value: stats ? (stats.activeUsers || 0).toLocaleString() : '...', change: `${stats?.totalUsers || 0} ${lang === 'ar' ? 'مستخدم نظام' : 'sys users'}`, positive: true, color: '#0ea5e9', data: [30, 40, 35, 50, 49, 60, 70, 91, 85, stats?.activeUsers || 0] },
+    { icon: ShoppingCart, title: t.totalOrders, value: stats ? (stats.totalOrders || 0).toLocaleString() : '...', change: `+${stats?.admins || 0} ${lang === 'ar' ? 'مدير' : 'admins'}`, positive: true, color: '#10b981', data: [20, 25, 30, 28, 35, 40, 38, 42, 45, stats?.totalOrders || 0] },
+    { icon: DollarSign, title: t.revenue, value: stats ? (stats.revenue || 0).toLocaleString() : '...', change: lang === 'ar' ? 'إجمالي الأرباح' : 'Total Revenue', positive: true, color: '#f59e0b', data: [45, 52, 49, 55, 60, 58, 65, 70, 68, stats?.revenue || 0] },
+    { icon: TrendingUp, title: t.conversion, value: stats ? (stats.balance || 0).toLocaleString() : '...', change: `${stats?.bannedUsers || 0} ${lang === 'ar' ? 'غير نشط' : 'inactive'}`, positive: (stats?.bannedUsers || 0) === 0, color: '#ef4444', data: [5, 4, 5, 4, 4, 3, 4, 3, 2, stats?.balance || 0] },
   ], [stats, lang, t]);
 
   const activities = useMemo(() => stats?.recentUsers?.map((u: any) => ({

@@ -93,7 +93,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="text-center mt-4 text-xs text-slate-500 space-y-2">
               <span className="block">بيانات الدخول الافتراضية:</span>
               <code className="block dir-ltr bg-sky-500/[0.08] px-3.5 py-2 rounded-lg text-sky-300 text-xs font-mono border border-sky-500/10" dir="ltr">
-                admin@studio.com / admin123
+                admin@stodio.com / admin
               </code>
             </div>
           </form>

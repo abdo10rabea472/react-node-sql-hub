@@ -35,7 +35,7 @@
 
 الخطوة 3: عيّن متغير JWT_SECRET
          → على PowerShell:
-            $env:JWT_SECRET='your-secret-key-here'; node index.js
+            $env:JWT_SECRET='5454'; node index.js
          
          → على Command Prompt:
             set JWT_SECRET=your-secret-key-here && node index.js

@@ -1,19 +1,115 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, Wallet, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash, Camera } from 'lucide-react';
+import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash, Camera, Minus, ShoppingCart, AlertTriangle } from 'lucide-react';
 import { getInvoices, createInvoice, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage, getPackages } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
 interface InventoryProduct { id: number; item_name: string; sell_price: number; unit_cost: number; quantity: number; category_name_ar: string; category_color: string; is_sellable: number; }
-interface PricingPackage { id: number; type: string; price: number; photo_count: number; color: string; }
+interface PricingPackage { id: number; type: string; price: number; photo_count: number; color: string; sizes: string[]; }
 interface Invoice { id: number; invoice_no: string; customer_id: number; customer_name: string; customer_phone: string; total_amount: number; paid_amount: number; remaining_amount: number; created_by: string; participants: string; status: string; created_at: string; }
-interface SelectedPkg { tempId: number; id: number; inventory_item_id: number; type: string; price: number; quantity: number; is_package?: boolean; package_id?: number; }
-interface InvoiceItem { package_name: string; item_price: number; }
+interface SelectedPkg { tempId: number; id: number; inventory_item_id: number; type: string; price: number; quantity: number; is_package?: boolean; package_id?: number; size?: string; availableSizes?: string[]; }
+interface InvoiceItem { package_name: string; item_price: number; quantity: number; total: number; }
 
 const translations = {
-    ar: { title: 'نظام الفواتير', createTab: 'إنشاء فاتورة', listTab: 'سجل الفواتير', selectCustomer: 'بيانات العميل', selectPackages: 'اختر المنتجات', multiplePackagesHint: 'يمكنك اختيار أكثر من منتج', participants: 'المشاركين (اختياري)', participantsHint: 'ادخل أسماء المشاركين هنا...', invoiceSummary: 'ملخص الفاتورة', noItems: 'لم يتم اختيار منتجات بعد', total: 'الإجمالي', paid: 'المدفوع', remaining: 'المتبقي', createBtn: 'إصدار الفاتورة', customerName: 'اسم العميل', customerPhone: 'رقم الهاتف', invoiceNo: 'رقم الفاتورة', amount: 'المبلغ', status: 'الحالة', date: 'التاريخ', time: 'الوقت', searchCustomer: 'ابحث عن عميل...', paid_label: 'مدفوع', pending: 'معلق', partial: 'جزئي', actions: 'الإجراءات', createdBy: 'المسؤول', print: 'طباعة', deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟', close: 'إغلاق', studioName: 'استوديو التصوير', editInvoice: 'تعديل الفاتورة', saveChanges: 'حفظ التغييرات', search: 'بحث...', noInvoices: 'لا توجد فواتير حالياً', addCustomer: 'إضافة عميل جديد', inStock: 'متوفر', outOfStock: 'نفذ' },
-    en: { title: 'Invoicing System', createTab: 'Create Invoice', listTab: 'Invoice History', selectCustomer: 'Customer Info', selectPackages: 'Select Products', multiplePackagesHint: 'You can add multiple products', participants: 'Participants (Optional)', participantsHint: 'Enter names of participants...', invoiceSummary: 'Invoice Summary', noItems: 'No products selected', total: 'Total', paid: 'Paid', remaining: 'Remaining', createBtn: 'Issue Invoice', customerName: 'Customer Name', customerPhone: 'Phone Number', invoiceNo: 'Invoice No', amount: 'Amount', status: 'Status', date: 'Date', time: 'Time', searchCustomer: 'Search customer...', paid_label: 'Paid', pending: 'Pending', partial: 'Partial', actions: 'Actions', createdBy: 'Manager', print: 'Print', deleteConfirm: 'Are you sure you want to delete this invoice?', close: 'Close', studioName: 'Photography Studio', editInvoice: 'Edit Invoice', saveChanges: 'Save Changes', search: 'Search...', noInvoices: 'No invoices found', addCustomer: 'Add new customer', inStock: 'In Stock', outOfStock: 'Out' },
+    ar: {
+        title: 'نظام الفواتير',
+        createTab: 'إنشاء فاتورة',
+        listTab: 'سجل الفواتير',
+        selectCustomer: 'بيانات العميل',
+        selectPackages: 'اختر المنتجات',
+        multiplePackagesHint: 'يمكنك اختيار أكثر من منتج',
+        participants: 'المشاركين (اختياري)',
+        participantsHint: 'ادخل أسماء المشاركين هنا...',
+        invoiceSummary: 'ملخص الفاتورة',
+        noItems: 'لم يتم اختيار منتجات بعد',
+        total: 'الإجمالي',
+        paid: 'المدفوع',
+        remaining: 'المتبقي',
+        createBtn: 'إصدار الفاتورة',
+        customerName: 'اسم العميل',
+        customerPhone: 'رقم الهاتف',
+        invoiceNo: 'رقم الفاتورة',
+        amount: 'المبلغ',
+        status: 'الحالة',
+        date: 'التاريخ',
+        time: 'الوقت',
+        searchCustomer: 'ابحث عن عميل...',
+        paid_label: 'مدفوع',
+        pending: 'معلق',
+        partial: 'جزئي',
+        actions: 'الإجراءات',
+        createdBy: 'المسؤول',
+        print: 'طباعة',
+        deleteConfirm: 'هل أنت متأكد من حذف هذه الفاتورة؟',
+        close: 'إغلاق',
+        studioName: 'استوديو التصوير',
+        editInvoice: 'تعديل الفاتورة',
+        saveChanges: 'حفظ التغييرات',
+        search: 'بحث...',
+        noInvoices: 'لا توجد فواتير حالياً',
+        addCustomer: 'إضافة عميل جديد',
+        inStock: 'متوفر',
+        outOfStock: 'نفذ',
+        quantity: 'الكمية',
+        unitPrice: 'سعر الوحدة',
+        subtotal: 'المجموع الفرعي',
+        items: 'عنصر',
+        todayReport: 'تقارير اليوم',
+        totalSales: 'إجمالي المبيعات',
+        totalCollected: 'إجمالي المحصل',
+        totalUnpaid: 'إجمالي المتبقي',
+        invoicesCount: 'عدد الفواتير'
+    },
+    en: {
+        title: 'Invoicing System',
+        createTab: 'Create Invoice',
+        listTab: 'Invoice History',
+        selectCustomer: 'Customer Info',
+        selectPackages: 'Select Products',
+        multiplePackagesHint: 'You can add multiple products',
+        participants: 'Participants (Optional)',
+        participantsHint: 'Enter names of participants...',
+        invoiceSummary: 'Invoice Summary',
+        noItems: 'No products selected',
+        total: 'Total',
+        paid: 'Paid',
+        remaining: 'Remaining',
+        createBtn: 'Issue Invoice',
+        customerName: 'Customer Name',
+        customerPhone: 'Phone Number',
+        invoiceNo: 'Invoice No',
+        amount: 'Amount',
+        status: 'Status',
+        date: 'Date',
+        time: 'Time',
+        searchCustomer: 'Search customer...',
+        paid_label: 'Paid',
+        pending: 'Pending',
+        partial: 'Partial',
+        actions: 'Actions',
+        createdBy: 'Manager',
+        print: 'Print',
+        deleteConfirm: 'Are you sure you want to delete this invoice?',
+        close: 'Close',
+        studioName: 'Photography Studio',
+        editInvoice: 'Edit Invoice',
+        saveChanges: 'Save Changes',
+        search: 'Search...',
+        noInvoices: 'No invoices found',
+        addCustomer: 'Add new customer',
+        inStock: 'In Stock',
+        outOfStock: 'Out',
+        quantity: 'Quantity',
+        unitPrice: 'Unit Price',
+        subtotal: 'Subtotal',
+        items: 'items',
+        todayReport: `تقرير اليوم (${new Date().toLocaleDateString('ar-EG')})`,
+        totalSales: 'Total Sales',
+        totalCollected: 'Total Collected',
+        totalUnpaid: 'Total Unpaid',
+        invoicesCount: 'Invoices Count'
+    },
 };
 
 const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -55,7 +151,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
         try {
             const [custRes, prodRes, invRes, pkgRes] = await Promise.all([getCustomers(), getInventoryItems(), getInvoices(), getPackages()]);
             setCustomers(custRes.data);
-            setProducts(prodRes.data.filter((p: InventoryProduct) => p.sell_price > 0 && Number(p.is_sellable) === 1));
+            setProducts(prodRes.data.filter((p: any) => p.sell_price > 0 && Number(p.is_sellable) === 1 && p.usage_type === 'studio'));
             setPackages(pkgRes.data);
             setInvoices(invRes.data);
         } catch (err) { console.error('Fetch error:', err); }
@@ -65,15 +161,70 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const addPkg = (prod: InventoryProduct) => {
         if (prod.quantity <= 0) return;
-        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: prod.id, inventory_item_id: prod.id, type: prod.item_name, price: parseFloat(String(prod.sell_price)) || 0, quantity: 1, is_package: false }]);
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: prod.id, inventory_item_id: prod.id, type: prod.item_name, price: parseFloat(String(prod.sell_price)) || 0, quantity: 2, is_package: false }]);
     };
+
     const addPackage = (pkg: PricingPackage) => {
-        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, inventory_item_id: 0, type: pkg.type, price: pkg.price, quantity: 1, is_package: true, package_id: pkg.id }]);
+        const defaultSize = pkg.sizes && pkg.sizes.length > 0 ? pkg.sizes[0] : '';
+        setSelectedPkgs(prev => [...prev, { tempId: Date.now() + Math.random(), id: pkg.id, inventory_item_id: 0, type: pkg.type, price: pkg.price, quantity: 2, is_package: true, package_id: pkg.id, size: defaultSize, availableSizes: pkg.sizes }]);
     };
+
     const removePkg = (tempId: number) => setSelectedPkgs(prev => prev.filter(p => p.tempId !== tempId));
-    const totalAmount = selectedPkgs.reduce((sum, item) => sum + item.price, 0);
+
+    const updateQuantity = (tempId: number, newQuantity: number) => {
+        if (newQuantity < 2) return;
+        // Ensure even number
+        const evenQty = newQuantity % 2 === 0 ? newQuantity : newQuantity + 1;
+        setSelectedPkgs(prev => prev.map(item =>
+            item.tempId === tempId ? { ...item, quantity: evenQty } : item
+        ));
+    };
+
+    const findAndAdjustQuantity = (id: number, isPackage: boolean, delta: number) => {
+        setSelectedPkgs(prev => {
+            let index = -1;
+            for (let i = prev.length - 1; i >= 0; i--) {
+                const p = prev[i];
+                if (isPackage ? p.package_id === id : p.inventory_item_id === id) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index === -1) return prev;
+            const newArr = [...prev];
+            const newQty = (newArr[index].quantity || 2) + delta;
+            if (newQty < 2) {
+                newArr.splice(index, 1);
+            } else {
+                newArr[index] = { ...newArr[index], quantity: newQty };
+            }
+            return newArr;
+        });
+    };
+
+    const totalAmount = selectedPkgs.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const remainingAmount = Math.max(0, totalAmount - (parseFloat(paidAmount) || 0));
     const currentUserName = user?.name || 'Admin';
+
+    const getTodayStats = () => {
+        // Use local date string for comparison to avoid timezone issues
+        const todayCommon = new Date().toDateString();
+
+        const todayInvs = invoices.filter(inv => {
+            if (!inv.created_at) return false;
+            const invDate = new Date(inv.created_at).toDateString();
+            return invDate === todayCommon;
+        });
+
+        return {
+            count: todayInvs.length,
+            total: todayInvs.reduce((sum, inv) => sum + Number(inv.total_amount), 0),
+            paid: todayInvs.reduce((sum, inv) => sum + Number(inv.paid_amount), 0),
+            remaining: todayInvs.reduce((sum, inv) => sum + Number(inv.remaining_amount), 0)
+        };
+    };
+
+    const todayStats = getTodayStats();
 
     const handleSendWhatsAppAuto = async (inv: Invoice) => {
         try {
@@ -83,9 +234,49 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                 return;
             }
             const detailsRes = await getInvoiceDetails(inv.id);
-            const items = detailsRes.data;
-            const itemsText = items.map((it: any) => `- ${it.package_name}: ${it.item_price} ${settings.currency}`).join('\n');
-            const text = `*${settings.studioName || t.studioName}*\n${settings.address ? settings.address + '\n' : ''}${settings.phone ? settings.phone + '\n' : ''}\n*${t.invoiceNo}: ${inv.invoice_no}*\n*${t.customerName}:* ${inv.customer_name}\n*${t.customerPhone}:* ${inv.customer_phone}\n${inv.participants ? `*${t.participants}:* ${inv.participants}\n` : ''}\n${itemsText}\n\n*${t.total}:* ${inv.total_amount} ${settings.currency}\n*${t.paid}:* ${inv.paid_amount} ${settings.currency}\n*${t.remaining}:* ${inv.remaining_amount} ${settings.currency}`;
+            const invoiceData = detailsRes?.data || {};
+            const items = Array.isArray(invoiceData.items) ? invoiceData.items : (Array.isArray(invoiceData) ? invoiceData : []);
+
+            // Group items logic (Same as print)
+            const groupedMap = new Map();
+            items.forEach((it: any) => {
+                const price = parseFloat(it.item_price || it.price || 0);
+                const name = it.package_name || 'Service';
+                const key = `${name}-${price}`;
+
+                if (groupedMap.has(key)) {
+                    const existing = groupedMap.get(key);
+                    existing.quantity += 1;
+                    existing.total += price;
+                } else {
+                    groupedMap.set(key, {
+                        name: name,
+                        quantity: 1,
+                        total: price
+                    });
+                }
+            });
+
+            const itemsText = Array.from(groupedMap.values()).map((it: any) =>
+                `- ${it.name} (x${it.quantity}): ${it.total.toFixed(2)} ${settings.currency}`
+            ).join('\n');
+
+            // Build message text safely
+            let text = `*${settings.studioName || 'Studio'}*\n`;
+            if (settings.address) text += `${settings.address}\n`;
+            if (settings.phone) text += `${settings.phone}\n`;
+
+            text += `\n📄 *${t.invoiceNo || 'Invoice'}: ${inv.invoice_no}*`;
+            text += `\n👤 *${t.customerName || 'Customer'}:* ${inv.customer_name}`;
+            // Optional fields
+            if (inv.participants) text += `\n👥 *${t.participants || 'Participants'}:* ${inv.participants}`;
+
+            text += `\n\n${itemsText}\n`;
+            text += `\n💰 *${t.total || 'Total'}:* ${inv.total_amount} ${settings.currency}`;
+            text += `\n✅ *${t.paid || 'Paid'}:* ${inv.paid_amount} ${settings.currency}`;
+            text += `\n⭕ *${t.remaining || 'Remaining'}:* ${inv.remaining_amount} ${settings.currency}`;
+
+            // Send
             await sendWhatsAppMessage({ phone: inv.customer_phone, message: text });
             showToastMessage(lang === 'ar' ? '✓ تم إرسال الفاتورة عبر الواتساب' : '✓ Invoice sent via WhatsApp');
         } catch (err: any) {
@@ -96,21 +287,127 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const handleCreateInvoice = async () => {
         if (!selectedCustomerId || selectedPkgs.length === 0) return;
+
+        if ((parseFloat(paidAmount) || 0) <= 0) {
+            showToastMessage(lang === 'ar' ? 'يجب إدخال المبلغ المدفوع لإتمام العملية' : 'Paid amount is required to complete the transaction', 'error');
+            return;
+        }
+
         setIsSaving(true);
         try {
-            const res = await createInvoice({ customer_id: Number(selectedCustomerId), items: selectedPkgs, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, participants, created_by: user?.name || 'Admin' });
+            // تحويل البيانات للشكل الذي يتوقعه Backend
+            // Backend يتوقع: [invoice_id, item.inventory_item_id || item.id, item.type, item.price]
+            const formattedItems = selectedPkgs.flatMap(item => {
+                const items = [];
+                for (let i = 0; i < item.quantity; i++) {
+                    items.push({
+                        id: item.id,
+                        inventory_item_id: item.inventory_item_id,
+                        type: item.size ? `${item.type} (${item.size})` : item.type,
+                        price: item.price,
+                        is_package: item.is_package,
+                        package_id: item.package_id,
+                        quantity: 1
+                    });
+                }
+                return items;
+            });
+
+            const invoiceData = {
+                customer_id: Number(selectedCustomerId),
+                items: formattedItems,
+                total_amount: totalAmount,
+                paid_amount: parseFloat(paidAmount) || 0,
+                participants: participants || '',
+                created_by: user?.name || 'Admin'
+            };
+
+            console.log('Sending invoice data:', invoiceData);
+            const res = await createInvoice(invoiceData);
+
             await fetchData();
-            const invs = await getInvoices();
-            const newInv = invs.data.find((i: Invoice) => i.id === res.data.id);
-            if (newInv) await handleSendWhatsAppAuto(newInv);
-            setSelectedCustomerId(''); setSelectedPkgs([]); setParticipants(''); setPaidAmount('0'); setActiveTab('list');
-        } catch (err) {
+            await fetchData();
+            // Directly fetch the new invoice details to ensure we have the latest data for WA
+            const newInvRes = await getInvoiceDetails(res.data.id);
+            const newInvoiceData = newInvRes.data;
+
+            // Map the API response to Invoice type if needed, or just pass it if compatible
+            // The getInvoiceDetails returns full object now, which is perfect for handleSendWhatsAppAuto
+            // We just need to ensure it matches the Invoice interface which handleSendWhatsAppAuto expects
+
+            // Construct a temporary object that satisfies the Invoice interface for the function
+            const tempInv: any = {
+                id: res.data.id,
+                invoice_no: res.data.invoice_no || `INV-${res.data.id}`,
+                customer_name: newInvoiceData.customer_name || 'Customer',
+                customer_phone: newInvoiceData.customer?.phone || '',
+                total_amount: newInvoiceData.total_amount,
+                paid_amount: newInvoiceData.paid_amount,
+                remaining_amount: newInvoiceData.remaining_amount,
+                participants: newInvoiceData.participants
+            };
+
+            showToastMessage(lang === 'ar' ? 'جاري إرسال الفاتورة عبر واتساب...' : 'Sending WhatsApp...');
+            // Run this in background so UI doesn't freeze? No, user wants automatic sending.
+            // We await it to ensure it's sent.
+            await handleSendWhatsAppAuto(tempInv);
+
+            setSelectedCustomerId('');
+            setSelectedPkgs([]);
+            setParticipants('');
+            setPaidAmount('0');
+            setActiveTab('create');
+            handlePrint(res.data.id);
+
+            showToastMessage(lang === 'ar' ? '✓ تم إنشاء الفاتورة بنجاح' : '✓ Invoice created successfully');
+        } catch (err: any) {
             console.error('Create error:', err);
-            showToastMessage(lang === 'ar' ? 'فشل إنشاء الفاتورة' : 'Failed to create invoice', 'error');
+            console.error('Error response:', err.response?.data);
+            const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+            showToastMessage(lang === 'ar' ? `فشل إنشاء الفاتورة: ${errorMsg}` : `Failed to create invoice: ${errorMsg}`, 'error');
         } finally { setIsSaving(false); }
     };
 
-    const handlePrint = async (id: number) => { try { const inv = invoices.find(i => i.id === id); if (!inv) return; const res = await getInvoiceDetails(id); setPrintingInvoice(inv); setPrintingItems(res.data); setShowPrintModal(true); } catch (err) { console.error(err); } };
+    const handlePrint = async (id: number) => {
+        try {
+            const inv = invoices.find(i => i.id === id);
+            if (!inv) return;
+            const res = await getInvoiceDetails(id);
+
+            // New API Structure Fix
+            const invoiceData = res.data;
+            const rawItems = Array.isArray(invoiceData.items) ? invoiceData.items : (Array.isArray(invoiceData) ? invoiceData : []);
+
+            // Group items by name and price
+            const groupedMap = new Map();
+
+            rawItems.forEach((it: any) => {
+                // Ensure price is a number
+                const price = parseFloat(it.item_price || it.price || 0);
+                const name = it.package_name || 'Service';
+                const key = `${name}-${price}`;
+
+                if (groupedMap.has(key)) {
+                    const existing = groupedMap.get(key);
+                    existing.quantity += 1; // Assuming each item row is quantity 1 unless specified
+                    existing.total += price;
+                } else {
+                    groupedMap.set(key, {
+                        package_name: name,
+                        item_price: price,
+                        quantity: 1,
+                        total: price
+                    });
+                }
+            });
+
+            setPrintingInvoice(inv);
+            setPrintingItems(Array.from(groupedMap.values()));
+            setShowPrintModal(true);
+        } catch (err) {
+            console.error(err);
+        }
+    };
     const handleQuickAdd = async () => { if (!newCustName || !newCustPhone) return; setIsAddingCust(true); try { const cleanPhone = newCustPhone.replace(/[^0-9]/g, ''); const phoneWithCode = cleanPhone.startsWith(settings.countryCode) ? cleanPhone : settings.countryCode + cleanPhone; const res = await addCustomer({ name: newCustName, phone: phoneWithCode }); await fetchData(); setSelectedCustomerId(res.data.id); setShowQuickAdd(false); setNewCustName(''); setNewCustPhone(''); } catch (err) { console.error(err); } finally { setIsAddingCust(false); } };
     const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; try { await deleteInvoice(id); await fetchData(); } catch (err: any) { console.error(err); } };
     const handleEditInvoice = (inv: Invoice) => { setEditingInvoice(inv); setEditPaidAmount(inv.paid_amount.toString()); setEditParticipants(inv.participants || ''); };
@@ -158,8 +455,40 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
             </header>
 
             {activeTab === 'create' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-5">
                     <div className="space-y-4">
+                        {/* Today's Summary */}
+                        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-500/20">
+                                <div className="flex items-center gap-2 opacity-80 mb-2">
+                                    <FileText size={14} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">{t.invoicesCount}</span>
+                                </div>
+                                <div className="text-2xl font-black">{todayStats.count}</div>
+                            </div>
+                            <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/20">
+                                <div className="flex items-center gap-2 opacity-80 mb-2">
+                                    <DollarSign size={14} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">{t.totalSales}</span>
+                                </div>
+                                <div className="text-xl font-black">{todayStats.total.toFixed(0)} <span className="text-[10px] opacity-70">{settings.currency}</span></div>
+                            </div>
+                            <div className="bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl p-4 text-white shadow-lg shadow-violet-500/20">
+                                <div className="flex items-center gap-2 opacity-80 mb-2">
+                                    <CheckCircle size={14} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">{t.totalCollected}</span>
+                                </div>
+                                <div className="text-xl font-black">{todayStats.paid.toFixed(0)} <span className="text-[10px] opacity-70">{settings.currency}</span></div>
+                            </div>
+                            <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 text-white shadow-lg shadow-rose-500/20">
+                                <div className="flex items-center gap-2 opacity-80 mb-2">
+                                    <AlertTriangle size={14} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider">{t.totalUnpaid}</span>
+                                </div>
+                                <div className="text-xl font-black">{todayStats.remaining.toFixed(0)} <span className="text-[10px] opacity-70">{settings.currency}</span></div>
+                            </div>
+                        </section>
+
                         {/* Customer Selection */}
                         <section className="bg-card border border-border rounded-2xl p-5 shadow-sm">
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4">
@@ -184,17 +513,52 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
                                 {packages.length === 0 ? (
                                     <p className="text-sm text-muted-foreground col-span-full text-center py-3">{lang === 'ar' ? 'لا توجد باقات' : 'No packages'}</p>
-                                ) : packages.map(pkg => (
-                                    <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPackage(pkg)}
-                                        className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/10 transition-all group relative">
-                                        <span className="text-sm font-bold text-foreground block">{pkg.type}</span>
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-xs text-primary font-semibold">{pkg.price} {settings.currency}</span>
-                                            <span className="text-[10px] text-muted-foreground">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'}</span>
-                                        </div>
-                                        <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
-                                    </motion.div>
-                                ))}
+                                ) : packages.map(pkg => {
+                                    const itemsInCart = selectedPkgs.filter(p => p.package_id === pkg.id);
+                                    const totalQty = itemsInCart.reduce((sum, p) => sum + p.quantity, 0);
+
+                                    return (
+                                        <motion.div key={`pkg-${pkg.id}`} whileTap={{ scale: 0.97 }}
+                                            onClick={() => totalQty === 0 && addPackage(pkg)}
+                                            className={`bg-gradient-to-br from-primary/10 to-primary/5 border-2 ${totalQty > 0 ? 'border-primary shadow-lg shadow-primary/10' : 'border-primary/30'} rounded-xl p-3.5 cursor-pointer hover:border-primary/60 transition-all group relative overflow-hidden`}>
+                                            <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full -translate-y-10 translate-x-10 group-hover:scale-150 transition-transform duration-500" />
+                                            <span className="text-sm font-bold text-foreground block relative z-10">{pkg.type}</span>
+
+                                            <div className="flex justify-between items-center mt-2 relative z-10">
+                                                <span className="text-xs text-primary font-black">{pkg.price} {settings.currency}</span>
+
+                                                {totalQty > 0 ? (
+                                                    <div className="flex items-center gap-2 bg-white/80 dark:bg-black/20 rounded-lg p-1 shadow-sm border border-primary/20">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); findAndAdjustQuantity(pkg.id, true, -2); }}
+                                                            className="w-6 h-6 rounded-md bg-card border border-border text-foreground hover:bg-destructive/10 hover:text-destructive transition-all flex items-center justify-center">
+                                                            <Minus size={12} />
+                                                        </button>
+                                                        <span className="text-xs font-black min-w-[20px] text-center">{totalQty}</span>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); findAndAdjustQuantity(pkg.id, true, 2); }}
+                                                            className="w-6 h-6 rounded-md bg-card border border-border text-foreground hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center">
+                                                            <Plus size={12} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">{pkg.photo_count} {lang === 'ar' ? 'صورة' : 'photos'}</span>
+                                                )}
+                                            </div>
+
+                                            {pkg.sizes && pkg.sizes.length > 0 && totalQty === 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-1 relative z-10">
+                                                    {pkg.sizes.slice(0, 2).map(s => (
+                                                        <span key={s} className="text-[8px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-md border border-primary/20">{s}</span>
+                                                    ))}
+                                                    {pkg.sizes.length > 2 && <span className="text-[8px] font-bold px-1.5 py-0.5 bg-muted text-muted-foreground rounded-md">+ {pkg.sizes.length - 2}</span>}
+                                                </div>
+                                            )}
+
+                                            {totalQty === 0 && <Plus size={16} className="absolute top-3 end-3 text-primary/40 opacity-0 group-hover:opacity-100 transition-all z-10" />}
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
 
                             <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-4 mt-5">
@@ -204,20 +568,45 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                                 {products.length === 0 ? (
                                     <p className="text-sm text-muted-foreground col-span-full text-center py-4">{lang === 'ar' ? 'لا توجد منتجات قابلة للبيع' : 'No sellable products'}</p>
-                                ) : products.map(prod => (
-                                    <motion.div key={`prod-${prod.id}`} whileTap={{ scale: 0.97 }} onClick={() => addPkg(prod)}
-                                        className={`bg-muted/50 border border-border rounded-xl p-3.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all group relative ${prod.quantity <= 0 ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                                        <span className="text-sm font-bold text-foreground block">{prod.item_name}</span>
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-xs text-muted-foreground font-semibold">{prod.sell_price} {settings.currency}</span>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${prod.quantity > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
-                                                {prod.quantity > 0 ? `${prod.quantity} ${t.inStock}` : t.outOfStock}
-                                            </span>
-                                        </div>
-                                        {prod.category_name_ar && <span className="text-[10px] mt-1 block" style={{ color: prod.category_color || '#6B7280' }}>{prod.category_name_ar}</span>}
-                                        <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:text-primary transition-all" />
-                                    </motion.div>
-                                ))}
+                                ) : products.map(prod => {
+                                    const itemsInCart = selectedPkgs.filter(p => p.inventory_item_id === prod.id && !p.is_package);
+                                    const totalQty = itemsInCart.reduce((sum, p) => sum + p.quantity, 0);
+
+                                    return (
+                                        <motion.div key={`prod-${prod.id}`} whileTap={{ scale: 0.97 }}
+                                            onClick={() => prod.quantity > 0 && totalQty === 0 && addPkg(prod)}
+                                            className={`bg-muted/50 border-2 ${totalQty > 0 ? 'border-primary bg-primary/5 shadow-md' : 'border-border'} rounded-xl p-3.5 cursor-pointer hover:border-primary/40 transition-all group relative ${prod.quantity <= 0 ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                                            <span className="text-sm font-bold text-foreground block">{prod.item_name}</span>
+
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className="text-xs text-muted-foreground font-semibold">{prod.sell_price} {settings.currency}</span>
+
+                                                {totalQty > 0 ? (
+                                                    <div className="flex items-center gap-2 bg-white/80 dark:bg-black/20 rounded-lg p-1 shadow-sm border border-primary/20">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); findAndAdjustQuantity(prod.id, false, -2); }}
+                                                            className="w-6 h-6 rounded-md bg-card border border-border text-foreground hover:bg-destructive/10 hover:text-destructive transition-all flex items-center justify-center">
+                                                            <Minus size={12} />
+                                                        </button>
+                                                        <span className="text-xs font-black min-w-[20px] text-center">{totalQty}</span>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); findAndAdjustQuantity(prod.id, false, 2); }}
+                                                            className="w-6 h-6 rounded-md bg-card border border-border text-foreground hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center">
+                                                            <Plus size={12} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${prod.quantity > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                        {prod.quantity > 0 ? `${prod.quantity} ${t.inStock}` : t.outOfStock}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {prod.category_name_ar && !totalQty && <span className="text-[10px] mt-1 block" style={{ color: prod.category_color || '#6B7280' }}>{prod.category_name_ar}</span>}
+                                            {totalQty === 0 && prod.quantity > 0 && <Plus size={14} className="absolute top-3 end-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />}
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         </section>
 
@@ -232,50 +621,112 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
                     {/* Summary Sidebar */}
                     <aside>
-                        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm sticky top-24">
-                            <h3 className="font-bold text-sm text-foreground flex items-center gap-2 mb-5">
-                                <Wallet size={16} className="text-primary" />{t.invoiceSummary}
+                        <div className="bg-gradient-to-br from-card to-muted/30 border-2 border-border rounded-2xl p-6 shadow-xl sticky top-24">
+                            <h3 className="font-bold text-base text-foreground flex items-center gap-2 mb-5">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                    <ShoppingCart size={16} className="text-primary" />
+                                </div>
+                                {t.invoiceSummary}
+                                {selectedPkgs.length > 0 && (
+                                    <span className="ms-auto text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-black">
+                                        {selectedPkgs.length} {t.items}
+                                    </span>
+                                )}
                             </h3>
-                            <div className="space-y-2 mb-6 max-h-[250px] overflow-y-auto">
+
+                            <div className="space-y-2.5 mb-6 max-h-[320px] overflow-y-auto custom-scrollbar pe-1">
                                 {selectedPkgs.length === 0 ? (
-                                    <div className="text-center py-10">
-                                        <Package size={32} className="mx-auto text-muted-foreground/30 mb-3" />
-                                        <p className="text-sm text-muted-foreground">{t.noItems}</p>
+                                    <div className="text-center py-12">
+                                        <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                                            <Package size={28} className="text-muted-foreground/30" />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground font-medium">{t.noItems}</p>
                                     </div>
                                 ) : selectedPkgs.map(item => (
-                                    <motion.div key={item.tempId} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                                        className="flex justify-between items-center py-2.5 px-3 bg-muted/50 rounded-lg group hover:bg-muted transition-all">
-                                        <div>
-                                            <span className="text-sm font-bold text-foreground">{item.type}</span>
-                                            <span className="text-xs text-muted-foreground block">{item.price} {settings.currency}</span>
+                                    <motion.div key={item.tempId}
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        className="bg-card border border-border rounded-xl p-3.5 group hover:border-primary/30 hover:shadow-md transition-all">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex-1">
+                                                <span className="text-sm font-bold text-foreground block mb-1">{item.type}</span>
+                                                {item.availableSizes && item.availableSizes.length > 0 && (
+                                                    <select
+                                                        value={item.size}
+                                                        onChange={(e) => {
+                                                            const newSize = e.target.value;
+                                                            setSelectedPkgs(prev => prev.map(p => p.tempId === item.tempId ? { ...p, size: newSize } : p));
+                                                        }}
+                                                        className="text-[10px] font-bold bg-muted border border-border rounded-md px-1.5 py-0.5 outline-none text-primary"
+                                                    >
+                                                        {item.availableSizes.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                )}
+                                                <span className="text-[10px] text-muted-foreground font-medium block mt-1">
+                                                    {t.unitPrice}: {item.price} {settings.currency}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => removePkg(item.tempId)}
+                                                className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                                                <X size={14} />
+                                            </button>
                                         </div>
-                                        <button onClick={() => removePkg(item.tempId)} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
-                                            <X size={14} />
-                                        </button>
+
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                                                <button
+                                                    onClick={() => updateQuantity(item.tempId, item.quantity - 2)}
+                                                    disabled={item.quantity <= 2}
+                                                    className="w-7 h-7 rounded-md bg-card border border-border text-foreground font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center">
+                                                    <Minus size={14} />
+                                                </button>
+                                                <input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={(e) => updateQuantity(item.tempId, parseInt(e.target.value) || 2)}
+                                                    className="w-12 text-center bg-transparent border-0 outline-none font-black text-sm text-foreground"
+                                                    min="2"
+                                                    step="2"
+                                                />
+                                                <button
+                                                    onClick={() => updateQuantity(item.tempId, item.quantity + 2)}
+                                                    className="w-7 h-7 rounded-md bg-card border border-border text-foreground font-bold hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all flex items-center justify-center">
+                                                    <Plus size={14} />
+                                                </button>
+                                            </div>
+                                            <div className="text-end">
+                                                <div className="text-[10px] text-muted-foreground font-medium mb-0.5">{t.subtotal}</div>
+                                                <div className="text-base font-black text-primary font-mono">
+                                                    {(item.price * item.quantity).toFixed(2)} {settings.currency}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </motion.div>
                                 ))}
                             </div>
 
-                            <div className="bg-muted/50 rounded-xl p-4 space-y-4 border border-border/50">
-                                <div className="flex justify-between items-center">
+                            <div className="bg-gradient-to-br from-muted/80 to-muted/40 rounded-xl p-4 space-y-4 border-2 border-border/50 shadow-inner">
+                                <div className="flex justify-between items-center pb-3 border-b border-border/50">
                                     <span className="text-sm font-bold text-muted-foreground">{t.total}</span>
-                                    <span className="text-xl font-black text-primary font-mono">{totalAmount} {settings.currency}</span>
+                                    <span className="text-2xl font-black text-primary font-mono">{totalAmount.toFixed(2)} {settings.currency}</span>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t.paid}</label>
                                     <div className="relative">
                                         <DollarSign size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                        <input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} className="w-full bg-card border border-border rounded-xl ps-9 pe-4 py-2.5 text-lg font-black font-mono focus:border-primary/50 outline-none transition-all" />
+                                        <input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} className="w-full bg-card border-2 border-border rounded-xl ps-9 pe-4 py-2.5 text-lg font-black font-mono focus:border-primary/50 outline-none transition-all" />
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center pt-3 border-t border-border/50">
                                     <span className="text-xs font-bold text-muted-foreground">{t.remaining}</span>
-                                    <span className={`text-lg font-black font-mono ${remainingAmount > 0 ? 'text-destructive' : 'text-emerald-500'}`}>{remainingAmount} {settings.currency}</span>
+                                    <span className={`text-xl font-black font-mono ${remainingAmount > 0 ? 'text-destructive' : 'text-emerald-500'}`}>{remainingAmount.toFixed(2)} {settings.currency}</span>
                                 </div>
                             </div>
 
                             <button onClick={handleCreateInvoice} disabled={!selectedCustomerId || selectedPkgs.length === 0 || isSaving}
-                                className="w-full mt-5 bg-primary text-primary-foreground font-black py-3.5 rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm">
+                                className="w-full mt-5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-black py-4 rounded-xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm">
                                 {isSaving ? <Loader className="animate-spin" size={18} /> : <><CheckCircle size={18} />{t.createBtn}</>}
                             </button>
                         </div>
@@ -412,8 +863,8 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                                 </div>
                                 {printingInvoice.participants && <div className="mt-3 p-2.5 bg-gray-50 rounded-xl border-s-4 border-black text-[10px]"><span className="font-black text-gray-400 uppercase block mb-1">{t.participants}</span><p className="font-bold">{printingInvoice.participants}</p></div>}
                                 <table className="w-full mt-5 mb-4">
-                                    <thead className="border-b-2 border-black"><tr><th className="text-[10px] font-black text-start py-2 uppercase">{t.selectPackages}</th><th className="text-[10px] font-black text-end py-2 uppercase">{t.amount}</th></tr></thead>
-                                    <tbody className="divide-y divide-gray-100">{printingItems.map((item, i) => <tr key={i}><td className="py-2.5 text-[11px] font-bold">{item.package_name}</td><td className="py-2.5 text-end text-[11px] font-black">{item.item_price} {settings.currency}</td></tr>)}</tbody>
+                                    <thead className="border-b-2 border-black"><tr><th className="text-[10px] font-black text-start py-2 uppercase">{t.selectPackages}</th><th className="text-[10px] font-black text-center py-2 uppercase">{t.quantity}</th><th className="text-[10px] font-black text-end py-2 uppercase">{t.amount}</th></tr></thead>
+                                    <tbody className="divide-y divide-gray-100">{printingItems.map((item, i) => <tr key={i}><td className="py-2.5 text-[11px] font-bold">{item.package_name}</td><td className="py-2.5 text-center text-[11px] font-bold">{item.quantity}</td><td className="py-2.5 text-end text-[11px] font-black">{item.total.toFixed(2)} {settings.currency}</td></tr>)}</tbody>
                                 </table>
                                 <div className="bg-black text-white p-4 rounded-2xl space-y-2">
                                     <div className="flex justify-between text-xs font-bold"><span className="opacity-60">{t.total}</span><span>{printingInvoice.total_amount} {settings.currency}</span></div>
@@ -425,7 +876,7 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             </div>
                             <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2.5 no-print">
                                 <button onClick={() => setShowPrintModal(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-all">{t.close}</button>
-                                
+
                                 <button onClick={() => window.print()} className="flex-[2] py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all"><Printer size={16} />{t.print}</button>
                             </div>
                         </motion.div>
@@ -516,6 +967,22 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: hsl(var(--muted-foreground) / 0.2);
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: hsl(var(--muted-foreground) / 0.3);
+                }
+            `}</style>
         </div>
     );
 };

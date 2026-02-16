@@ -5,9 +5,9 @@ import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 
 const currencies = [
+  { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
   { code: 'SAR', label: { ar: 'ريال سعودي', en: 'Saudi Riyal' }, symbol: 'ر.س' },
   { code: 'USD', label: { ar: 'دولار أمريكي', en: 'US Dollar' }, symbol: '$' },
-  { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
   { code: 'AED', label: { ar: 'درهم إماراتي', en: 'UAE Dirham' }, symbol: 'د.إ' },
   { code: 'EUR', label: { ar: 'يورو', en: 'Euro' }, symbol: '€' },
 ];
@@ -55,8 +55,34 @@ const SettingsPage: React.FC = () => {
   useEffect(() => { checkWaStatus(); }, []);
   useEffect(() => { if (waStatus === 'starting' || waStatus === 'qr') { const interval = setInterval(checkWaStatus, 3000); return () => clearInterval(interval); } }, [waStatus]);
 
-  const handleStartWa = async () => { setWaLoading(true); try { await startWhatsAppSession(); setWaStatus('starting'); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
-  const handleStopWa = async () => { if (!window.confirm(t.waDisconnectConfirm)) return; setWaLoading(true); try { await stopWhatsAppSession(); setWaStatus('disconnected'); setQrCode(null); } catch (err) { console.error(err); } finally { setWaLoading(false); } };
+  const handleStartWa = async () => {
+    setWaLoading(true);
+    try {
+      const res = await startWhatsAppSession();
+      const s = res.data;
+      setWaStatus(s.status === 'qr' ? 'qr' : s.connected ? 'connected' : 'starting');
+      setQrCode(s.qrCode || null);
+    } catch (err) {
+      console.error(err);
+      setWaStatus('disconnected');
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const handleStopWa = async () => {
+    if (!window.confirm(t.waDisconnectConfirm)) return;
+    setWaLoading(true);
+    try {
+      await stopWhatsAppSession();
+      setWaStatus('disconnected');
+      setQrCode(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setWaLoading(false);
+    }
+  };
 
   const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme, countryCode: selectedCountry }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
@@ -92,7 +118,7 @@ const SettingsPage: React.FC = () => {
                 <div className="flex items-center gap-2.5 text-primary mb-6"><User size={20} /><h3 className="text-base font-bold text-foreground">{t.profile}</h3></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div><label className="block text-xs font-semibold text-foreground mb-2">{t.adminName}</label><input value={adminName} onChange={e => setAdminName(e.target.value)} className={inputClass} /></div>
-                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.phone}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Smartphone size={16} className="text-muted-foreground" /><input defaultValue="+966 50 000 0000" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.phone}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Smartphone size={16} className="text-muted-foreground" /><input defaultValue="+201068694941" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
                 </div>
               </div>
             )}
@@ -157,24 +183,63 @@ const SettingsPage: React.FC = () => {
                         {waLoading && <Loader size={14} className="animate-spin" />}<RefreshCw size={14} />{t.waStop}
                       </button>
                     ) : (
-                      <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting' || waStatus === 'qr'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">
-                        {(waLoading || waStatus === 'starting') && <Loader size={14} className="animate-spin" />}{t.waStart}
+                      <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                        {(waLoading || waStatus === 'starting') ? <Loader size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        {(waLoading || waStatus === 'starting') ? t.waStarting : t.waStart}
                       </button>
                     )}
                   </div>
-                  {(waStatus === 'qr' && qrCode) && (
-                    <div className="flex flex-col items-center gap-3 my-4 p-4 bg-white rounded-xl border border-border">
-                      <img src={qrCode} alt="WhatsApp QR Code" className="w-64 h-64 rounded-lg" />
-                      <p className="text-xs text-gray-500 font-semibold text-center">{lang === 'ar' ? 'افتح واتساب > الأجهزة المرتبطة > ربط جهاز > امسح الرمز' : 'Open WhatsApp > Linked Devices > Link a Device > Scan Code'}</p>
+                  {/* Active QR Display */}
+                  {qrCode && (
+                    <div className="flex flex-col items-center gap-4 my-6 p-6 bg-white rounded-xl border-4 border-emerald-500/10 shadow-xl animate-in fade-in zoom-in duration-300">
+                      <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-100">
+                        <img
+                          src={qrCode}
+                          alt="Scan WhatsApp QR Code"
+                          className="w-[240px] h-[240px] object-contain rounded-lg"
+                          onError={(e) => {
+                            // If image fails, revert to simple placeholder text
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) parent.innerHTML = '<div class="w-[240px] h-[240px] flex items-center justify-center bg-gray-100 text-gray-400 text-xs">QR Load Error</div>';
+                          }}
+                        />
+                      </div>
+                      <div className="text-center space-y-1.5">
+                        <p className="text-base font-bold text-gray-800">{lang === 'ar' ? 'افتح واتساب على هاتفك' : 'Open WhatsApp on your phone'}</p>
+                        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 font-medium bg-gray-50 px-3 py-1.5 rounded-full">
+                          <span>{lang === 'ar' ? 'القائمة' : 'Menu'}</span>
+                          <span>›</span>
+                          <span>{lang === 'ar' ? 'الأجهزة المرتبطة' : 'Linked Devices'}</span>
+                          <span>›</span>
+                          <span>{lang === 'ar' ? 'ربط جهاز' : 'Link a Device'}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  {waStatus === 'starting' && (
-                    <div className="flex flex-col items-center gap-3 my-4 p-4">
-                      <Loader size={32} className="animate-spin text-green-500" />
-                      <p className="text-sm text-muted-foreground font-semibold">{lang === 'ar' ? 'جاري تحميل المتصفح... انتظر ظهور رمز QR' : 'Loading browser... waiting for QR code'}</p>
+
+                  {/* Loading State */}
+                  {waStatus === 'starting' && !qrCode && (
+                    <div className="flex flex-col items-center justify-center gap-4 my-8 p-10 bg-muted/30 rounded-xl border border-dashed border-border/60">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse"></div>
+                        <Loader size={40} className="relative z-10 animate-spin text-emerald-600" />
+                      </div>
+                      <div className="text-center space-y-1">
+                        <p className="text-sm font-bold text-foreground">{lang === 'ar' ? 'جاري تحضير الجلسة...' : 'Preparing session...'}</p>
+                        <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'يرجى الانتظار بضع ثواني' : 'Please wait a few seconds'}</p>
+                      </div>
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground bg-card p-3 rounded-lg border border-border">{t.waHint}</p>
+
+                  {/* Instructions (Only show if not connected and no QR) */}
+                  {waStatus === 'disconnected' && !qrCode && (
+                    <div className="flex flex-col items-center justify-center gap-3 my-8 py-10 text-muted-foreground opacity-60">
+                      <Smartphone size={48} strokeWidth={1.5} />
+                      <p className="text-sm font-medium">{lang === 'ar' ? 'اضغط "بدء الجلسة" لربط حسابك' : 'Click "Start Session" to connect account'}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground bg-card p-3 rounded-lg border border-border mt-6">{t.waHint}</p>
                   <p className="text-xs text-amber-600 bg-amber-500/5 p-3 rounded-lg border border-amber-500/20 mt-2 flex items-start gap-2"><RefreshCw size={14} className="shrink-0 mt-0.5" />{t.waChangeHint}</p>
                 </div>
               </div>
