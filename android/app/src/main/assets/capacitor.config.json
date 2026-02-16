@@ -1,0 +1,9 @@
+{
+	"appId": "com.stodio.app",
+	"appName": "STODIO",
+	"webDir": "dist",
+	"server": {
+		"url": "https://8221da28-221b-4d0c-ab54-84da531691bb.lovableproject.com?forceHideBadge=true",
+		"cleartext": true
+	}
+}
