@@ -19,8 +19,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If we get a route-not-found type error, try the direct PHP file approach
-    console.error("API Error:", error?.response?.status, error?.response?.data);
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      console.error("API Network Error: لا يمكن الاتصال بالسيرفر", API_URL);
+    } else {
+      console.error("API Error:", error.response?.status, error.response?.data);
+    }
     return Promise.reject(error);
   },
 );
