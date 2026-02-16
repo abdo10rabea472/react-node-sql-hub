@@ -35,6 +35,16 @@ class JWT
 
         list($header, $payload, $signature) = $parts;
 
+        // Validate algorithm header to prevent algorithm confusion attacks
+        $headerData = json_decode(self::base64UrlDecode($header), true);
+        if (!$headerData || !isset($headerData['alg']) || !isset($headerData['typ'])) {
+            return false;
+        }
+        // Reject 'none' algorithm and enforce HS256 only
+        if (strtolower($headerData['alg']) === 'none' || $headerData['alg'] !== 'HS256') {
+            return false;
+        }
+
         // Re-generate signature to verify
         $validSignature = self::hashHmac($header . "." . $payload, self::$secret);
 
