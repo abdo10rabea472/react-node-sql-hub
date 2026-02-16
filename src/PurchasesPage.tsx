@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Search, Package, Loader, ShoppingBag, DollarSign, Receipt, X, Tag, Minus } from 'lucide-react';
-import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem, getInventoryCategories, createInventoryCategory } from './api';
+import { Plus, Trash2, Search, Package, Loader, ShoppingBag, DollarSign, Receipt, X, Tag, Minus, Wallet, Users } from 'lucide-react';
+import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem, getInventoryCategories, createInventoryCategory, getExpenses, createExpense, deleteExpense, getSalaries, createSalary, deleteSalary, getUsers } from './api';
 import { useSettings } from './SettingsContext';
 
 interface Category { id: number; name: string; name_ar: string; color: string; is_sellable: number; usage_type?: string; }
 interface InventoryItem { id: number; item_name: string; category_id: number; usage_type: 'studio' | 'wedding'; quantity: number; unit_cost: number; sell_price: number; supplier: string; category_name: string; category_name_ar: string; category_color: string; min_stock?: number; notes?: string; }
 interface PurchaseItem { tempId: number; item_id: number; item_name: string; quantity: number; unit_cost: number; total: number; }
 
-const t_ar = { title: 'المشتريات', addPurchase: 'إضافة مشتريات', list: 'سجل المخزون', itemName: 'اسم الصنف', category: 'الفئة', quantity: 'الكمية', unitCost: 'سعر الوحدة', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', supplier: 'المورد', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', search: 'بحث...', noItems: 'لا يوجد مخزون', addItem: 'إضافة صنف', selectItem: 'اختر صنف...', purchaseSummary: 'ملخص المشتريات', newCategory: 'فئة جديدة', categoryName: 'اسم الفئة', categoryNameAr: 'الاسم بالعربي', addCategory: 'إضافة فئة', notes: 'ملاحظات', items: 'عنصر', subtotal: 'المجموع الفرعي', type: 'النوع', studio: 'صالة', wedding: 'زفاف' };
-const t_en = { title: 'Purchases', addPurchase: 'Add Purchase', list: 'Inventory List', itemName: 'Item Name', category: 'Category', quantity: 'Quantity', unitCost: 'Unit Cost', total: 'Total', paid: 'Paid', remaining: 'Remaining', supplier: 'Supplier', save: 'Save', cancel: 'Cancel', delete: 'Delete', search: 'Search...', noItems: 'No inventory', addItem: 'Add Item', selectItem: 'Select item...', purchaseSummary: 'Purchase Summary', newCategory: 'New Category', categoryName: 'Category Name', categoryNameAr: 'Arabic Name', addCategory: 'Add Category', notes: 'Notes', items: 'items', subtotal: 'Subtotal', type: 'Type', studio: 'Studio', wedding: 'Wedding' };
+const t_ar = { title: 'المشتريات والمصاريف', addPurchase: 'إضافة مشتريات', list: 'سجل المخزون', itemName: 'اسم الصنف', category: 'الفئة', quantity: 'الكمية', unitCost: 'سعر الوحدة', total: 'الإجمالي', paid: 'المدفوع', remaining: 'الباقي', supplier: 'المورد', save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', search: 'بحث...', noItems: 'لا يوجد مخزون', addItem: 'إضافة صنف', selectItem: 'اختر صنف...', purchaseSummary: 'ملخص المشتريات', newCategory: 'فئة جديدة', categoryName: 'اسم الفئة', categoryNameAr: 'الاسم بالعربي', addCategory: 'إضافة فئة', notes: 'ملاحظات', items: 'عنصر', subtotal: 'المجموع الفرعي', type: 'النوع', studio: 'صالة', wedding: 'زفاف', expenses: 'المصاريف العادية', salaries: 'المرتبات', addExpense: 'إضافة مصروف', addSalary: 'صرف مرتب', description: 'الوصف', amount: 'المبلغ', date: 'التاريخ', employee: 'الموظف', selectEmployee: 'اختر الموظف...', bonus: 'بونص', deductions: 'خصومات', netSalary: 'صافي المرتب', month: 'الشهر', noExpenses: 'لا يوجد مصاريف', noSalaries: 'لا يوجد مرتبات' };
+const t_en = { title: 'Purchases & Expenses', addPurchase: 'Add Purchase', list: 'Inventory List', itemName: 'Item Name', category: 'Category', quantity: 'Quantity', unitCost: 'Unit Cost', total: 'Total', paid: 'Paid', remaining: 'Remaining', supplier: 'Supplier', save: 'Save', cancel: 'Cancel', delete: 'Delete', search: 'Search...', noItems: 'No inventory', addItem: 'Add Item', selectItem: 'Select item...', purchaseSummary: 'Purchase Summary', newCategory: 'New Category', categoryName: 'Category Name', categoryNameAr: 'Arabic Name', addCategory: 'Add Category', notes: 'Notes', items: 'items', subtotal: 'Subtotal', type: 'Type', studio: 'Studio', wedding: 'Wedding', expenses: 'Regular Expenses', salaries: 'Salaries', addExpense: 'Add Expense', addSalary: 'Pay Salary', description: 'Description', amount: 'Amount', date: 'Date', employee: 'Employee', selectEmployee: 'Select employee...', bonus: 'Bonus', deductions: 'Deductions', netSalary: 'Net Salary', month: 'Month', noExpenses: 'No expenses', noSalaries: 'No salaries' };
 
 const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const { settings } = useSettings();
@@ -19,12 +19,31 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'purchase' | 'list'>('purchase');
+    const [activeTab, setActiveTab] = useState<'purchase' | 'list' | 'expenses' | 'salaries'>('purchase');
     const [usageFilter, setUsageFilter] = useState<'studio' | 'wedding'>('studio');
     const [searchQuery, setSearchQuery] = useState('');
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    // Expenses state
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [expDesc, setExpDesc] = useState('');
+    const [expCategory, setExpCategory] = useState('عامة');
+    const [expAmount, setExpAmount] = useState('');
+    const [expDate, setExpDate] = useState(new Date().toISOString().slice(0, 10));
+    const [expNotes, setExpNotes] = useState('');
+
+    // Salaries state
+    const [salaries, setSalaries] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
+    const [salUserId, setSalUserId] = useState<number | ''>('');
+    const [salUserName, setSalUserName] = useState('');
+    const [salAmount, setSalAmount] = useState('');
+    const [salBonus, setSalBonus] = useState('0');
+    const [salDeductions, setSalDeductions] = useState('0');
+    const [salMonth, setSalMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [salNotes, setSalNotes] = useState('');
 
     // Purchase state
     const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
@@ -51,9 +70,17 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
 
     const fetchData = async () => {
         try {
-            const [iRes, cRes] = await Promise.all([getInventoryItems(), getInventoryCategories()]);
+            const [iRes, cRes, eRes, sRes, uRes] = await Promise.all([
+                getInventoryItems(), getInventoryCategories(),
+                getExpenses().catch(() => ({ data: [] })),
+                getSalaries().catch(() => ({ data: [] })),
+                getUsers().catch(() => ({ data: [] })),
+            ]);
             setItems(iRes.data);
             setCategories(cRes.data);
+            setExpenses(Array.isArray(eRes.data) ? eRes.data : []);
+            setSalaries(Array.isArray(sRes.data) ? sRes.data : []);
+            setEmployees(Array.isArray(uRes.data) ? uRes.data : []);
         } catch { toast(lang === 'ar' ? 'فشل تحميل البيانات' : 'Failed to load data', 'error'); }
         finally { setLoading(false); }
     };
@@ -212,17 +239,23 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                     </h2>
 
                     <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="flex bg-muted p-1 rounded-xl">
+                        <div className="flex bg-muted p-1 rounded-xl flex-wrap">
                             <button onClick={() => { setUsageFilter('studio'); setSelectedItemId(''); }} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${usageFilter === 'studio' ? 'bg-card text-amber-600 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{t.studio}</button>
                             <button onClick={() => { setUsageFilter('wedding'); setSelectedItemId(''); }} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${usageFilter === 'wedding' ? 'bg-card text-rose-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>{t.wedding}</button>
                         </div>
 
-                        <div className="flex gap-1 bg-muted p-1 rounded-xl">
-                            <button onClick={() => setActiveTab('purchase')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'purchase' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                                <Plus size={16} className="inline-block me-1.5 -mt-0.5" />{t.addPurchase}
+                        <div className="flex gap-1 bg-muted p-1 rounded-xl flex-wrap">
+                            <button onClick={() => setActiveTab('purchase')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'purchase' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                                <Plus size={14} className="inline-block me-1 -mt-0.5" />{t.addPurchase}
                             </button>
-                            <button onClick={() => setActiveTab('list')} className={`flex-1 sm:flex-none px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'list' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                                <Package size={16} className="inline-block me-1.5 -mt-0.5" />{t.list}
+                            <button onClick={() => setActiveTab('list')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'list' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                                <Package size={14} className="inline-block me-1 -mt-0.5" />{t.list}
+                            </button>
+                            <button onClick={() => setActiveTab('expenses')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'expenses' ? 'bg-card text-orange-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                                <Wallet size={14} className="inline-block me-1 -mt-0.5" />{t.expenses}
+                            </button>
+                            <button onClick={() => setActiveTab('salaries')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'salaries' ? 'bg-card text-emerald-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                                <Users size={14} className="inline-block me-1 -mt-0.5" />{t.salaries}
                             </button>
                         </div>
                     </div>
@@ -434,6 +467,137 @@ const PurchasesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                             ))}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ═══ EXPENSES TAB ═══ */}
+            {activeTab === 'expenses' && (
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2"><Wallet size={16} className="text-orange-500" />{t.expenses}</h3>
+                        {expenses.length === 0 ? (
+                            <div className="text-center py-16 bg-card border border-border rounded-2xl"><Wallet size={40} className="mx-auto text-muted-foreground/30 mb-3" /><p className="text-muted-foreground text-sm">{t.noExpenses}</p></div>
+                        ) : (
+                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                                <table className="w-full"><thead><tr className="bg-muted/50">
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.description}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.category}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.amount}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.date}</th>
+                                    <th className="px-4 py-3 w-10"></th>
+                                </tr></thead><tbody>
+                                    {expenses.map((exp: any) => (
+                                        <tr key={exp.id} className="border-t border-border/50 hover:bg-muted/30">
+                                            <td className="px-4 py-3 text-sm font-medium">{exp.description}</td>
+                                            <td className="px-4 py-3"><span className="text-xs px-2 py-1 rounded-full bg-orange-500/10 text-orange-600 font-semibold">{exp.category}</span></td>
+                                            <td className="px-4 py-3 text-sm font-bold text-orange-600">{Number(exp.amount).toLocaleString()} {settings.currency}</td>
+                                            <td className="px-4 py-3 text-xs text-muted-foreground">{(exp.expense_date || exp.created_at || '').slice(0, 10)}</td>
+                                            <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(lang === 'ar' ? 'حذف؟' : 'Delete?')) { await deleteExpense(exp.id); await fetchData(); toast(lang === 'ar' ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody></table>
+                                <div className="px-4 py-3 border-t border-border bg-muted/30 flex justify-between">
+                                    <span className="text-xs font-bold text-muted-foreground">{t.total}</span>
+                                    <span className="text-sm font-black text-orange-600">{expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0).toLocaleString()} {settings.currency}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <aside>
+                        <div className="bg-card border-2 border-orange-500/20 rounded-2xl p-5 sticky top-24 space-y-4">
+                            <h3 className="font-bold text-sm text-foreground flex items-center gap-2"><Plus size={16} className="text-orange-500" />{t.addExpense}</h3>
+                            <input value={expDesc} onChange={e => setExpDesc(e.target.value)} className={inputClass} placeholder={t.description} />
+                            <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className={inputClass}>
+                                {[lang === 'ar' ? 'عامة' : 'General', lang === 'ar' ? 'إيجار' : 'Rent', lang === 'ar' ? 'كهرباء ومياه' : 'Utilities', lang === 'ar' ? 'صيانة' : 'Maintenance', lang === 'ar' ? 'نقل' : 'Transport', lang === 'ar' ? 'تسويق' : 'Marketing', lang === 'ar' ? 'أخرى' : 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} className={inputClass} placeholder={t.amount} />
+                            <input type="date" value={expDate} onChange={e => setExpDate(e.target.value)} className={inputClass} />
+                            <input value={expNotes} onChange={e => setExpNotes(e.target.value)} className={inputClass} placeholder={t.notes} />
+                            <button disabled={!expDesc || !expAmount || saving} onClick={async () => {
+                                setSaving(true);
+                                try {
+                                    await createExpense({ description: expDesc, category: expCategory, amount: parseFloat(expAmount), expense_date: expDate, notes: expNotes, created_by: user?.name || 'Admin' });
+                                    setExpDesc(''); setExpAmount(''); setExpNotes('');
+                                    await fetchData();
+                                    toast(lang === 'ar' ? 'تم إضافة المصروف' : 'Expense added');
+                                } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
+                                finally { setSaving(false); }
+                            }} className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold disabled:opacity-40 transition-all flex items-center justify-center gap-2">
+                                {saving ? <Loader className="animate-spin" size={16} /> : <><Plus size={16} />{t.save}</>}
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+            )}
+
+            {/* ═══ SALARIES TAB ═══ */}
+            {activeTab === 'salaries' && (
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2"><Users size={16} className="text-emerald-500" />{t.salaries}</h3>
+                        {salaries.length === 0 ? (
+                            <div className="text-center py-16 bg-card border border-border rounded-2xl"><Users size={40} className="mx-auto text-muted-foreground/30 mb-3" /><p className="text-muted-foreground text-sm">{t.noSalaries}</p></div>
+                        ) : (
+                            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                                <table className="w-full"><thead><tr className="bg-muted/50">
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.employee}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.amount}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.bonus}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.deductions}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.netSalary}</th>
+                                    <th className="px-4 py-3 text-start text-[11px] font-bold text-muted-foreground">{t.month}</th>
+                                    <th className="px-4 py-3 w-10"></th>
+                                </tr></thead><tbody>
+                                    {salaries.map((sal: any) => (
+                                        <tr key={sal.id} className="border-t border-border/50 hover:bg-muted/30">
+                                            <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[10px] font-bold">{(sal.user_name || '?')[0]}</div><span className="text-sm font-medium">{sal.user_name}</span></div></td>
+                                            <td className="px-4 py-3 text-sm">{Number(sal.amount).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-sm text-emerald-600">+{Number(sal.bonus || 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-sm text-destructive">-{Number(sal.deductions || 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-sm font-black text-emerald-600">{Number(sal.net_salary).toLocaleString()} {settings.currency}</td>
+                                            <td className="px-4 py-3 text-xs text-muted-foreground">{sal.month}</td>
+                                            <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(lang === 'ar' ? 'حذف؟' : 'Delete?')) { await deleteSalary(sal.id); await fetchData(); toast(lang === 'ar' ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody></table>
+                                <div className="px-4 py-3 border-t border-border bg-muted/30 flex justify-between">
+                                    <span className="text-xs font-bold text-muted-foreground">{t.total}</span>
+                                    <span className="text-sm font-black text-emerald-600">{salaries.reduce((s: number, e: any) => s + Number(e.net_salary || 0), 0).toLocaleString()} {settings.currency}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <aside>
+                        <div className="bg-card border-2 border-emerald-500/20 rounded-2xl p-5 sticky top-24 space-y-4">
+                            <h3 className="font-bold text-sm text-foreground flex items-center gap-2"><Plus size={16} className="text-emerald-500" />{t.addSalary}</h3>
+                            <select value={salUserId} onChange={e => { const id = Number(e.target.value); setSalUserId(id); const emp = employees.find((u: any) => u.id === id); setSalUserName(emp?.name || ''); }} className={inputClass}>
+                                <option value="">{t.selectEmployee}</option>
+                                {employees.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+                            </select>
+                            <input type="number" value={salAmount} onChange={e => setSalAmount(e.target.value)} className={inputClass} placeholder={lang === 'ar' ? 'المرتب الأساسي' : 'Base Salary'} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <input type="number" value={salBonus} onChange={e => setSalBonus(e.target.value)} className={inputClass} placeholder={t.bonus} />
+                                <input type="number" value={salDeductions} onChange={e => setSalDeductions(e.target.value)} className={inputClass} placeholder={t.deductions} />
+                            </div>
+                            <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                                <div className="flex justify-between"><span className="text-xs text-muted-foreground">{t.netSalary}:</span><span className="text-sm font-black text-emerald-600">{((parseFloat(salAmount) || 0) + (parseFloat(salBonus) || 0) - (parseFloat(salDeductions) || 0)).toLocaleString()} {settings.currency}</span></div>
+                            </div>
+                            <input type="month" value={salMonth} onChange={e => setSalMonth(e.target.value)} className={inputClass} />
+                            <input value={salNotes} onChange={e => setSalNotes(e.target.value)} className={inputClass} placeholder={t.notes} />
+                            <button disabled={!salUserId || !salAmount || saving} onClick={async () => {
+                                setSaving(true);
+                                try {
+                                    await createSalary({ user_id: salUserId, user_name: salUserName, amount: parseFloat(salAmount), bonus: parseFloat(salBonus) || 0, deductions: parseFloat(salDeductions) || 0, month: salMonth, notes: salNotes, created_by: user?.name || 'Admin' });
+                                    setSalUserId(''); setSalUserName(''); setSalAmount(''); setSalBonus('0'); setSalDeductions('0'); setSalNotes('');
+                                    await fetchData();
+                                    toast(lang === 'ar' ? 'تم صرف المرتب' : 'Salary paid');
+                                } catch { toast(lang === 'ar' ? 'فشل' : 'Failed', 'error'); }
+                                finally { setSaving(false); }
+                            }} className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold disabled:opacity-40 transition-all flex items-center justify-center gap-2">
+                                {saving ? <Loader className="animate-spin" size={16} /> : <><DollarSign size={16} />{t.save}</>}
+                            </button>
+                        </div>
+                    </aside>
                 </div>
             )}
         </div>

@@ -18,8 +18,8 @@ const AccountDetailsPage = lazy(() => import('./AccountDetailsPage'));
 interface DashboardProps { user: User; onLogout: () => void; }
 
 const translations = {
-  ar: { dashboard: "لوحة التحكم", users: "المستخدمين", settings: "الإعدادات", logout: "تسجيل خروج", welcome: "مرحباً بك، استوديو", stats: "نظرة عامة على الأداء والإحصائيات المتقدمة", search: "ابحث هنا...", studio: "الاستوديو", wedding: "الزفاف", customers: "العملاء", purchases: "المشتريات", reports: "التقارير" },
-  en: { dashboard: "Dashboard", users: "Users", settings: "Settings", logout: "Sign Out", welcome: "Welcome back, Studio", stats: "Here's what's happening with your projects today", search: "Search anything...", studio: "Studio", wedding: "Wedding", customers: "Customers", purchases: "Purchases", reports: "Reports" },
+  ar: { dashboard: "لوحة التحكم", users: "الموظفين", settings: "الإعدادات", logout: "تسجيل خروج", welcome: "مرحباً بك، استوديو", stats: "نظرة عامة على الأداء والإحصائيات المتقدمة", search: "ابحث هنا...", studio: "الاستوديو", wedding: "الزفاف", customers: "العملاء", purchases: "المشتريات", reports: "التقارير" },
+  en: { dashboard: "Dashboard", users: "Employees", settings: "Settings", logout: "Sign Out", welcome: "Welcome back, Studio", stats: "Here's what's happening with your projects today", search: "Search anything...", studio: "Studio", wedding: "Wedding", customers: "Customers", purchases: "Purchases", reports: "Reports" },
 };
 
 const navItems = [

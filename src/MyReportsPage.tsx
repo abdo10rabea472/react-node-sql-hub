@@ -96,6 +96,8 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const l = t[lang];
     const [activities, setActivities] = useState<Activity[]>([]);
     const [purchases, setPurchases] = useState<any[]>([]);
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [salaries, setSalaries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -104,23 +106,24 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [viewMode, setViewMode] = useState<'today' | 'history'>('today');
 
-
     const [statsData, setStatsData] = useState<any>(null);
 
     const fetchActivities = async () => {
         setLoading(true);
         setError(false);
         try {
-            const [resAct, resPur, resStats] = await Promise.all([
-                api.get(`/activity.php`, {
-                    params: { user_id: userId }
-                }),
+            const [resAct, resPur, resStats, resExp, resSal] = await Promise.all([
+                api.get(`/activity.php`, { params: { user_id: userId } }),
                 api.get(`/purchases.php`),
-                getStats()
+                getStats(),
+                api.get('/expenses.php?path=expenses').catch(() => ({ data: [] })),
+                api.get('/expenses.php?path=salaries').catch(() => ({ data: [] })),
             ]);
             setActivities(resAct.data);
             setPurchases(resPur.data);
             setStatsData(resStats.data);
+            setExpenses(Array.isArray(resExp.data) ? resExp.data : []);
+            setSalaries(Array.isArray(resSal.data) ? resSal.data : []);
         } catch (err) {
             console.error(err);
             setError(true);
@@ -179,14 +182,17 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
 
         // Pre-fill with backend stats if available (Much more accurate)
         const stats: any = {
-            total: userActivities.length, // Activities count is correct here
+            total: userActivities.length,
             todayTotal: todayActivities.length,
             todayInvoices: 0,
-            todaySales: statsData?.dailySales ? Number(statsData.dailySales) : 0, // USE BACKEND DATA
+            todaySales: statsData?.dailySales ? Number(statsData.dailySales) : 0,
             todayPurchases: 0,
+            todayExpenses: 0,
+            todaySalaries: 0,
             todayCustomers: 0,
-            // Calculate balance using backend sales
             todayBalance: (statsData?.dailySales ? Number(statsData.dailySales) : 0),
+            totalExpenses: expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0),
+            totalSalaries: salaries.reduce((s: number, e: any) => s + (Number(e.net_salary) || 0), 0),
             byType: {},
             byUser: {},
             peakHour: 0
@@ -194,11 +200,9 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
 
         const hours: any = {};
 
-        // Only count what's not in statsData (like specific counts) or for breakdown
         todayActivities.forEach(a => {
             if (a.entity_type === 'invoice' || a.entity_type === 'wedding_invoice') {
                 stats.todayInvoices++;
-                // Sales are already fetched from backend, no need to sum manually from logs (which might be missing)
             }
             if (a.entity_type === 'customer' || a.action.includes('عميل')) {
                 stats.todayCustomers++;
@@ -206,14 +210,27 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
         });
 
         purchases.forEach(p => {
-            const pDate = p.created_at.split('T')[0];
+            const pDate = (p.created_at || '').split('T')[0];
             if (pDate === today) {
                 stats.todayPurchases += Number(p.total_amount || p.amount || 0);
             }
         });
 
-        // Final balance calculation
-        stats.todayBalance = stats.todaySales - stats.todayPurchases;
+        expenses.forEach((e: any) => {
+            const eDate = (e.created_at || e.expense_date || '').split('T')[0];
+            if (eDate === today) {
+                stats.todayExpenses += Number(e.amount || 0);
+            }
+        });
+
+        salaries.forEach((s: any) => {
+            const sDate = (s.paid_at || '').split('T')[0];
+            if (sDate === today) {
+                stats.todaySalaries += Number(s.net_salary || 0);
+            }
+        });
+
+        stats.todayBalance = stats.todaySales - stats.todayPurchases - stats.todayExpenses - stats.todaySalaries;
 
         userActivities.forEach(a => {
             stats.byType[a.entity_type] = (stats.byType[a.entity_type] || 0) + 1;
@@ -278,59 +295,47 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
             </div>
 
             {/* Daily Analysis Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                    className="bg-gradient-to-br from-primary to-primary/80 p-6 rounded-[32px] text-white shadow-xl shadow-primary/20">
-                    <div className="flex items-center gap-2 opacity-80 mb-3">
-                        <FileText size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{l.totalPersonalSales}</span>
-                    </div>
-                    <div className="text-2xl font-black">{analysis.todaySales.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
-                    <div className="mt-4 text-[9px] font-bold opacity-60 uppercase tracking-tighter">{l.todaySummary}</div>
+                    className="bg-gradient-to-br from-primary to-primary/80 p-5 rounded-2xl text-white shadow-xl shadow-primary/20">
+                    <div className="flex items-center gap-2 opacity-80 mb-2"><FileText size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{l.totalPersonalSales}</span></div>
+                    <div className="text-xl font-black">{analysis.todaySales.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 }}
+                    className="bg-rose-500 p-5 rounded-2xl text-white shadow-xl shadow-rose-500/20">
+                    <div className="flex items-center gap-2 opacity-80 mb-2"><ShoppingCart size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{l.todayPurchases}</span></div>
+                    <div className="text-xl font-black">{analysis.todayPurchases.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-                    className="bg-rose-500 p-6 rounded-[32px] text-white shadow-xl shadow-rose-500/20">
-                    <div className="flex items-center gap-2 opacity-80 mb-3">
-                        <ShoppingCart size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{l.todayPurchases}</span>
-                    </div>
-                    <div className="text-2xl font-black">{analysis.todayPurchases.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
-                    <div className="mt-4 text-[9px] font-bold opacity-60 uppercase tracking-tighter">{l.todaySummary}</div>
+                    className="bg-orange-500 p-5 rounded-2xl text-white shadow-xl shadow-orange-500/20">
+                    <div className="flex items-center gap-2 opacity-80 mb-2"><DollarSign size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'مصاريف عادية' : 'Expenses'}</span></div>
+                    <div className="text-xl font-black">{analysis.totalExpenses.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
+                    className="bg-violet-500 p-5 rounded-2xl text-white shadow-xl shadow-violet-500/20">
+                    <div className="flex items-center gap-2 opacity-80 mb-2"><UserIcon size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{lang === 'ar' ? 'المرتبات' : 'Salaries'}</span></div>
+                    <div className="text-xl font-black">{analysis.totalSalaries.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
-                    className="bg-emerald-500 p-6 rounded-[32px] text-white shadow-xl shadow-emerald-500/20">
-                    <div className="flex items-center gap-2 opacity-80 mb-3">
-                        <DollarSign size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{l.todayBalance}</span>
-                    </div>
-                    <div className="text-2xl font-black">{analysis.todayBalance.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
-                    <div className="mt-4 text-[9px] font-bold opacity-60 uppercase tracking-tighter">{l.todaySummary}</div>
+                    className="bg-emerald-500 p-5 rounded-2xl text-white shadow-xl shadow-emerald-500/20">
+                    <div className="flex items-center gap-2 opacity-80 mb-2"><DollarSign size={16} /><span className="text-[10px] font-black uppercase tracking-widest">{l.todayBalance}</span></div>
+                    <div className="text-xl font-black">{analysis.todayBalance.toLocaleString()} <span className="text-xs opacity-70">{settings.currency}</span></div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.25 }}
+                    className="bg-card border border-border p-5 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2"><Calendar size={16} className="text-sky-500" /><span className="text-[10px] font-black uppercase tracking-widest">{l.completedInvoices}</span></div>
+                    <div className="text-xl font-black text-foreground">{analysis.todayInvoices}</div>
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
-                    className="bg-card border border-border p-6 rounded-[32px] shadow-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                        <Calendar size={18} className="text-sky-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{l.completedInvoices}</span>
-                    </div>
-                    <div className="text-2xl font-black text-foreground">{analysis.todayInvoices}</div>
-                    <div className="mt-4 flex gap-1 h-1">
-                        <div className="flex-1 bg-sky-500 rounded-full" />
-                        <div className="flex-1 bg-muted rounded-full" />
-                        <div className="flex-1 bg-muted rounded-full" />
-                    </div>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="bg-card border border-border p-6 rounded-[32px] shadow-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground mb-3">
-                        <UserIcon size={18} className="text-emerald-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{l.addedCustomers}</span>
-                    </div>
-                    <div className="text-2xl font-black text-foreground">{analysis.todayCustomers}</div>
-                    <div className="mt-4 text-[9px] font-bold text-muted-foreground uppercase">{l.todaySummary}</div>
+                    className="bg-card border border-border p-5 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2"><UserIcon size={16} className="text-emerald-500" /><span className="text-[10px] font-black uppercase tracking-widest">{l.addedCustomers}</span></div>
+                    <div className="text-xl font-black text-foreground">{analysis.todayCustomers}</div>
                 </motion.div>
             </div>
 
