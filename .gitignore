@@ -18,7 +18,10 @@ _IGNORE_studio-whatsapp/
 
 # Dependencies
 node_modules/
+# Allow node_modules inside whatsapp-server specifically
+!whatsapp-server/node_modules/
 **/node_modules/
+
 
 # Build outputs
 dist/
