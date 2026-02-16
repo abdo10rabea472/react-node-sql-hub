@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_analysis_results: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          id: string
+          result_data: Json
+          updated_at: string
+        }
+        Insert: {
+          analysis_type: string
+          created_at?: string
+          id?: string
+          result_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          id?: string
+          result_data?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_decision_log: {
+        Row: {
+          action: string | null
+          created_at: string
+          description: string | null
+          executed_by: string | null
+          id: string
+          reasoning: string | null
+          severity: string | null
+          target_name: string | null
+          target_type: string | null
+          title: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          description?: string | null
+          executed_by?: string | null
+          id?: string
+          reasoning?: string | null
+          severity?: string | null
+          target_name?: string | null
+          target_type?: string | null
+          title: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          description?: string | null
+          executed_by?: string | null
+          id?: string
+          reasoning?: string | null
+          severity?: string | null
+          target_name?: string | null
+          target_type?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
