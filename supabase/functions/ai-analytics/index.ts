@@ -67,7 +67,9 @@ async function callExternalAI(model: ExternalModel, systemPrompt: string, userCo
   const provider = model.provider?.toLowerCase() || "";
 
   if (provider === "openai" || provider.includes("openai")) {
-    endpoint = model.endpoint || "https://api.openai.com/v1/chat/completions";
+    // Always use chat completions endpoint, override if user set the responses endpoint
+    const userEndpoint = model.endpoint || "";
+    endpoint = (userEndpoint && !userEndpoint.includes("/responses")) ? userEndpoint : "https://api.openai.com/v1/chat/completions";
     headers["Authorization"] = `Bearer ${model.apiKey}`;
     body = { model: model.model || "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userContent }] };
   } else if (provider === "google" || provider.includes("gemini")) {
