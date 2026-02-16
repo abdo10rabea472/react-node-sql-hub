@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://vip472.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "https://eltahan.vip472.com/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -22,12 +22,11 @@ api.interceptors.response.use(
     // If we get a route-not-found type error, try the direct PHP file approach
     console.error("API Error:", error?.response?.status, error?.response?.data);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Auth
-export const login = (email: string, password: string) =>
-  api.post("/auth.php?path=login", { email, password });
+export const login = (email: string, password: string) => api.post("/auth.php?path=login", { email, password });
 
 export const verifyToken = () => api.get("/auth.php?path=verify");
 
@@ -36,8 +35,7 @@ export const getUsers = () => api.get("/users.php");
 export const getStats = () => api.get("/users.php?path=stats");
 export const createUser = (data: { name: string; email: string; password: string; role?: string }) =>
   api.post("/users.php", data);
-export const updateUser = (id: number, data: Record<string, string>) =>
-  api.put(`/users.php?id=${id}`, data);
+export const updateUser = (id: number, data: Record<string, string>) => api.put(`/users.php?id=${id}`, data);
 export const deleteUser = (id: number) => api.delete(`/users.php?id=${id}`);
 
 // Pricing
@@ -94,10 +92,18 @@ export const deleteWeddingInvoice = (id: number) => api.delete(`/weddingInvoices
 export const startWhatsAppSession = () => api.post("/whatsapp.php?path=start");
 export const getWhatsAppStatus = () => api.get("/whatsapp.php?path=status");
 export const stopWhatsAppSession = () => api.post("/whatsapp.php?path=stop");
-export const sendWhatsAppMessage = (data: { phone: string; message: string }) => api.post("/whatsapp.php?path=send-message", data);
-export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) => api.post("/whatsapp.php?path=send-invoice", data);
-export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) => api.post("/whatsapp.php?path=send-invoice-pdf", data);
-export const sendWhatsAppPDFFromDocDef = (data: { phone: string; docDefinition: any; fileName: string; caption: string }) => api.post("/whatsapp.php?path=send-pdf-from-docdef", data);
+export const sendWhatsAppMessage = (data: { phone: string; message: string }) =>
+  api.post("/whatsapp.php?path=send-message", data);
+export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) =>
+  api.post("/whatsapp.php?path=send-invoice", data);
+export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) =>
+  api.post("/whatsapp.php?path=send-invoice-pdf", data);
+export const sendWhatsAppPDFFromDocDef = (data: {
+  phone: string;
+  docDefinition: any;
+  fileName: string;
+  caption: string;
+}) => api.post("/whatsapp.php?path=send-pdf-from-docdef", data);
 
 // Purchases (legacy)
 export const getPurchases = () => api.get("/purchases.php");
@@ -116,10 +122,14 @@ export const addStock = (id: number, data: any) => api.post(`/inventory.php?path
 export const adjustStock = (id: number, data: any) => api.post(`/inventory.php?path=adjust&id=${id}`, data);
 export const getInventoryCategories = () => api.get("/inventory.php?path=categories");
 export const createInventoryCategory = (data: any) => api.post("/inventory.php?path=categories", data);
-export const updateInventoryCategory = (id: number, data: any) => api.put(`/inventory.php?path=categories&id=${id}`, data);
+export const updateInventoryCategory = (id: number, data: any) =>
+  api.put(`/inventory.php?path=categories&id=${id}`, data);
 export const deleteInventoryCategory = (id: number) => api.delete(`/inventory.php?path=categories&id=${id}`);
-export const getPackageMaterials = (packageId: number, packageType: string) => api.get(`/inventory.php?path=materials&packageId=${packageId}&packageType=${packageType}`);
-export const setPackageMaterials = (packageId: number, packageType: string, materials: any[]) => api.post(`/inventory.php?path=materials&packageId=${packageId}&packageType=${packageType}`, { materials });
-export const getInventoryTransactions = (itemId: number) => api.get(`/inventory.php?path=transactions&itemId=${itemId}`);
+export const getPackageMaterials = (packageId: number, packageType: string) =>
+  api.get(`/inventory.php?path=materials&packageId=${packageId}&packageType=${packageType}`);
+export const setPackageMaterials = (packageId: number, packageType: string, materials: any[]) =>
+  api.post(`/inventory.php?path=materials&packageId=${packageId}&packageType=${packageType}`, { materials });
+export const getInventoryTransactions = (itemId: number) =>
+  api.get(`/inventory.php?path=transactions&itemId=${itemId}`);
 
 export default api;
