@@ -179,6 +179,14 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
       });
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
+        if (resp.status === 402) {
+          showToast(isAr ? '⚠️ رصيد الذكاء الاصطناعي غير كافٍ. يرجى إضافة رصيد من الإعدادات → Workspace → Usage' : '⚠️ AI credits exhausted. Please add credits in Settings → Workspace → Usage', 'error');
+          return;
+        }
+        if (resp.status === 429) {
+          showToast(isAr ? '⏳ تم تجاوز حد الطلبات، يرجى المحاولة بعد دقيقة' : '⏳ Rate limited, please try again in a minute', 'error');
+          return;
+        }
         throw new Error(errData.error || `HTTP ${resp.status}`);
       }
       const data = await resp.json();
