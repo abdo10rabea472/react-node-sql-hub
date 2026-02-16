@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Download, CheckCircle, Loader } from 'lucide-react';
+import { Download, CheckCircle, Loader, Smartphone, Monitor } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -14,9 +14,9 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
-  const autoTriggered = useRef(false);
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
   const isInStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
   useEffect(() => {
@@ -32,14 +32,6 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
-
-  // Auto-trigger install prompt when available
-  useEffect(() => {
-    if (deferredPrompt && !autoTriggered.current && !isInstalled) {
-      autoTriggered.current = true;
-      handleInstall();
-    }
-  }, [deferredPrompt]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -87,41 +79,92 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <Loader size={22} className="animate-spin" />{lang === 'ar' ? 'جاري التثبيت...' : 'Installing...'}
           </button>
         ) : deferredPrompt ? (
-          /* Direct install available */
+          /* Native install prompt available */
           <button onClick={handleInstall} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-base hover:opacity-90 transition-all shadow-lg shadow-primary/25 active:scale-[0.98]">
             <Download size={22} />{lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
           </button>
         ) : (
-          /* Fallback: try to trigger install or register SW and retry */
+          /* Manual instructions */
           <div className="space-y-4">
-            <button
-              onClick={async () => {
-                setIsInstalling(true);
-                // Try registering SW to trigger beforeinstallprompt
-                if ('serviceWorker' in navigator) {
-                  await navigator.serviceWorker.register('/sw.js').catch(() => {});
-                }
-                // Wait briefly for prompt event
-                await new Promise(r => setTimeout(r, 1500));
-                if (deferredPrompt) {
-                  handleInstall();
-                } else {
-                  // Last resort: open in standalone window
-                  window.open(window.location.origin, '_blank', 'noopener');
-                  setIsInstalling(false);
-                }
-              }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-base hover:opacity-90 transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
-            >
-              <Download size={22} />{lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
-            </button>
-            {isIOS && (
-              <p className="text-xs text-muted-foreground text-center">
-                {lang === 'ar'
-                  ? 'على iPhone: اضغط زر المشاركة ← "إضافة إلى الشاشة الرئيسية"'
-                  : 'On iPhone: Tap Share → "Add to Home Screen"'}
+            <div className="bg-muted/50 border border-border rounded-2xl p-5 text-start space-y-4">
+              <p className="text-sm font-bold text-foreground text-center">
+                {lang === 'ar' ? 'طريقة التثبيت:' : 'How to install:'}
               </p>
-            )}
+
+              {isIOS ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اضغط على زر المشاركة' : 'Tap the Share button'} 
+                      <span className="inline-block mx-1">⬆️</span>
+                      {lang === 'ar' ? 'في أسفل الشاشة' : 'at the bottom'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اختر "إضافة إلى الشاشة الرئيسية"' : 'Choose "Add to Home Screen"'}
+                      <span className="inline-block mx-1">➕</span>
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اضغط "إضافة" للتأكيد' : 'Tap "Add" to confirm'}
+                    </p>
+                  </div>
+                </div>
+              ) : isAndroid ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اضغط على القائمة' : 'Tap the menu'} 
+                      <span className="inline-block mx-1 font-bold">⋮</span>
+                      {lang === 'ar' ? 'أعلى يمين المتصفح' : 'top-right of browser'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"' : 'Choose "Install app" or "Add to Home Screen"'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' ? 'اضغط "تثبيت" للتأكيد' : 'Tap "Install" to confirm'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Monitor size={18} className="text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' 
+                        ? 'في Chrome: اضغط على أيقونة التثبيت ⊕ في شريط العنوان أعلى الصفحة' 
+                        : 'In Chrome: Click the install icon ⊕ in the address bar'}
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Smartphone size={18} className="text-primary shrink-0 mt-0.5" />
+                    <p className="text-sm text-muted-foreground">
+                      {lang === 'ar' 
+                        ? 'أو من القائمة ⋮ ← "تثبيت التطبيق"' 
+                        : 'Or from menu ⋮ → "Install app"'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              {lang === 'ar' 
+                ? '💡 افتح التطبيق من المتصفح مباشرة (ليس من داخل تطبيق آخر) لتتمكن من التثبيت' 
+                : '💡 Open the app directly in the browser (not inside another app) to install'}
+            </p>
           </div>
         )}
       </motion.div>
