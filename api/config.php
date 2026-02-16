@@ -203,11 +203,15 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // --- Bootstrap default admin if none exists ---
-    $adminCheck = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
-    if ($adminCheck == 0) {
-        $hashedPw = password_hash('admin', PASSWORD_DEFAULT);
+    // --- Bootstrap default admin ---
+    $adminCheck = $pdo->query("SELECT id FROM users WHERE email = 'admin@stodio.com'")->fetch(PDO::FETCH_ASSOC);
+    $hashedPw = password_hash('admin', PASSWORD_DEFAULT);
+    if (!$adminCheck) {
         $pdo->exec("INSERT INTO users (name, email, password, role, status) VALUES ('Administrator', 'admin@stodio.com', '$hashedPw', 'admin', 'active')");
+    } else {
+        // Reset password to 'admin' in case it was corrupted
+        $stmt = $pdo->prepare("UPDATE users SET password = ?, status = 'active' WHERE email = 'admin@stodio.com'");
+        $stmt->execute([$hashedPw]);
     }
 
     // --- SEED SAMPLE DATA IF NO ACTIVITIES EXIST ---
