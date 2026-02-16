@@ -14,75 +14,91 @@ $method = $_SERVER['REQUEST_METHOD'];
 $path = $_GET['path'] ?? '';
 $id = $_GET['id'] ?? null;
 
-// Auto-create tables
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS expenses (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        description VARCHAR(255) NOT NULL,
-        category VARCHAR(100) DEFAULT 'عامة',
-        amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-        expense_date DATE DEFAULT NULL,
-        notes TEXT,
-        created_by VARCHAR(100) DEFAULT 'Admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS salaries (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        user_name VARCHAR(255) NOT NULL,
-        base_salary DECIMAL(10,2) DEFAULT 0,
-        amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-        bonus DECIMAL(10,2) DEFAULT 0,
-        overtime_hours DECIMAL(5,2) DEFAULT 0,
-        overtime_amount DECIMAL(10,2) DEFAULT 0,
-        late_hours DECIMAL(5,2) DEFAULT 0,
-        late_deduction DECIMAL(10,2) DEFAULT 0,
-        advances_deduction DECIMAL(10,2) DEFAULT 0,
-        deductions DECIMAL(10,2) DEFAULT 0,
-        net_salary DECIMAL(10,2) DEFAULT 0,
-        month VARCHAR(7) NOT NULL,
-        notes TEXT,
-        attendance_summary TEXT,
-        paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        created_by VARCHAR(100) DEFAULT 'Admin'
-    )");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS advances (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        user_name VARCHAR(255) NOT NULL,
-        amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-        reason VARCHAR(255) DEFAULT '',
-        status ENUM('pending','deducted','cancelled') DEFAULT 'pending',
-        advance_date DATE DEFAULT NULL,
-        notes TEXT,
-        created_by VARCHAR(100) DEFAULT 'Admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS attendance (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        user_name VARCHAR(255) NOT NULL,
-        attendance_date DATE NOT NULL,
-        check_in TIME DEFAULT NULL,
-        check_out TIME DEFAULT NULL,
-        scheduled_in TIME DEFAULT '09:00:00',
-        scheduled_out TIME DEFAULT '17:00:00',
-        late_minutes INT DEFAULT 0,
-        overtime_minutes INT DEFAULT 0,
-        status ENUM('present','absent','late','half_day','vacation') DEFAULT 'present',
-        notes TEXT,
-        created_by VARCHAR(100) DEFAULT 'Admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )");
-    // Add columns if missing
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN base_salary DECIMAL(10,2) DEFAULT 0 AFTER user_name"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN overtime_hours DECIMAL(5,2) DEFAULT 0 AFTER bonus"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN overtime_amount DECIMAL(10,2) DEFAULT 0 AFTER overtime_hours"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN late_hours DECIMAL(5,2) DEFAULT 0 AFTER overtime_amount"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN late_deduction DECIMAL(10,2) DEFAULT 0 AFTER late_hours"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN advances_deduction DECIMAL(10,2) DEFAULT 0 AFTER late_deduction"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE salaries ADD COLUMN attendance_summary TEXT AFTER notes"); } catch (Exception $e) {}
-} catch (Exception $e) { /* tables exist */ }
+// ── Helper: check if column exists ──
+function columnExists($pdo, $table, $column) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?");
+    $stmt->execute([$table, $column]);
+    return (int)$stmt->fetchColumn() > 0;
+}
+
+// ── Auto-create tables ──
+$pdo->exec("CREATE TABLE IF NOT EXISTS expenses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    description VARCHAR(255) NOT NULL,
+    category VARCHAR(100) DEFAULT 'عامة',
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    expense_date DATE DEFAULT NULL,
+    notes TEXT,
+    created_by VARCHAR(100) DEFAULT 'Admin',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS salaries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    base_salary DECIMAL(10,2) DEFAULT 0,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    bonus DECIMAL(10,2) DEFAULT 0,
+    overtime_hours DECIMAL(5,2) DEFAULT 0,
+    overtime_amount DECIMAL(10,2) DEFAULT 0,
+    late_hours DECIMAL(5,2) DEFAULT 0,
+    late_deduction DECIMAL(10,2) DEFAULT 0,
+    advances_deduction DECIMAL(10,2) DEFAULT 0,
+    deductions DECIMAL(10,2) DEFAULT 0,
+    net_salary DECIMAL(10,2) DEFAULT 0,
+    month VARCHAR(7) NOT NULL,
+    notes TEXT,
+    attendance_summary TEXT,
+    paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(100) DEFAULT 'Admin'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS advances (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    reason VARCHAR(255) DEFAULT '',
+    status ENUM('pending','deducted','cancelled') DEFAULT 'pending',
+    advance_date DATE DEFAULT NULL,
+    notes TEXT,
+    created_by VARCHAR(100) DEFAULT 'Admin',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    attendance_date DATE NOT NULL,
+    check_in TIME DEFAULT NULL,
+    check_out TIME DEFAULT NULL,
+    scheduled_in TIME DEFAULT '09:00:00',
+    scheduled_out TIME DEFAULT '17:00:00',
+    late_minutes INT DEFAULT 0,
+    overtime_minutes INT DEFAULT 0,
+    status ENUM('present','absent','late','half_day','vacation') DEFAULT 'present',
+    notes TEXT,
+    created_by VARCHAR(100) DEFAULT 'Admin',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+// ── Migrate old salaries table (add missing columns safely) ──
+$salaryColumns = [
+    ['base_salary', "DECIMAL(10,2) DEFAULT 0 AFTER user_name"],
+    ['overtime_hours', "DECIMAL(5,2) DEFAULT 0 AFTER bonus"],
+    ['overtime_amount', "DECIMAL(10,2) DEFAULT 0 AFTER overtime_hours"],
+    ['late_hours', "DECIMAL(5,2) DEFAULT 0 AFTER overtime_amount"],
+    ['late_deduction', "DECIMAL(10,2) DEFAULT 0 AFTER late_hours"],
+    ['advances_deduction', "DECIMAL(10,2) DEFAULT 0 AFTER late_deduction"],
+    ['attendance_summary', "TEXT AFTER notes"],
+];
+foreach ($salaryColumns as [$col, $def]) {
+    if (!columnExists($pdo, 'salaries', $col)) {
+        $pdo->exec("ALTER TABLE salaries ADD COLUMN $col $def");
+    }
+}
 
 // ── Expenses ──
 if ($path === '' || $path === 'expenses') {
