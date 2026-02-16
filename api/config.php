@@ -37,7 +37,7 @@ function getEnvValue($key, $default = null)
     return $default;
 }
 
-$host = getEnvValue('DB_HOST', 'vip472.com');
+$host = getEnvValue('DB_HOST', 'localhost');
 $db_name = getEnvValue('DB_NAME', 'u842627858_eltahan');
 $username = getEnvValue('DB_USER', 'u842627858_eltahan');
 $password = getEnvValue('DB_PASSWORD', '@Lloush//722');
