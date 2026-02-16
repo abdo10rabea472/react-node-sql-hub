@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2 } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 
@@ -29,15 +29,15 @@ const countries = [
 ];
 
 const translations = {
-  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟', country: 'البلد', countryHint: 'سيتم إضافة رمز الدولة تلقائياً لأرقام العملاء عند الإرسال' },
-  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending' },
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟', country: 'البلد', countryHint: 'سيتم إضافة رمز الدولة تلقائياً لأرقام العملاء عند الإرسال', deductions: 'الخصومات والحوافز', aiModels: 'نماذج الذكاء الاصطناعي', deductionMode: 'وضع الخصم', perMinute: 'لكل دقيقة', perHour: 'لكل ساعة', perHalfDay: 'لكل نصف يوم', graceMinutes: 'فترة السماح (دقائق)', overtimeMultiplier: 'معامل الوقت الإضافي', deductionAmount: 'مبلغ الخصم' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending', deductions: 'Deductions & Incentives', aiModels: 'AI Models', deductionMode: 'Deduction Mode', perMinute: 'Per Minute', perHour: 'Per Hour', perHalfDay: 'Per Half Day', graceMinutes: 'Grace Period (minutes)', overtimeMultiplier: 'Overtime Multiplier', deductionAmount: 'Deduction Amount' },
 };
 
 const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const lang = settings.lang;
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp'>('studio');
+  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp' | 'deductions' | 'aiModels'>('studio');
   const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
   const [selectedCountry, setSelectedCountry] = useState(settings.countryCode);
   const [showToast, setShowToast] = useState(false);
@@ -90,6 +90,8 @@ const SettingsPage: React.FC = () => {
     { key: 'profile' as const, icon: User, label: t.profile },
     { key: 'studio' as const, icon: Store, label: t.studio },
     { key: 'system' as const, icon: Globe, label: t.system },
+    { key: 'deductions' as const, icon: Clock, label: t.deductions },
+    { key: 'aiModels' as const, icon: Brain, label: t.aiModels },
     { key: 'whatsapp' as const, icon: MessageCircle, label: t.whatsapp },
   ];
 
@@ -163,6 +165,136 @@ const SettingsPage: React.FC = () => {
                     <div><label className="block text-xs font-semibold text-foreground mb-2">{t.theme}</label><div className="flex gap-1 bg-muted p-1 rounded-lg"><button onClick={() => updateSettings({ theme: 'light' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'light' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Sun size={14} />{t.light}</button><button onClick={() => updateSettings({ theme: 'dark' })} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${settings.theme === 'dark' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}><Moon size={14} />{t.dark}</button></div></div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'deductions' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-primary mb-6"><Clock size={20} /><h3 className="text-base font-bold text-foreground">{t.deductions}</h3></div>
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">{t.deductionMode}</label>
+                    <div className="flex gap-2">
+                      {(['minute', 'hour', 'half_day'] as const).map(mode => (
+                        <button key={mode} onClick={() => updateSettings({ deductionRules: { ...settings.deductionRules, mode } })}
+                          className={`flex-1 px-4 py-3 rounded-xl border text-sm font-bold transition-all ${settings.deductionRules.mode === mode ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground hover:text-foreground'}`}>
+                          {mode === 'minute' ? t.perMinute : mode === 'hour' ? t.perHour : t.perHalfDay}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-2">{t.graceMinutes}</label>
+                      <input type="number" value={settings.deductionRules.graceMinutes} onChange={e => updateSettings({ deductionRules: { ...settings.deductionRules, graceMinutes: Number(e.target.value) } })}
+                        className={inputClass} />
+                      <p className="text-[10px] text-muted-foreground mt-1">{lang === 'ar' ? 'المدة المسموحة قبل بدء الخصم' : 'Allowed time before deduction starts'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-2">{t.overtimeMultiplier}</label>
+                      <input type="number" step="0.1" value={settings.deductionRules.overtimeMultiplier} onChange={e => updateSettings({ deductionRules: { ...settings.deductionRules, overtimeMultiplier: Number(e.target.value) } })}
+                        className={inputClass} />
+                      <p className="text-[10px] text-muted-foreground mt-1">{lang === 'ar' ? 'مثال: 1.5 = ساعة ونصف أجر لكل ساعة إضافية' : 'e.g. 1.5 = 1.5x pay per OT hour'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
+                      <label className="block text-[10px] font-bold text-muted-foreground mb-2">{t.perMinute} ({settings.currency})</label>
+                      <input type="number" step="0.1" value={settings.deductionRules.perMinute} onChange={e => updateSettings({ deductionRules: { ...settings.deductionRules, perMinute: Number(e.target.value) } })}
+                        className={inputClass} />
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
+                      <label className="block text-[10px] font-bold text-muted-foreground mb-2">{t.perHour} ({settings.currency})</label>
+                      <input type="number" step="1" value={settings.deductionRules.perHour} onChange={e => updateSettings({ deductionRules: { ...settings.deductionRules, perHour: Number(e.target.value) } })}
+                        className={inputClass} />
+                    </div>
+                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
+                      <label className="block text-[10px] font-bold text-muted-foreground mb-2">{t.perHalfDay} ({settings.currency})</label>
+                      <input type="number" step="1" value={settings.deductionRules.perHalfDay} onChange={e => updateSettings({ deductionRules: { ...settings.deductionRules, perHalfDay: Number(e.target.value) } })}
+                        className={inputClass} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'aiModels' && (
+              <div className="p-7">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2.5 text-primary"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
+                  <button onClick={() => {
+                    const newModel = { id: `model_${Date.now()}`, name: '', provider: 'openai', apiKey: '', endpoint: '', isActive: false };
+                    updateSettings({ aiModels: [...settings.aiModels, newModel] });
+                  }} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all">
+                    <Plus size={14} />{lang === 'ar' ? 'إضافة نموذج' : 'Add Model'}
+                  </button>
+                </div>
+
+                {/* Built-in model info */}
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
+                    <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النموذج المدمج (Lovable AI)' : 'Built-in Model (Lovable AI)'}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'النموذج المدمج يعمل تلقائياً - google/gemini-3-flash-preview. يمكنك إضافة نماذج خارجية أدناه.' : 'Built-in model works automatically - google/gemini-3-flash-preview. Add external models below.'}</p>
+                </div>
+
+                {settings.aiModels.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Brain size={40} className="mx-auto opacity-20 mb-3" />
+                    <p className="text-sm">{lang === 'ar' ? 'لا يوجد نماذج خارجية مضافة' : 'No external models added'}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {settings.aiModels.map((model, idx) => (
+                      <div key={model.id} className="bg-muted/30 border border-border rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-muted-foreground">#{idx + 1}</span>
+                          <div className="flex gap-2">
+                            <button onClick={() => {
+                              const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
+                              updateSettings({ aiModels: updated });
+                            }} className={`px-3 py-1 rounded-lg text-[10px] font-bold ${model.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+                              {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
+                            </button>
+                            <button onClick={() => {
+                              updateSettings({ aiModels: settings.aiModels.filter(m => m.id !== model.id) });
+                            }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'اسم النموذج' : 'Model Name'}</label>
+                            <input value={model.name} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, name: e.target.value } : m); updateSettings({ aiModels: updated }); }}
+                              className={inputClass} placeholder="gpt-4, claude-3, etc." />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'المزود' : 'Provider'}</label>
+                            <select value={model.provider} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, provider: e.target.value } : m); updateSettings({ aiModels: updated }); }}
+                              className={inputClass}>
+                              <option value="openai">OpenAI</option>
+                              <option value="anthropic">Anthropic</option>
+                              <option value="google">Google AI</option>
+                              <option value="custom">{lang === 'ar' ? 'مخصص' : 'Custom'}</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'مفتاح API' : 'API Key'}</label>
+                            <input type="password" value={model.apiKey} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, apiKey: e.target.value } : m); updateSettings({ aiModels: updated }); }}
+                              className={inputClass} placeholder="sk-..." />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
+                            <input value={model.endpoint} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, endpoint: e.target.value } : m); updateSettings({ aiModels: updated }); }}
+                              className={inputClass} placeholder="https://api.openai.com/v1/chat/completions" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

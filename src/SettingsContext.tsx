@@ -1,6 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getStudioSettings, updateStudioSettings } from './api';
 
+interface DeductionRules {
+    mode: 'minute' | 'hour' | 'half_day';
+    graceMinutes: number; // Grace period before deductions start
+    perMinute: number;
+    perHour: number;
+    perHalfDay: number;
+    overtimeMultiplier: number; // e.g. 1.5x
+}
+
+interface AIModelConfig {
+    id: string;
+    name: string;
+    provider: string;
+    apiKey: string;
+    endpoint: string;
+    isActive: boolean;
+}
+
 interface Settings {
     currency: string;
     lang: 'ar' | 'en';
@@ -9,6 +27,8 @@ interface Settings {
     address: string;
     phone: string;
     countryCode: string;
+    deductionRules: DeductionRules;
+    aiModels: AIModelConfig[];
 }
 
 
@@ -18,6 +38,15 @@ interface SettingsContextType {
     refreshSettings: () => Promise<void>;
 }
 
+const defaultDeductionRules: DeductionRules = {
+    mode: 'hour',
+    graceMinutes: 15,
+    perMinute: 1,
+    perHour: 50,
+    perHalfDay: 200,
+    overtimeMultiplier: 1.5,
+};
+
 const defaultSettings: Settings = {
     currency: 'SAR',
     lang: 'ar',
@@ -26,6 +55,8 @@ const defaultSettings: Settings = {
     address: '',
     phone: '',
     countryCode: '966',
+    deductionRules: defaultDeductionRules,
+    aiModels: [],
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -47,6 +78,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     address: data.address || '',
                     phone: data.phone || '',
                     countryCode: data.country_code || '966',
+                    deductionRules: data.deduction_rules ? JSON.parse(data.deduction_rules) : defaultDeductionRules,
+                    aiModels: data.ai_models ? JSON.parse(data.ai_models) : [],
                 };
                 setSettings(mapped);
                 setIsLoaded(true);
@@ -86,7 +119,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 theme: updated.theme,
                 country_code: updated.countryCode,
                 address: updated.address,
-                phone: updated.phone
+                phone: updated.phone,
+                deduction_rules: JSON.stringify(updated.deductionRules),
+                ai_models: JSON.stringify(updated.aiModels),
             });
         } catch (err) {
             console.error("Failed to sync settings to DB:", err);
@@ -113,6 +148,8 @@ export const useSettings = () => {
                 address: '',
                 phone: '',
                 countryCode: '966',
+                deductionRules: defaultDeductionRules,
+                aiModels: [],
             },
             updateSettings: async () => {},
             refreshSettings: async () => {},
