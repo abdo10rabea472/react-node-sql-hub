@@ -2,3 +2,6 @@ project_id = "flatbbqpmpozksfcacfn"
 
 [functions.ai-analytics]
 verify_jwt = false
+
+[functions.ai-cache]
+verify_jwt = false
