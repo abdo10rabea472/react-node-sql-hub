@@ -213,53 +213,7 @@ const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))', labels }
   );
 };
 
-// ─── Mini Bar Chart ───
-const MiniBarChart = ({ data, height = 80, colors, labels }: { data: number[]; height?: number; colors?: string[]; labels?: string[] }) => {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const max = Math.max(...data, 1);
-  const barCount = data.length;
-  const gap = 2;
-  const barW = Math.max(4, (120 - gap * barCount) / barCount);
-  const uid = `bar-${Math.random().toString(36).slice(2, 6)}`;
-  const totalW = barCount * (barW + gap);
-  return (
-    <svg width="100%" viewBox={`0 0 ${totalW} ${height + 32}`} preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <linearGradient id={`${uid}-grad`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
-        </linearGradient>
-        <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
-      </defs>
-      {data.map((v, i) => {
-        const barH = Math.max(3, (v / max) * height);
-        const barColor = colors?.[i] || `url(#${uid}-grad)`;
-        const isHov = hoveredIdx === i;
-        return (
-          <g key={i} onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)} style={{ cursor: 'pointer' }}>
-            <rect x={i * (barW + gap) - 2} width={barW + 4} y={0} height={height + 8} fill="transparent" />
-            <motion.rect x={i * (barW + gap)} width={barW} rx="3"
-              y={height + 4} height={0} fill={barColor}
-              animate={{ y: height + 4 - barH, height: barH, opacity: isHov ? 1 : 0.85 }}
-              transition={{ duration: 0.7, delay: i * 0.03, ease: "easeOut" }}
-              stroke={isHov ? 'hsl(var(--primary))' : 'none'} strokeWidth={isHov ? 1.5 : 0} />
-          </g>
-        );
-      })}
-      {hoveredIdx !== null && (
-        <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <rect x={Math.max(0, Math.min(hoveredIdx * (barW + gap) + barW / 2 - 30, totalW - 60))}
-            y={0} width="60" height="20" rx="5"
-            fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" filter={`url(#${uid}-ts)`} />
-          <text x={hoveredIdx * (barW + gap) + barW / 2}
-            y={13} textAnchor="middle" className="fill-popover-foreground" fontSize="9" fontWeight="700">
-            {labels?.[hoveredIdx] || ''} {data[hoveredIdx].toLocaleString()}
-          </text>
-        </motion.g>
-      )}
-    </svg>
-  );
-};
+
 
 // ─── Radar Chart ───
 const RadarChart = ({ data, labels, size = 260, colors }: { data: number[]; labels: string[]; size?: number; colors?: string[] }) => {
@@ -1023,8 +977,8 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 </div>
               </div>
 
-              {/* Charts Row 2: Performance Radar + Top Items Bar */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Charts Row 2: Performance Radar + Recent Invoices List */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 <div className={cardClass}>
                   <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <Target size={16} className="text-indigo-500" />{isAr ? 'مؤشرات الأداء' : 'Performance Radar'}
@@ -1041,20 +995,16 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                   />
                 </div>
                 <div className={cardClass}>
-                  <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <FileText size={16} className="text-blue-500" />{isAr ? 'أحدث الفواتير' : 'Recent Invoices'}
+                    {rawData?.invoices?.length > 0 && (
+                      <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold ms-auto">{rawData.invoices.length}</span>
+                    )}
                   </h3>
-                  <div className="overflow-hidden mb-3">
-                    {rawData && <MiniBarChart 
-                      data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} 
-                      height={100}
-                      labels={rawData.invoices.slice(0, 12).map((i: any) => i.customer_name?.slice(0, 6) || `#${i.id}`)}
-                    />}
-                  </div>
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {rawData?.invoices?.slice(0, 8).map((inv: any, i: number) => (
+                  <div className="space-y-1.5">
+                    {rawData?.invoices?.slice(0, 6).map((inv: any, i: number) => (
                       <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 hover:bg-muted/60 transition-all group">
+                        className="flex items-center gap-3 p-2 rounded-xl bg-muted/30 hover:bg-muted/60 transition-all">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
                           <FileText size={14} className={Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? 'text-emerald-500' : 'text-amber-500'} />
                         </div>
@@ -1070,6 +1020,9 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                         </div>
                       </motion.div>
                     ))}
+                    {(!rawData?.invoices || rawData.invoices.length === 0) && (
+                      <p className="text-center text-muted-foreground text-xs py-6">{isAr ? 'لا توجد فواتير' : 'No invoices'}</p>
+                    )}
                   </div>
                   {rawData?.invoices?.length > 0 && (
                     <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
