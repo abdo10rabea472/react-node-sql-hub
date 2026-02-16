@@ -41,15 +41,18 @@ interface ExternalModel {
   endpoint?: string;
 }
 
-async function callLovableAI(systemPrompt: string, userContent: string): Promise<{ ok: boolean; data?: any; status?: number }> {
+async function callLovableAI(systemPrompt: string, userContent: string, selectedModel?: string): Promise<{ ok: boolean; data?: any; status?: number }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) return { ok: false, status: 500 };
+
+  const model = selectedModel || "google/gemini-3-flash-preview";
+  console.log(`Using Lovable AI model: ${model}`);
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model,
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userContent }],
     }),
   });
@@ -173,12 +176,12 @@ serve(async (req) => {
     // Clean up old rows occasionally
     await supabaseAdmin.from("ai_rate_limits").delete().lt("window_start", oneHourAgo);
 
-    const { businessData, analysisType, externalModels } = await req.json();
+    const { businessData, analysisType, externalModels, selectedModel } = await req.json();
     const systemPrompt = systemPrompts[analysisType] || systemPrompts["full-analysis"];
     const userContent = `هذه بيانات الاستوديو الحالية:\n${JSON.stringify(businessData, null, 2)}`;
 
-    // Try Lovable AI first
-    let result = await callLovableAI(systemPrompt, userContent);
+    // Try Lovable AI first with user's selected model
+    let result = await callLovableAI(systemPrompt, userContent, selectedModel);
 
     // If Lovable AI fails with 402/429, try external models
     if (!result.ok && (result.status === 402 || result.status === 429) && externalModels?.length > 0) {
