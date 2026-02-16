@@ -117,30 +117,23 @@ if ($method === 'GET' && $path === 'stats') {
     }
 }
 
-// Add missing columns safely
-$userMigrations = [
-    ['base_salary', "DECIMAL(10,2) DEFAULT 0"],
-    ['shift_start', "TIME DEFAULT '09:00:00'"],
-    ['shift_end', "TIME DEFAULT '17:00:00'"],
-];
-foreach ($userMigrations as [$col, $def]) {
-    $chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = ?");
-    $chk->execute([$col]);
-    if ((int)$chk->fetchColumn() === 0) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN $col $def");
-    }
+// Add base_salary column if not exists
+$chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'base_salary'");
+$chk->execute();
+if ((int)$chk->fetchColumn() === 0) {
+    $pdo->exec("ALTER TABLE users ADD COLUMN base_salary DECIMAL(10,2) DEFAULT 0");
 }
 
 if ($method === 'GET') {
     if ($id) {
-        $stmt = $pdo->prepare("SELECT id, name, email, role, status, base_salary, shift_start, shift_end, created_at FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, name, email, role, status, base_salary, created_at FROM users WHERE id = ?");
         $stmt->execute([$id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$user)
             sendResponse(["message" => "مستخدم غير موجود"], 404);
         sendResponse($user);
     } else {
-        $users = $pdo->query("SELECT id, name, email, role, status, base_salary, shift_start, shift_end, created_at FROM users ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $users = $pdo->query("SELECT id, name, email, role, status, base_salary, created_at FROM users ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
         sendResponse($users);
     }
 }
@@ -152,14 +145,9 @@ if ($method === 'POST') {
     }
 
     $hashed = password_hash($data['password'], PASSWORD_DEFAULT);
-    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, base_salary, shift_start, shift_end) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)");
     try {
-        $stmt->execute([
-            $data['name'], $data['email'], $hashed, $data['role'] ?? 'user',
-            $data['base_salary'] ?? 0,
-            $data['shift_start'] ?? '09:00:00',
-            $data['shift_end'] ?? '17:00:00'
-        ]);
+        $stmt->execute([$data['name'], $data['email'], $hashed, $data['role'] ?? 'user']);
         $newId = $pdo->lastInsertId();
         logActivity($pdo, $decoded['id'], "إضافة مستخدم جديد", "user", $newId, ["name" => $data['name']]);
         sendResponse(["message" => "تم إضافة المستخدم بنجاح", "userId" => $newId]);
@@ -172,7 +160,7 @@ if ($method === 'PUT' && $id) {
     $data = json_decode(file_get_contents("php://input"), true);
     $fields = [];
     $values = [];
-    foreach (['name', 'email', 'role', 'status', 'base_salary', 'shift_start', 'shift_end'] as $key) {
+    foreach (['name', 'email', 'role', 'status', 'base_salary'] as $key) {
         if (isset($data[$key])) {
             $fields[] = "$key = ?";
             $values[] = $data[$key];
