@@ -59,8 +59,12 @@ if ($method === 'GET' && $path === 'stats') {
         try {
             $today = date('Y-m-d');
             $currentMonth = date('Y-m');
-            $dailySales = $pdo->query("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE DATE(created_at) = '$today'")->fetchColumn();
-            $monthlySales = $pdo->query("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE DATE_FORMAT(created_at, '%Y-%m') = '$currentMonth'")->fetchColumn();
+            $stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE DATE(created_at) = ?");
+            $stmt->execute([$today]);
+            $dailySales = $stmt->fetchColumn();
+            $stmt = $pdo->prepare("SELECT COALESCE(SUM(paid_amount), 0) FROM invoices WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+            $stmt->execute([$currentMonth]);
+            $monthlySales = $stmt->fetchColumn();
         } catch (Exception $e) { /* Ignore if table missing or query fails, defaults to 0 */
         }
 
@@ -141,6 +145,9 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    if ($decoded['role'] !== 'admin') {
+        sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+    }
     $data = json_decode(file_get_contents("php://input"), true);
     if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
         sendResponse(["message" => "الاسم والبريد الإلكتروني وكلمة المرور مطلوبة"], 400);
@@ -159,6 +166,15 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PUT' && $id) {
+    // Only admins can change roles/status, users can update their own basic info
+    if (isset($data['role']) || isset($data['status'])) {
+        if ($decoded['role'] !== 'admin') {
+            sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+        }
+    }
+    if ($decoded['role'] !== 'admin' && $id != $decoded['id']) {
+        sendResponse(["message" => "غير مصرح - لا يمكنك تعديل مستخدم آخر"], 403);
+    }
     $data = json_decode(file_get_contents("php://input"), true);
     $fields = [];
     $values = [];
@@ -184,6 +200,12 @@ if ($method === 'PUT' && $id) {
 }
 
 if ($method === 'DELETE' && $id) {
+    if ($decoded['role'] !== 'admin') {
+        sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+    }
+    if ($id == $decoded['id']) {
+        sendResponse(["message" => "لا يمكنك حذف حسابك الخاص"], 400);
+    }
     $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
     $stmt->execute([$id]);
     logActivity($pdo, $decoded['id'], "حذف مستخدم", "user", $id);
