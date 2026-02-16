@@ -14,7 +14,7 @@ import {
   getInvoices, getCustomers, getUsers, getInventoryItems,
   getExpenses, getAdvances, getAttendance, getSalaries, getPurchases
 } from './api';
-import { supabase } from './integrations/supabase/client';
+
 
 interface Props { user: { id: number; name: string; role: string } }
 
@@ -545,40 +545,43 @@ const AINotificationPanel = ({ notifications, onClose, onClear, onMarkRead, isAr
   </motion.div>
 );
 
-// ─── DB helpers ───
+// ─── DB helpers (via edge function with service role) ───
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+async function callCacheFunction(body: any): Promise<any> {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-cache`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Cache function error: ${res.status}`);
+  return res.json();
+}
+
 async function loadCachedResults(): Promise<Record<string, any>> {
-  try {
-    const { data, error } = await supabase.from('ai_analysis_results').select('analysis_type, result_data, updated_at');
-    if (error) throw error;
-    const map: Record<string, any> = {};
-    data?.forEach((row: any) => { map[row.analysis_type] = { data: row.result_data, updatedAt: row.updated_at }; });
-    return map;
-  } catch (e) { console.error('Failed to load cached AI results:', e); return {}; }
+  try { return await callCacheFunction({ action: 'load_cache' }); }
+  catch (e) { console.error('Failed to load cached AI results:', e); return {}; }
 }
 
 async function saveCachedResult(analysisType: string, resultData: any) {
-  try {
-    await supabase.from('ai_analysis_results').upsert({ analysis_type: analysisType, result_data: resultData }, { onConflict: 'analysis_type' });
-  } catch (e) { console.error('Failed to save AI result:', e); }
+  try { await callCacheFunction({ action: 'save_cache', analysisType, resultData }); }
+  catch (e) { console.error('Failed to save AI result:', e); }
 }
 
 async function saveDecisionLog(decisions: any[]) {
-  try {
-    const rows = decisions.map((d: any) => ({
-      title: d.title || '', description: d.description || '', action: d.action || '',
-      severity: d.severity || 'info', target_name: d.targetName || '', target_type: d.targetType || '',
-      reasoning: d.reasoning || '', executed_by: 'AI',
-    }));
-    if (rows.length > 0) await supabase.from('ai_decision_log').insert(rows);
-  } catch (e) { console.error('Failed to save decision log:', e); }
+  try { await callCacheFunction({ action: 'save_decisions', decisions }); }
+  catch (e) { console.error('Failed to save decision log:', e); }
 }
 
 async function loadDecisionLog(): Promise<any[]> {
-  try {
-    const { data, error } = await supabase.from('ai_decision_log').select('*').order('created_at', { ascending: false }).limit(50);
-    if (error) throw error;
-    return (data || []).map((d: any) => ({ ...d, timestamp: d.created_at, targetName: d.target_name, targetType: d.target_type, executedBy: d.executed_by }));
-  } catch (e) { console.error('Failed to load decision log:', e); return []; }
+  try { return await callCacheFunction({ action: 'load_decisions' }); }
+  catch (e) { console.error('Failed to load decision log:', e); return []; }
 }
 
 const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
