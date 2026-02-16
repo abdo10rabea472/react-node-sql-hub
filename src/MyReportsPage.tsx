@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Search, Filter, Calendar, User as UserIcon, Eye, X, Loader, AlertTriangle, ChevronLeft, ChevronRight, Clock, Info, ShoppingCart, DollarSign } from 'lucide-react';
+import { FileText, Search, Filter, Calendar, User as UserIcon, Eye, X, Loader, AlertTriangle, ChevronLeft, ChevronRight, Clock, Info, ShoppingCart, DollarSign, Activity, LogIn, LogOut } from 'lucide-react';
 import api from './api';
 import { useSettings } from './SettingsContext';
-import { getStats } from './api';
+import { getStats, getUsers, getAttendance } from './api';
 
 interface Activity {
     id: number;
@@ -98,13 +98,16 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const [purchases, setPurchases] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [salaries, setSalaries] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
+    const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('');
     const [page, setPage] = useState(1);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-    const [viewMode, setViewMode] = useState<'today' | 'history'>('today');
+    const [viewMode, setViewMode] = useState<'today' | 'history' | 'employees'>('today');
+    const [selectedEmployee, setSelectedEmployee] = useState<number | ''>('');
 
     const [statsData, setStatsData] = useState<any>(null);
 
@@ -112,18 +115,22 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
         setLoading(true);
         setError(false);
         try {
-            const [resAct, resPur, resStats, resExp, resSal] = await Promise.all([
+            const [resAct, resPur, resStats, resExp, resSal, resUsers, resAtt] = await Promise.all([
                 api.get(`/activity.php`, { params: { user_id: userId } }),
                 api.get(`/purchases.php`),
                 getStats(),
                 api.get('/expenses.php?path=expenses').catch(() => ({ data: [] })),
                 api.get('/expenses.php?path=salaries').catch(() => ({ data: [] })),
+                getUsers().catch(() => ({ data: [] })),
+                getAttendance().catch(() => ({ data: [] })),
             ]);
             setActivities(resAct.data);
             setPurchases(resPur.data);
             setStatsData(resStats.data);
             setExpenses(Array.isArray(resExp.data) ? resExp.data : []);
             setSalaries(Array.isArray(resSal.data) ? resSal.data : []);
+            setEmployees(Array.isArray(resUsers.data) ? resUsers.data : []);
+            setAttendanceData(Array.isArray(resAtt.data) ? resAtt.data : []);
         } catch (err) {
             console.error(err);
             setError(true);
@@ -340,12 +347,15 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
             </div>
 
             <div className="flex items-center justify-between mb-6">
-                <div className="flex gap-1 bg-muted p-1 rounded-2xl border border-border">
+                <div className="flex gap-1 bg-muted p-1 rounded-2xl border border-border flex-wrap">
                     <button onClick={() => { setViewMode('today'); setPage(1); }} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${viewMode === 'today' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                         {lang === 'ar' ? 'التقرير اليومي' : 'Daily Report'}
                     </button>
                     <button onClick={() => { setViewMode('history'); setPage(1); }} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${viewMode === 'history' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                         {lang === 'ar' ? 'السجل الكامل' : 'Full History'}
+                    </button>
+                    <button onClick={() => { setViewMode('employees'); setPage(1); }} className={`px-6 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${viewMode === 'employees' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                        <Activity size={14} />{lang === 'ar' ? 'حركات الموظفين' : 'Employee Activity'}
                     </button>
                 </div>
                 {viewMode === 'today' && (
@@ -356,6 +366,106 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
                 )}
             </div>
 
+            {/* Employee Activity View */}
+            {viewMode === 'employees' && (
+                <div className="space-y-6 mb-6">
+                    <div className="flex flex-wrap gap-3 bg-card border border-border p-4 rounded-2xl shadow-sm items-center">
+                        <div className="flex items-center gap-2">
+                            <UserIcon size={18} className="text-primary" />
+                            <select value={selectedEmployee} onChange={e => setSelectedEmployee(e.target.value ? Number(e.target.value) : '')} className="h-11 px-4 rounded-xl border border-border bg-muted/50 text-sm font-bold focus:border-primary/50 outline-none font-cairo cursor-pointer min-w-[200px]">
+                                <option value="">{lang === 'ar' ? 'جميع الموظفين' : 'All Employees'}</option>
+                                {employees.map((emp: any) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Employee Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {(selectedEmployee ? employees.filter((e: any) => e.id === selectedEmployee) : employees).map((emp: any) => {
+                            const empActivities = activities.filter(a => a.user_id === emp.id);
+                            const empAttendance = attendanceData.filter((a: any) => a.user_id === emp.id);
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const todayActivities = empActivities.filter(a => a.created_at?.split('T')[0] === todayStr);
+                            const todayAtt = empAttendance.filter((a: any) => a.attendance_date === todayStr);
+                            const lastLogin = empActivities.find(a => a.action?.includes('تسجيل دخول') || a.action?.toLowerCase().includes('login'));
+                            const lastActivity = empActivities[0];
+
+                            return (
+                                <motion.div key={emp.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="p-5 border-b border-border bg-muted/30">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-sm font-black">{emp.name?.charAt(0)}</div>
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-bold text-foreground">{emp.name}</h4>
+                                                <p className="text-[11px] text-muted-foreground">{emp.email}</p>
+                                            </div>
+                                            <div className="text-end">
+                                                <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1"><Clock size={12} />{emp.shift_start?.slice(0, 5) || '09:00'} - {emp.shift_end?.slice(0, 5) || '17:00'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-5 space-y-3">
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <div className="text-center p-3 bg-muted/50 rounded-xl">
+                                                <p className="text-lg font-black text-primary">{todayActivities.length}</p>
+                                                <p className="text-[10px] text-muted-foreground font-semibold">{lang === 'ar' ? 'حركات اليوم' : 'Today Actions'}</p>
+                                            </div>
+                                            <div className="text-center p-3 bg-muted/50 rounded-xl">
+                                                <p className="text-lg font-black text-foreground">{empActivities.length}</p>
+                                                <p className="text-[10px] text-muted-foreground font-semibold">{lang === 'ar' ? 'إجمالي الحركات' : 'Total Actions'}</p>
+                                            </div>
+                                            <div className="text-center p-3 bg-muted/50 rounded-xl">
+                                                <p className="text-lg font-black text-foreground">{empAttendance.length}</p>
+                                                <p className="text-[10px] text-muted-foreground font-semibold">{lang === 'ar' ? 'أيام الحضور' : 'Attendance Days'}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Today's Attendance */}
+                                        {todayAtt.length > 0 && (
+                                            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                                                <p className="text-[10px] font-bold text-emerald-600 mb-2 flex items-center gap-1"><LogIn size={12} />{lang === 'ar' ? 'حضور اليوم' : "Today's Attendance"}</p>
+                                                {todayAtt.map((att: any, i: number) => (
+                                                    <div key={i} className="flex items-center gap-3 text-xs">
+                                                        <span className="text-emerald-600 font-semibold flex items-center gap-1"><LogIn size={11} />{att.check_in || '--:--'}</span>
+                                                        <span className="text-muted-foreground">→</span>
+                                                        <span className="text-red-500 font-semibold flex items-center gap-1"><LogOut size={11} />{att.check_out || '--:--'}</span>
+                                                        {att.late_minutes > 0 && <span className="text-amber-500 text-[10px] font-bold">({lang === 'ar' ? `تأخير ${att.late_minutes} د` : `${att.late_minutes}m late`})</span>}
+                                                        {att.overtime_minutes > 0 && <span className="text-sky-500 text-[10px] font-bold">({lang === 'ar' ? `إضافي ${att.overtime_minutes} د` : `${att.overtime_minutes}m OT`})</span>}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Last Login */}
+                                        {lastLogin && (
+                                            <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                                <LogIn size={12} className="text-primary" />
+                                                {lang === 'ar' ? 'آخر دخول:' : 'Last login:'} {formatDate(lastLogin.created_at)}
+                                            </div>
+                                        )}
+
+                                        {/* Recent Activities */}
+                                        {lastActivity && (
+                                            <div className="border-t border-border pt-3 space-y-2">
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{lang === 'ar' ? 'آخر الحركات' : 'Recent Actions'}</p>
+                                                {empActivities.slice(0, 5).map(a => (
+                                                    <div key={a.id} className="flex items-center gap-2 text-[11px]">
+                                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${getTypeColor(a.entity_type).includes('sky') ? 'bg-sky-500' : getTypeColor(a.entity_type).includes('pink') ? 'bg-pink-500' : 'bg-muted-foreground'}`} />
+                                                        <span className="text-foreground font-medium truncate flex-1">{a.action}</span>
+                                                        <span className="text-muted-foreground shrink-0">{new Date(a.created_at).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {viewMode !== 'employees' && <>
             <div className="flex flex-wrap gap-3 mb-6 bg-card border border-border p-4 rounded-2xl shadow-sm">
                 <div className="flex-1 min-w-[280px] relative group">
                     <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
@@ -474,6 +584,7 @@ const MyReportsPage: React.FC<{ userId?: number }> = ({ userId }) => {
                     </div>
                 )}
             </div>
+            </>}
 
             {/* Details Modal */}
             <AnimatePresence>

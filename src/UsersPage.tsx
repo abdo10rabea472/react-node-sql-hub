@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, UserPlus, Search, Edit3, Trash2, X, Shield, ShieldCheck, User as UserIcon, CheckCircle, XCircle, Ban, ChevronLeft, ChevronRight, AlertTriangle, Loader } from 'lucide-react';
+import { Users, UserPlus, Search, Edit3, Trash2, X, Shield, ShieldCheck, User as UserIcon, CheckCircle, XCircle, Ban, ChevronLeft, ChevronRight, AlertTriangle, Loader, Clock } from 'lucide-react';
 import { getUsers, createUser, updateUser, deleteUser } from './api';
 import { useSettings } from './SettingsContext';
 
-interface UserData { id: number; name: string; email: string; role: string; status: string; base_salary: number; created_at: string; updated_at: string; }
+interface UserData { id: number; name: string; email: string; role: string; status: string; base_salary: number; shift_start: string; shift_end: string; created_at: string; updated_at: string; }
 
 const t = {
-  ar: { title: 'إدارة الموظفين', subtitle: 'عرض وإدارة جميع الموظفين في النظام', addUser: 'إضافة موظف', search: 'ابحث بالاسم أو البريد...', name: 'الاسم', email: 'البريد الإلكتروني', password: 'كلمة المرور', role: 'الدور', status: 'الحالة', actions: 'إجراءات', joinDate: 'تاريخ الانضمام', admin: 'مدير', editor: 'محرر', user: 'موظف', active: 'نشط', inactive: 'غير نشط', banned: 'محظور', edit: 'تعديل', delete: 'حذف', save: 'حفظ', cancel: 'إلغاء', confirmDelete: 'هل أنت متأكد من حذف هذا الموظف؟', yes: 'نعم، احذف', no: 'لا، إلغاء', noUsers: 'لا يوجد موظفين', total: 'المجموع', addUserTitle: 'إضافة موظف جديد', editUserTitle: 'تعديل الموظف', allRoles: 'جميع الأدوار', allStatuses: 'جميع الحالات', loading: 'جاري التحميل...', errorLoad: 'خطأ في تحميل البيانات', retry: 'إعادة المحاولة', success: 'تمت العملية بنجاح', errorOp: 'حدث خطأ', baseSalary: 'المرتب الأساسي' },
-  en: { title: 'Employee Management', subtitle: 'View and manage all system employees', addUser: 'Add Employee', search: 'Search by name or email...', name: 'Name', email: 'Email', password: 'Password', role: 'Role', status: 'Status', actions: 'Actions', joinDate: 'Join Date', admin: 'Admin', editor: 'Editor', user: 'Employee', active: 'Active', inactive: 'Inactive', banned: 'Banned', edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel', confirmDelete: 'Are you sure you want to delete this employee?', yes: 'Yes, Delete', no: 'No, Cancel', noUsers: 'No employees found', total: 'Total', addUserTitle: 'Add New Employee', editUserTitle: 'Edit Employee', allRoles: 'All Roles', allStatuses: 'All Statuses', loading: 'Loading...', errorLoad: 'Error loading data', retry: 'Retry', success: 'Operation successful', errorOp: 'An error occurred', baseSalary: 'Base Salary' },
+  ar: { title: 'إدارة الموظفين', subtitle: 'عرض وإدارة جميع الموظفين في النظام', addUser: 'إضافة موظف', search: 'ابحث بالاسم أو البريد...', name: 'الاسم', email: 'البريد الإلكتروني', password: 'كلمة المرور', role: 'الدور', status: 'الحالة', actions: 'إجراءات', joinDate: 'تاريخ الانضمام', admin: 'مدير', editor: 'محرر', user: 'موظف', active: 'نشط', inactive: 'غير نشط', banned: 'محظور', edit: 'تعديل', delete: 'حذف', save: 'حفظ', cancel: 'إلغاء', confirmDelete: 'هل أنت متأكد من حذف هذا الموظف؟', yes: 'نعم، احذف', no: 'لا، إلغاء', noUsers: 'لا يوجد موظفين', total: 'المجموع', addUserTitle: 'إضافة موظف جديد', editUserTitle: 'تعديل الموظف', allRoles: 'جميع الأدوار', allStatuses: 'جميع الحالات', loading: 'جاري التحميل...', errorLoad: 'خطأ في تحميل البيانات', retry: 'إعادة المحاولة', success: 'تمت العملية بنجاح', errorOp: 'حدث خطأ', baseSalary: 'المرتب الأساسي', shiftStart: 'موعد الحضور', shiftEnd: 'موعد الانصراف', shiftSchedule: 'مواعيد الشيفت' },
+  en: { title: 'Employee Management', subtitle: 'View and manage all system employees', addUser: 'Add Employee', search: 'Search by name or email...', name: 'Name', email: 'Email', password: 'Password', role: 'Role', status: 'Status', actions: 'Actions', joinDate: 'Join Date', admin: 'Admin', editor: 'Editor', user: 'Employee', active: 'Active', inactive: 'Inactive', banned: 'Banned', edit: 'Edit', delete: 'Delete', save: 'Save', cancel: 'Cancel', confirmDelete: 'Are you sure you want to delete this employee?', yes: 'Yes, Delete', no: 'No, Cancel', noUsers: 'No employees found', total: 'Total', addUserTitle: 'Add New Employee', editUserTitle: 'Edit Employee', allRoles: 'All Roles', allStatuses: 'All Statuses', loading: 'Loading...', errorLoad: 'Error loading data', retry: 'Retry', success: 'Operation successful', errorOp: 'An error occurred', baseSalary: 'Base Salary', shiftStart: 'Shift Start', shiftEnd: 'Shift End', shiftSchedule: 'Shift Schedule' },
 };
 
 const ITEMS_PER_PAGE = 8;
@@ -35,6 +35,8 @@ const UsersPage: React.FC = () => {
   const [formRole, setFormRole] = useState('user');
   const [formStatus, setFormStatus] = useState('active');
   const [formBaseSalary, setFormBaseSalary] = useState('0');
+  const [formShiftStart, setFormShiftStart] = useState('09:00');
+  const [formShiftEnd, setFormShiftEnd] = useState('17:00');
 
   const fetchUsers = async () => { setLoading(true); setError(''); try { const res = await getUsers(); setUsers(res.data); } catch { setError(l.errorLoad); } finally { setLoading(false); } };
   useEffect(() => { fetchUsers(); }, []);
@@ -49,18 +51,18 @@ const UsersPage: React.FC = () => {
   const paginatedUsers = filteredUsers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   useEffect(() => { setPage(1); }, [searchQuery, filterRole, filterStatus]);
 
-  const openAddModal = () => { setFormName(''); setFormEmail(''); setFormPassword(''); setFormRole('user'); setFormStatus('active'); setFormBaseSalary('0'); setShowAddModal(true); };
-  const openEditModal = (user: UserData) => { setFormName(user.name); setFormEmail(user.email); setFormPassword(''); setFormRole(user.role); setFormStatus(user.status); setFormBaseSalary(String(user.base_salary || 0)); setEditingUser(user); };
+  const openAddModal = () => { setFormName(''); setFormEmail(''); setFormPassword(''); setFormRole('user'); setFormStatus('active'); setFormBaseSalary('0'); setFormShiftStart('09:00'); setFormShiftEnd('17:00'); setShowAddModal(true); };
+  const openEditModal = (user: UserData) => { setFormName(user.name); setFormEmail(user.email); setFormPassword(''); setFormRole(user.role); setFormStatus(user.status); setFormBaseSalary(String(user.base_salary || 0)); setFormShiftStart(user.shift_start?.slice(0, 5) || '09:00'); setFormShiftEnd(user.shift_end?.slice(0, 5) || '17:00'); setEditingUser(user); };
 
-  const handleAdd = async () => { if (!formName || !formEmail || !formPassword) return; setSaving(true); try { await createUser({ name: formName, email: formEmail, password: formPassword, role: formRole }); showToast(l.success, 'success'); setShowAddModal(false); fetchUsers(); } catch (err: any) { showToast(err.response?.data?.message || l.errorOp, 'error'); } finally { setSaving(false); } };
-  const handleEdit = async () => { if (!editingUser) return; setSaving(true); try { const data: Record<string, string> = { name: formName, email: formEmail, role: formRole, status: formStatus, base_salary: formBaseSalary }; if (formPassword) data.password = formPassword; await updateUser(editingUser.id, data); showToast(l.success, 'success'); setEditingUser(null); fetchUsers(); } catch (err: any) { showToast(err.response?.data?.message || l.errorOp, 'error'); } finally { setSaving(false); } };
+  const handleAdd = async () => { if (!formName || !formEmail || !formPassword) return; setSaving(true); try { await createUser({ name: formName, email: formEmail, password: formPassword, role: formRole, base_salary: formBaseSalary, shift_start: formShiftStart, shift_end: formShiftEnd }); showToast(l.success, 'success'); setShowAddModal(false); fetchUsers(); } catch (err: any) { showToast(err.response?.data?.message || l.errorOp, 'error'); } finally { setSaving(false); } };
+  const handleEdit = async () => { if (!editingUser) return; setSaving(true); try { const data: Record<string, string> = { name: formName, email: formEmail, role: formRole, status: formStatus, base_salary: formBaseSalary, shift_start: formShiftStart, shift_end: formShiftEnd }; if (formPassword) data.password = formPassword; await updateUser(editingUser.id, data); showToast(l.success, 'success'); setEditingUser(null); fetchUsers(); } catch (err: any) { showToast(err.response?.data?.message || l.errorOp, 'error'); } finally { setSaving(false); } };
   const handleDelete = async () => { if (!deletingUser) return; setSaving(true); try { await deleteUser(deletingUser.id); showToast(l.success, 'success'); setDeletingUser(null); fetchUsers(); } catch (err: any) { showToast(err.response?.data?.message || l.errorOp, 'error'); } finally { setSaving(false); } };
 
   const getRoleIcon = (role: string) => { switch (role) { case 'admin': return <ShieldCheck size={13} />; case 'editor': return <Shield size={13} />; default: return <UserIcon size={13} />; } };
   const getRoleLabel = (role: string) => { switch (role) { case 'admin': return l.admin; case 'editor': return l.editor; default: return l.user; } };
   const getStatusIcon = (status: string) => { switch (status) { case 'active': return <CheckCircle size={13} />; case 'inactive': return <XCircle size={13} />; default: return <Ban size={13} />; } };
   const getStatusLabel = (status: string) => { switch (status) { case 'active': return l.active; case 'inactive': return l.inactive; default: return l.banned; } };
-  const formatDate = (date: string) => new Date(date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (date: string) => { try { return new Date(date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return date; } }; void formatDate;
 
   const roleBadgeClass = (role: string) => role === 'admin' ? 'bg-red-500/10 text-red-500' : role === 'editor' ? 'bg-amber-500/10 text-amber-600' : 'bg-primary/10 text-primary';
   const statusBadgeClass = (status: string) => status === 'active' ? 'bg-success/10 text-success' : status === 'inactive' ? 'bg-muted text-muted-foreground' : 'bg-red-500/10 text-red-500';
@@ -98,8 +100,8 @@ const UsersPage: React.FC = () => {
               <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.name}</th>
               <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden md:table-cell">{l.email}</th>
               <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.role}</th>
+              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">{l.shiftSchedule}</th>
               <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">{l.status}</th>
-              <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">{l.joinDate}</th>
               <th className="px-3 sm:px-4 py-3 text-start text-[11px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{l.actions}</th>
             </tr></thead>
             <tbody>
@@ -110,8 +112,13 @@ const UsersPage: React.FC = () => {
                     <td className="px-3 sm:px-4 py-3"><div className="flex items-center gap-2.5"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-sky-400 text-white flex items-center justify-center text-xs font-bold shrink-0">{u.name.charAt(0).toUpperCase()}</div><span className="text-sm font-medium truncate max-w-[120px] sm:max-w-none">{u.name}</span></div></td>
                     <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground hidden md:table-cell" dir="ltr">{u.email}</td>
                     <td className="px-3 sm:px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${roleBadgeClass(u.role)}`}>{getRoleIcon(u.role)} <span className="hidden xs:inline">{getRoleLabel(u.role)}</span></span></td>
+                    <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-600">
+                        <Clock size={12} />
+                        {u.shift_start?.slice(0, 5) || '09:00'} - {u.shift_end?.slice(0, 5) || '17:00'}
+                      </span>
+                    </td>
                     <td className="px-3 sm:px-4 py-3 hidden sm:table-cell"><span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(u.status)}`}>{getStatusIcon(u.status)} {getStatusLabel(u.status)}</span></td>
-                    <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">{formatDate(u.created_at)}</td>
                     <td className="px-3 sm:px-4 py-3"><div className="flex gap-1.5">
                       <button onClick={() => openEditModal(u)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border flex items-center justify-center text-primary hover:bg-primary/10 transition-all"><Edit3 size={14} /></button>
                       <button onClick={() => setDeletingUser(u)} className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border flex items-center justify-center text-destructive hover:bg-destructive/10 transition-all"><Trash2 size={14} /></button>
@@ -135,7 +142,7 @@ const UsersPage: React.FC = () => {
       <AnimatePresence>
         {(showAddModal || editingUser) && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9990] flex items-center justify-center p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowAddModal(false); setEditingUser(null); }}>
-            <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} onClick={e => e.stopPropagation()}>
+            <motion.div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center px-6 py-4 border-b border-border"><h3 className="font-bold text-foreground">{editingUser ? l.editUserTitle : l.addUserTitle}</h3><button onClick={() => { setShowAddModal(false); setEditingUser(null); }} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-all"><X size={20} /></button></div>
               <div className="p-6 space-y-4">
                 <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{l.name}</label><input value={formName} onChange={e => setFormName(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" /></div>
@@ -146,6 +153,15 @@ const UsersPage: React.FC = () => {
                   {editingUser && <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{l.status}</label><select value={formStatus} onChange={e => setFormStatus(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 font-cairo"><option value="active">{l.active}</option><option value="inactive">{l.inactive}</option><option value="banned">{l.banned}</option></select></div>}
                 </div>
                 <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{l.baseSalary}</label><input type="number" value={formBaseSalary} onChange={e => setFormBaseSalary(e.target.value)} className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all font-cairo" placeholder="0" /></div>
+                
+                {/* Shift Schedule */}
+                <div className="bg-muted/50 border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-foreground"><Clock size={16} className="text-sky-500" />{l.shiftSchedule}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{l.shiftStart}</label><input type="time" value={formShiftStart} onChange={e => setFormShiftStart(e.target.value)} className="w-full px-3.5 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all" /></div>
+                    <div><label className="block text-xs font-semibold text-muted-foreground mb-1.5">{l.shiftEnd}</label><input type="time" value={formShiftEnd} onChange={e => setFormShiftEnd(e.target.value)} className="w-full px-3.5 py-2.5 bg-card border border-border rounded-lg text-foreground text-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all" /></div>
+                  </div>
+                </div>
               </div>
               <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/30">
                 <button onClick={() => { setShowAddModal(false); setEditingUser(null); }} className="px-4 py-2.5 border border-border rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted transition-all">{l.cancel}</button>
