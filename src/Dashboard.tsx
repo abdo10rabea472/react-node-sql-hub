@@ -10,6 +10,8 @@ import InvoicesPage from './InvoicesPage';
 import WeddingPricingPage from './WeddingPricingPage';
 import WeddingInvoicesPage from './WeddingInvoicesPage';
 import PurchasesPage from './PurchasesPage';
+import AccountDetailsPage from './AccountDetailsPage';
+import NotificationCenter from './NotificationCenter';
 import { useSettings } from './SettingsContext';
 import type { User } from './App';
 
@@ -71,6 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [chartPeriod, setChartPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const t = translations[lang];
 
   useEffect(() => { document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'; document.documentElement.lang = lang; }, [lang]);
@@ -102,6 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     if (activeNav === 6) return <PurchasesPage user={user} />;
     if (activeNav === 7) return <UsersPage />;
     if (activeNav === 8) return <SettingsPage />;
+    if (activeNav === 9) return <AccountDetailsPage user={user} onUpdate={() => { /* refresh user if needed */ }} />;
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key="dashboard">
@@ -252,8 +256,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <div className="flex items-center gap-1.5">
             <button onClick={toggleLang} className="h-9 px-3 rounded-lg border border-border bg-card text-muted-foreground text-xs font-bold hover:bg-muted hover:text-foreground transition-all flex items-center gap-1.5"><Globe size={16} /><span className="hidden sm:inline">{lang === 'ar' ? 'EN' : 'AR'}</span></button>
             <button onClick={toggleTheme} className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-all flex items-center justify-center">{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
-            <button className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-all flex items-center justify-center relative"><Bell size={17} /><span className="absolute top-1.5 end-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-card" /></button>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs ms-1 cursor-pointer hover:scale-105 transition-transform shadow-md shadow-sky-500/20">{user.name.charAt(0).toUpperCase()}</div>
+            <button onClick={() => setNotificationsOpen(true)} className="h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-all flex items-center justify-center relative"><Bell size={17} /><span className="absolute top-1.5 end-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-card" /></button>
+            <div onClick={() => setActiveNav(9)} className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs ms-1 cursor-pointer hover:scale-105 transition-transform shadow-md shadow-sky-500/20">{user.name.charAt(0).toUpperCase()}</div>
+            <NotificationCenter isOpen={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
           </div>
         </header>
 
