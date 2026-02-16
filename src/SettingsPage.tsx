@@ -236,26 +236,28 @@ const SettingsPage: React.FC = () => {
                     <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
                     <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (Lovable AI)' : 'Built-in Models (Lovable AI)'}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'هذه النماذج تعمل تلقائياً عبر بوابة Lovable AI. يمكنك إضافة نماذج خارجية أدناه.' : 'These models work automatically via Lovable AI Gateway. Add external models below.'}</p>
+                  <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'اختر النموذج المدمج الذي سيتم استخدامه في التحليلات. النماذج الأسرع أرخص تكلفة.' : 'Choose the built-in model for analytics. Faster models cost less.'}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced' },
-                      { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning' },
-                      { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context' },
-                      { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost' },
-                      { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest' },
-                      { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning' },
-                      { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost' },
-                      { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical' },
-                      { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning' },
+                      { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
+                      { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning', cost: '💰💰💰' },
+                      { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context', cost: '💰💰💰' },
+                      { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost', cost: '💰' },
+                      { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest', cost: '💰' },
+                      { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning', cost: '💰💰💰' },
+                      { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost', cost: '💰💰' },
+                      { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical', cost: '💰' },
+                      { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning', cost: '💰💰💰' },
                     ].map(m => (
-                      <div key={m.name} className="flex items-center gap-2 bg-background/50 border border-border/50 rounded-lg px-3 py-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div>
-                        <div className="min-w-0">
+                      <button key={m.name} onClick={() => updateSettings({ selectedLovableModel: m.name } as any)}
+                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start transition-all ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500/10 border-2 border-emerald-500/50 ring-1 ring-emerald-500/20' : 'bg-background/50 border border-border/50 hover:border-primary/30'}`}>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}></div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{m.desc}</p>
+                          <p className="text-[10px] text-muted-foreground">{m.desc} {m.cost}</p>
                         </div>
-                      </div>
+                        {(settings as any).selectedLovableModel === m.name && <CheckCircle size={14} className="text-emerald-500 shrink-0" />}
+                      </button>
                     ))}
                   </div>
                 </div>

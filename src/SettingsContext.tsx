@@ -29,6 +29,7 @@ interface Settings {
     countryCode: string;
     deductionRules: DeductionRules;
     aiModels: AIModelConfig[];
+    selectedLovableModel: string;
 }
 
 
@@ -57,6 +58,7 @@ const defaultSettings: Settings = {
     countryCode: '966',
     deductionRules: defaultDeductionRules,
     aiModels: [],
+    selectedLovableModel: 'google/gemini-3-flash-preview',
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -80,6 +82,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     countryCode: data.country_code || '966',
                     deductionRules: data.deduction_rules ? JSON.parse(data.deduction_rules) : defaultDeductionRules,
                     aiModels: data.ai_models ? JSON.parse(data.ai_models) : [],
+                    selectedLovableModel: data.selected_lovable_model || 'google/gemini-3-flash-preview',
                 };
                 setSettings(mapped);
                 setIsLoaded(true);

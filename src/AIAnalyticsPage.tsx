@@ -710,7 +710,7 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-analytics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${phpToken || SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
-        body: JSON.stringify({ businessData: rawData, analysisType: type, externalModels: getExternalModels() }),
+        body: JSON.stringify({ businessData: rawData, analysisType: type, externalModels: getExternalModels(), selectedModel: (settings as any).selectedLovableModel || 'google/gemini-3-flash-preview' }),
       });
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
