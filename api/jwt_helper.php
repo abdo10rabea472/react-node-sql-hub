@@ -57,6 +57,7 @@ class JWT
         }
 
         return $decoded;
+    }
 
     private static function base64UrlEncode($data)
     {

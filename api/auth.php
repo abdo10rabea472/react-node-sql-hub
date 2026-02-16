@@ -18,8 +18,11 @@ if ($path === 'login' && $method === 'POST') {
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         sendResponse(["message" => "البريد الإلكتروني غير صالح"], 400);
     }
-    if (empty($password) || mb_strlen($password) < 4 || mb_strlen($password) > 255) {
-        sendResponse(["message" => "كلمة المرور غير صالحة"], 400);
+    if (empty($password) || mb_strlen($password) < 8 || mb_strlen($password) > 255) {
+        sendResponse(["message" => "كلمة المرور يجب أن تكون 8 أحرف على الأقل"], 400);
+    }
+    if (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        sendResponse(["message" => "كلمة المرور يجب أن تحتوي على أحرف وأرقام"], 400);
     }
 
     // Check in SQL Database only - no hardcoded credentials
