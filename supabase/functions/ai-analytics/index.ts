@@ -152,24 +152,26 @@ serve(async (req) => {
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-    const { data: rateData } = await supabaseAdmin
+    // Count ALL requests from this token in the last hour (sum across all rows)
+    const { data: rateRows } = await supabaseAdmin
       .from("ai_rate_limits")
       .select("id, request_count")
       .eq("token_hash", tokenHash)
-      .gte("window_start", oneHourAgo)
-      .maybeSingle();
+      .gte("window_start", oneHourAgo);
 
-    if (rateData && rateData.request_count >= 15) {
-      return new Response(JSON.stringify({ error: "تم تجاوز حد الطلبات (15 طلب/ساعة). حاول لاحقاً" }), {
+    const totalRequests = (rateRows || []).reduce((sum: number, r: any) => sum + (r.request_count || 0), 0);
+
+    if (totalRequests >= 50) {
+      return new Response(JSON.stringify({ error: "تم تجاوز حد الطلبات (50 طلب/ساعة). حاول لاحقاً" }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (rateData) {
-      await supabaseAdmin.from("ai_rate_limits").update({ request_count: rateData.request_count + 1 }).eq("id", rateData.id);
-    } else {
-      await supabaseAdmin.from("ai_rate_limits").insert({ token_hash: tokenHash, request_count: 1 });
-    }
+    // Insert a new row for this request (avoids race conditions with concurrent updates)
+    await supabaseAdmin.from("ai_rate_limits").insert({ token_hash: tokenHash, request_count: 1 });
+
+    // Clean up old rows occasionally
+    await supabaseAdmin.from("ai_rate_limits").delete().lt("window_start", oneHourAgo);
 
     const { businessData, analysisType, externalModels } = await req.json();
     const systemPrompt = systemPrompts[analysisType] || systemPrompts["full-analysis"];
