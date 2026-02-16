@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownRight, Sparkles, Brain, Lightbulb, Clock,
   BarChart3, PieChart, Calendar, CreditCard, Package, Wallet,
   TrendingDown, Award, Zap, AlertTriangle, CheckCircle, Star,
-  Receipt, UserPlus, Percent, Layers, Hash, ArrowUp, ArrowDown
+  Receipt, UserPlus, Percent, Layers, Hash, ArrowUp, ArrowDown, ClipboardList
 } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import api from './api';
@@ -501,36 +501,133 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
               <StatMini label={t('التنوع', 'Diversification')} value={wedRevenue > 0 && regRevenue > 0 ? t('متوازن', 'Balanced') : t('أحادي', 'Single')} icon={Layers} color="#06b6d4" />
             </div>
 
-            {/* Row 2: Smart Insights */}
+            {/* Row 2: Actionable Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3">
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5"><Sparkles size={14} className="text-primary" />{t('رؤى ذكية من بياناتك', 'Smart Insights')}</h3>
+                <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5"><Brain size={14} className="text-primary" />{t('إجراءات مقترحة لزيادة المبيعات', 'Actionable Steps to Boost Sales')}</h3>
                 
-                {dailySales > 0 && <Insight icon={TrendingUp} title={t('أداء ممتاز اليوم!', 'Great Today!')} desc={t(`حققت ${dailySales.toLocaleString()} ${currency} اليوم`, `Made ${dailySales.toLocaleString()} ${currency} today`)} type="success" />}
-                
-                {profitMargin > 30 && <Insight icon={Award} title={t('هامش ربح ممتاز', 'Great Margin')} desc={t(`هامش الربح ${profitMargin.toFixed(1)}% — أداء مالي قوي`, `${profitMargin.toFixed(1)}% margin — strong performance`)} type="success" />}
-                {profitMargin > 0 && profitMargin <= 30 && <Insight icon={AlertTriangle} title={t('هامش ربح منخفض', 'Low Margin')} desc={t(`هامش الربح ${profitMargin.toFixed(1)}% فقط. حاول تقليل المصروفات`, `Only ${profitMargin.toFixed(1)}%. Try reducing expenses`)} type="warning" />}
-                {profitMargin < 0 && <Insight icon={AlertTriangle} title={t('خسارة!', 'Loss!')} desc={t('المصروفات تتجاوز الإيرادات. راجع المشتريات فوراً', 'Expenses exceed revenue. Review purchases immediately')} type="error" />}
+                {/* ── Collection & Cash Flow ── */}
+                {collectionRate < 60 && totalRevenue > 0 && <Insight icon={AlertTriangle} title={t('🚨 تحصيل حرج — تدخل فوري مطلوب', '🚨 Critical Collection')} desc={t(
+                  `معدل التحصيل ${collectionRate.toFixed(0)}% فقط! لديك ${uncollectedAmount.toLocaleString()} ${currency} غير محصّل. الإجراء: تواصل فوراً مع العملاء المتأخرين عبر الواتساب أو الهاتف، واعرض خطط تقسيط للمبالغ الكبيرة، وحدد موعد نهائي للسداد مع كل عميل.`,
+                  `Only ${collectionRate.toFixed(0)}% collected! ${uncollectedAmount.toLocaleString()} ${currency} outstanding. Action: Contact overdue clients immediately via WhatsApp/phone, offer installment plans for large amounts, set firm deadlines.`
+                )} type="error" />}
+                {collectionRate >= 60 && collectionRate < 85 && totalRevenue > 0 && <Insight icon={CreditCard} title={t('⚠️ حسّن التحصيل — خطة أسبوعية', '⚠️ Improve Collection')} desc={t(
+                  `معدل التحصيل ${collectionRate.toFixed(0)}%. الإجراء: خصص يوم أسبوعياً للمتابعة مع العملاء المتأخرين. أرسل تذكير واتساب تلقائي قبل موعد السداد بـ3 أيام. قدّم خصم 5% للدفع المبكر كحافز.`,
+                  `${collectionRate.toFixed(0)}% collected. Action: Dedicate one day/week for follow-ups. Send auto WhatsApp reminders 3 days before due dates. Offer 5% early payment discount.`
+                )} type="warning" />}
+                {collectionRate >= 85 && totalRevenue > 0 && <Insight icon={CheckCircle} title={t('✅ تحصيل ممتاز — حافظ على المستوى', '✅ Excellent Collection')} desc={t(
+                  `معدل التحصيل ${collectionRate.toFixed(0)}% — ممتاز! الإجراء: حافظ على نفس سياسة المتابعة. فكّر في تقديم برنامج ولاء للعملاء الملتزمين بالدفع مثل خصم 10% على الحجز التالي.`,
+                  `${collectionRate.toFixed(0)}% collected — excellent! Action: Maintain follow-up policy. Consider loyalty program for on-time payers like 10% off next booking.`
+                )} type="success" />}
 
-                {collectionRate < 80 && totalRevenue > 0 && <Insight icon={CreditCard} title={t('تحصيل ضعيف', 'Low Collection')} desc={t(`معدل التحصيل ${collectionRate.toFixed(0)}% فقط. ${uncollectedAmount.toLocaleString()} ${currency} غير محصّل`, `Only ${collectionRate.toFixed(0)}% collected. ${uncollectedAmount.toLocaleString()} ${currency} uncollected`)} type="warning" />}
-                {collectionRate >= 80 && totalRevenue > 0 && <Insight icon={CheckCircle} title={t('تحصيل جيد', 'Good Collection')} desc={t(`معدل التحصيل ${collectionRate.toFixed(0)}%`, `${collectionRate.toFixed(0)}% collection rate`)} type="success" />}
+                {/* ── Profit Margin ── */}
+                {profitMargin < 0 && <Insight icon={AlertTriangle} title={t('🔴 خسارة صافية — إعادة هيكلة فورية', '🔴 Net Loss — Restructure Now')} desc={t(
+                  `المصروفات (${totalExpenses.toLocaleString()}) تتجاوز الإيرادات (${totalRevenue.toLocaleString()})! الإجراء: 1) راجع كل بند مشتريات واحذف غير الضروري. 2) ارفع أسعار الباقات بنسبة 15-20%. 3) تفاوض مع الموردين على أسعار أفضل. 4) قلل المصاريف الثابتة (إيجار، رواتب إضافية).`,
+                  `Expenses (${totalExpenses.toLocaleString()}) exceed revenue (${totalRevenue.toLocaleString()})! Action: 1) Review all purchases, cut unnecessary ones. 2) Raise package prices 15-20%. 3) Negotiate better supplier rates. 4) Reduce fixed costs.`
+                )} type="error" />}
+                {profitMargin > 0 && profitMargin <= 20 && <Insight icon={Target} title={t('⚠️ هامش ربح ضعيف — ارفع الأسعار', '⚠️ Low Margin — Raise Prices')} desc={t(
+                  `هامش الربح ${profitMargin.toFixed(1)}% فقط (المثالي +30%). الإجراء: 1) ارفع سعر الباقات الأقل ربحية بنسبة 10%. 2) أضف خدمات إضافية (طباعة فورية، فيديو قصير) برسوم إضافية. 3) قلل تكاليف المواد بالشراء بالجملة.`,
+                  `Only ${profitMargin.toFixed(1)}% margin (ideal is 30%+). Action: 1) Raise prices on low-margin packages by 10%. 2) Add upsell services (instant prints, short videos). 3) Reduce material costs by bulk buying.`
+                )} type="warning" />}
+                {profitMargin > 20 && profitMargin <= 40 && <Insight icon={Award} title={t('👍 هامش ربح جيد — فرصة للتطوير', '👍 Good Margin — Room to Grow')} desc={t(
+                  `هامش الربح ${profitMargin.toFixed(1)}% — جيد! الإجراء: استثمر جزء من الأرباح في التسويق الرقمي (إعلانات انستجرام وفيسبوك) لجذب عملاء جدد. خصص 10% من الأرباح للتسويق شهرياً.`,
+                  `${profitMargin.toFixed(1)}% margin — good! Action: Invest part of profits in digital marketing (Instagram/Facebook ads) to attract new clients. Allocate 10% of profits for monthly marketing.`
+                )} type="success" />}
+                {profitMargin > 40 && <Insight icon={Star} title={t('🌟 هامش ربح ممتاز — وسّع نشاطك', '🌟 Excellent Margin — Scale Up')} desc={t(
+                  `هامش الربح ${profitMargin.toFixed(1)}% — ممتاز جداً! الإجراء: فكّر في فتح فرع ثاني أو توظيف مصور إضافي. استثمر في معدات أفضل لتقديم خدمة بريميوم بسعر أعلى.`,
+                  `${profitMargin.toFixed(1)}% margin — outstanding! Action: Consider opening a second branch or hiring another photographer. Invest in better equipment for premium service at higher prices.`
+                )} type="success" />}
 
-                {wedRevenue > 0 && totalRevenue > 0 && <Insight icon={Brain} title={t('تحليل الخدمات', 'Service Analysis')} desc={t(`الزفاف يمثل ${(wedRevenue / totalRevenue * 100).toFixed(0)}% من إيراداتك`, `Weddings = ${(wedRevenue / totalRevenue * 100).toFixed(0)}% of revenue`)} type="info" />}
+                {/* ── Revenue Growth ── */}
+                {Number(revChange) < -20 && <Insight icon={TrendingDown} title={t('📉 انخفاض حاد — خطة إنقاذ عاجلة', '📉 Sharp Decline — Rescue Plan')} desc={t(
+                  `انخفاض ${Math.abs(Number(revChange)).toFixed(0)}% عن الشهر السابق! الإجراء: 1) أطلق عرض خاص "خصم 20% لمدة أسبوع" لتنشيط المبيعات. 2) تواصل مع العملاء السابقين واعرض خدمات جديدة. 3) انشر محتوى يومي على السوشيال ميديا (قبل/بعد الصور). 4) تعاون مع صالونات وقاعات أفراح للإحالات المتبادلة.`,
+                  `${Math.abs(Number(revChange)).toFixed(0)}% drop vs last month! Action: 1) Launch "20% off this week" flash sale. 2) Reach out to past clients with new services. 3) Post daily before/after content on social media. 4) Partner with salons and venues for referrals.`
+                )} type="error" />}
+                {Number(revChange) >= -20 && Number(revChange) < 0 && <Insight icon={TrendingDown} title={t('📊 انخفاض طفيف — تنشيط مطلوب', '📊 Slight Decline')} desc={t(
+                  `انخفاض ${Math.abs(Number(revChange)).toFixed(0)}% عن الشهر السابق. الإجراء: أرسل عروض شخصية للعملاء الذين لم يحجزوا منذ 3 أشهر. أضف باقة اقتصادية جديدة لجذب شريحة أكبر.`,
+                  `${Math.abs(Number(revChange)).toFixed(0)}% drop. Action: Send personalized offers to clients inactive for 3+ months. Add a budget-friendly package to attract more clients.`
+                )} type="warning" />}
+                {Number(revChange) > 10 && <Insight icon={TrendingUp} title={t('🚀 نمو قوي — استغل الزخم!', '🚀 Strong Growth!')} desc={t(
+                  `نمو ${revChange}% عن الشهر السابق — ممتاز! الإجراء: استغل هذا الزخم بزيادة الأسعار تدريجياً 5-10%. اطلب من العملاء الراضين تقييمات على جوجل وانستجرام. وثّق أفضل أعمالك كبورتفوليو جذاب.`,
+                  `${revChange}% growth — excellent! Action: Leverage momentum by gradually raising prices 5-10%. Ask satisfied clients for Google/Instagram reviews. Document best work as an attractive portfolio.`
+                )} type="success" />}
 
-                {Number(revChange) > 10 && <Insight icon={TrendingUp} title={t('نمو قوي', 'Strong Growth')} desc={t(`نمو ${revChange}% مقارنة بالشهر السابق — استمر!`, `${revChange}% growth vs last month — keep going!`)} type="success" />}
-                {Number(revChange) < -10 && <Insight icon={TrendingDown} title={t('انخفاض الإيرادات', 'Revenue Drop')} desc={t(`انخفاض ${revChange}% مقارنة بالشهر السابق`, `${revChange}% drop vs last month`)} type="error" />}
+                {/* ── Customer Base ── */}
+                {totalCustomers < 20 && <Insight icon={UserPlus} title={t('👥 قاعدة عملاء صغيرة — وسّعها!', '👥 Small Client Base')} desc={t(
+                  `لديك ${totalCustomers} عميل فقط. الإجراء: 1) أنشئ برنامج إحالة "ادعو صديق واحصل على خصم 15%". 2) سجّل في منصات حجز الأستوديوهات المحلية. 3) قدّم جلسة تصوير مجانية مصغرة كتجربة أولى. 4) تواجد في المعارض والفعاليات المحلية.`,
+                  `Only ${totalCustomers} clients. Action: 1) Create "Refer a friend, get 15% off" program. 2) List on local studio booking platforms. 3) Offer a free mini photo session as first experience. 4) Attend local exhibitions and events.`
+                )} type="warning" />}
+                {totalCustomers >= 20 && totalCustomers < 50 && <Insight icon={Users} title={t('👥 قاعدة عملاء متوسطة — طوّر العلاقات', '👥 Medium Client Base')} desc={t(
+                  `لديك ${totalCustomers} عميل. الإجراء: ركّز على الاحتفاظ بالعملاء الحاليين. أرسل تهنئة في المناسبات (أعياد ميلاد، ذكرى زواج) مع عرض خاص. أنشئ مجموعة واتساب VIP للعملاء المميزين.`,
+                  `${totalCustomers} clients. Action: Focus on retention. Send greetings on occasions (birthdays, anniversaries) with special offers. Create VIP WhatsApp group for top clients.`
+                )} type="info" />}
+                {totalCustomers >= 50 && <Insight icon={Star} title={t('🌟 قاعدة عملاء قوية — حوّلهم لسفراء', '🌟 Strong Client Base')} desc={t(
+                  `لديك ${totalCustomers} عميل — قاعدة ممتازة! الإجراء: أنشئ برنامج ولاء بنقاط: كل 100 ${currency} = نقطة، 10 نقاط = جلسة مجانية. اطلب تقييمات ومشاركات على السوشيال ميديا.`,
+                  `${totalCustomers} clients — excellent! Action: Create points loyalty program: every 100 ${currency} = 1 point, 10 points = free session. Request social media reviews and shares.`
+                )} type="success" />}
 
-                <Insight icon={Target} title={t('هدف الشهر', 'Monthly Goal')} desc={t(`لتحقيق ${(totalRevenue * 1.2).toLocaleString()} ${currency} تحتاج ${Math.ceil((totalRevenue * 0.2) / 30).toLocaleString()} إضافي يومياً`, `To reach ${(totalRevenue * 1.2).toLocaleString()}, need ${Math.ceil((totalRevenue * 0.2) / 30).toLocaleString()} extra/day`)} type="info" />
-                
-                <Insight icon={Lightbulb} title={t('أفضل شهر', 'Best Month')} desc={t(`${MO_AR[bestMonth.idx]} كان الأفضل بإيرادات ${bestMonth.revenue?.toLocaleString()} ${currency}`, `${MO_EN[bestMonth.idx]} was best with ${bestMonth.revenue?.toLocaleString()} ${currency}`)} type="info" />
+                {/* ── Wedding vs Studio Balance ── */}
+                {wedRevenue === 0 && totalRevenue > 0 && <Insight icon={Sparkles} title={t('💡 فرصة ضائعة — خدمات الزفاف', '💡 Missing Opportunity — Weddings')} desc={t(
+                  `لا توجد إيرادات من الزفاف! الزفاف مصدر دخل ممتاز. الإجراء: 1) أنشئ 3 باقات زفاف (اقتصادية، متوسطة، فاخرة). 2) تواصل مع قاعات الأفراح والمنظمين. 3) أنشئ حساب انستجرام مخصص لتصوير الزفاف. 4) اعرض أعمال سابقة (حتى لو مجانية أولاً).`,
+                  `No wedding revenue! Weddings are a great income source. Action: 1) Create 3 wedding packages (budget, standard, premium). 2) Partner with venues and planners. 3) Create dedicated Instagram for wedding photography. 4) Showcase past work.`
+                )} type="warning" />}
+                {wedRevenue > 0 && regRevenue > 0 && wedRevenue / totalRevenue < 0.3 && <Insight icon={Sparkles} title={t('💡 زِد حصة الزفاف', '💡 Grow Wedding Share')} desc={t(
+                  `الزفاف يمثل ${(wedRevenue / totalRevenue * 100).toFixed(0)}% فقط من إيراداتك. الإجراء: ارفع أسعار باقات الزفاف 10% (الطلب مرن). أضف خدمات إضافية: ألبوم ديجيتال، فيديو هايلايت، طباعة كانفاس. تواجد في معارض الأعراس.`,
+                  `Weddings = only ${(wedRevenue / totalRevenue * 100).toFixed(0)}% of revenue. Action: Raise wedding prices 10% (demand is elastic). Add extras: digital album, highlight video, canvas prints. Attend wedding expos.`
+                )} type="info" />}
+                {wedRevenue > 0 && regRevenue > 0 && wedRevenue / totalRevenue >= 0.3 && wedRevenue / totalRevenue <= 0.7 && <Insight icon={CheckCircle} title={t('✅ توزيع متوازن للخدمات', '✅ Balanced Service Mix')} desc={t(
+                  `الاستوديو ${(regRevenue / totalRevenue * 100).toFixed(0)}% والزفاف ${(wedRevenue / totalRevenue * 100).toFixed(0)}% — توزيع ممتاز يقلل المخاطر. الإجراء: حافظ على هذا التوازن وطوّر كلا الخدمتين بالتوازي.`,
+                  `Studio ${(regRevenue / totalRevenue * 100).toFixed(0)}% and Wedding ${(wedRevenue / totalRevenue * 100).toFixed(0)}% — great balance reducing risk. Action: Maintain this balance and develop both services equally.`
+                )} type="success" />}
 
-                {purchases.length > 0 && <Insight icon={Package} title={t('تحليل المشتريات', 'Purchase Analysis')} desc={t(`${purchases.length} عملية شراء بمتوسط ${avgPurchase.toFixed(0)} ${currency}`, `${purchases.length} purchases, avg ${avgPurchase.toFixed(0)} ${currency}`)} type="info" />}
+                {/* ── Average Transaction ── */}
+                {avgInvoice > 0 && avgInvoice < 500 && <Insight icon={DollarSign} title={t('💰 ارفع متوسط الفاتورة', '💰 Increase Avg Invoice')} desc={t(
+                  `متوسط الفاتورة ${avgInvoice.toFixed(0)} ${currency} فقط. الإجراء: 1) أنشئ باقات "كومبو" تجمع عدة خدمات بسعر أعلى. 2) اعرض ترقية الباقة عند كل حجز "أضف 3 صور إضافية بـ50 ${currency} فقط". 3) أضف منتجات تكميلية (إطارات، طباعة كبيرة، USB).`,
+                  `Avg invoice only ${avgInvoice.toFixed(0)} ${currency}. Action: 1) Create "combo" packages bundling services. 2) Offer upgrades at booking: "Add 3 extra photos for just 50 ${currency}". 3) Add complementary products (frames, large prints, USB).`
+                )} type="warning" />}
+                {avgInvoice >= 500 && <Insight icon={DollarSign} title={t('👍 متوسط فاتورة جيد', '👍 Good Avg Invoice')} desc={t(
+                  `متوسط الفاتورة ${avgInvoice.toFixed(0)} ${currency}. الإجراء: حافظ على هذا المستوى بتقديم قيمة مضافة مستمرة. جرّب باقة "بريميوم" بسعر أعلى 50% مع خدمات حصرية (تصوير في الهواء الطلق، مكياج، ستايلست).`,
+                  `Avg invoice ${avgInvoice.toFixed(0)} ${currency}. Action: Maintain by continuously adding value. Try a "Premium" package 50% higher with exclusive services (outdoor shoot, makeup, stylist).`
+                )} type="success" />}
 
-                {totalCustomers > 0 && <Insight icon={Users} title={t('تحليل العملاء', 'Customer Analysis')} desc={t(`${totalCustomers} عميل بمتوسط عائد ${revenuePerCustomer.toFixed(0)} ${currency} لكل عميل`, `${totalCustomers} customers, avg ${revenuePerCustomer.toFixed(0)} ${currency}/customer`)} type="info" />}
+                {/* ── Seasonality ── */}
+                <Insight icon={Calendar} title={t('📅 تحليل الموسمية', '📅 Seasonality Analysis')} desc={t(
+                  `أفضل شهر: ${MO_AR[bestMonth.idx]} (${bestMonth.revenue?.toLocaleString()} ${currency}). الإجراء: جهّز عروض وحملات تسويقية قبل الأشهر القوية بشهر. في الأشهر الضعيفة، قدّم خصومات 15-25% لتحفيز الحجوزات وملء الفراغات.`,
+                  `Best month: ${MO_EN[bestMonth.idx]} (${bestMonth.revenue?.toLocaleString()} ${currency}). Action: Prepare promotions 1 month before peak months. In slow months, offer 15-25% discounts to fill gaps.`
+                )} type="info" />
 
-                <Insight icon={Clock} title={t('ملخص المصروفات', 'Expense Summary')} desc={t(`إجمالي ${totalExpenses.toLocaleString()} ${currency} من ${purchases.length} عملية`, `Total ${totalExpenses.toLocaleString()} ${currency} from ${purchases.length} purchases`)} type="warning" />
+                {/* ── Daily Target ── */}
+                <Insight icon={Target} title={t('🎯 هدفك اليومي', '🎯 Your Daily Target')} desc={t(
+                  `لزيادة إيراداتك 20% تحتاج تحقيق ${Math.ceil((avgMonthlyRevenue * 1.2) / 25).toLocaleString()} ${currency} يومياً (25 يوم عمل). الإجراء: قسّم الهدف: ${Math.ceil((avgMonthlyRevenue * 1.2) / 25 / avgInvoice || 1)} فاتورة يومياً بمتوسط ${avgInvoice.toFixed(0)} ${currency}. تابع تحقيق الهدف اليومي.`,
+                  `To grow 20%, target ${Math.ceil((avgMonthlyRevenue * 1.2) / 25).toLocaleString()} ${currency}/day (25 work days). Action: Break it down: ${Math.ceil((avgMonthlyRevenue * 1.2) / 25 / avgInvoice || 1)} invoices/day at avg ${avgInvoice.toFixed(0)} ${currency}. Track daily goal.`
+                )} type="info" />
 
-                {totalInvoices === 0 && totalCustomers === 0 && <Insight icon={Sparkles} title={t('ابدأ الآن!', 'Get Started!')} desc={t('أضف عملاء وفواتير لتظهر التحليلات', 'Add customers & invoices to see analytics')} type="info" />}
+                {/* ── Expenses ── */}
+                {totalExpenses > totalRevenue * 0.7 && totalRevenue > 0 && <Insight icon={Package} title={t('🔴 مصروفات مرتفعة جداً', '🔴 Very High Expenses')} desc={t(
+                  `المصروفات تمثل ${(totalExpenses / totalRevenue * 100).toFixed(0)}% من الإيرادات! الإجراء: 1) راجع أكبر 5 بنود مصروفات واحذف أو قلل غير الضروري. 2) تفاوض مع الموردين على خصم 10-15% للشراء بالجملة. 3) قارن أسعار الموردين المختلفين كل 3 أشهر.`,
+                  `Expenses = ${(totalExpenses / totalRevenue * 100).toFixed(0)}% of revenue! Action: 1) Review top 5 expense items, cut unnecessary ones. 2) Negotiate 10-15% bulk discounts with suppliers. 3) Compare supplier prices quarterly.`
+                )} type="error" />}
+                {totalExpenses > 0 && totalExpenses <= totalRevenue * 0.7 && <Insight icon={Package} title={t('📦 إدارة مصروفات معقولة', '📦 Reasonable Expenses')} desc={t(
+                  `المصروفات ${(totalExpenses / totalRevenue * 100).toFixed(0)}% من الإيرادات. الإجراء: حافظ على هذه النسبة. سجّل كل مصروف صغير لتتبع دقيق. خصص ميزانية شهرية ثابتة ولا تتجاوزها.`,
+                  `Expenses = ${(totalExpenses / totalRevenue * 100).toFixed(0)}% of revenue. Action: Maintain this ratio. Log every expense for accurate tracking. Set a fixed monthly budget and stick to it.`
+                )} type="info" />}
+
+                {/* ── Marketing Tips ── */}
+                <Insight icon={Lightbulb} title={t('📱 نصائح تسويقية فورية', '📱 Quick Marketing Tips')} desc={t(
+                  `الإجراء الفوري: 1) انشر 3 بوستات أسبوعياً على انستجرام (قبل/بعد، كواليس، شهادات عملاء). 2) أنشئ ستوري يومي يظهر عملك الحالي. 3) استخدم هاشتاجات محلية (#تصوير_[مدينتك]). 4) رد على كل تعليق ورسالة خلال ساعة. 5) تعاون مع مؤثرين محليين بتصوير مجاني مقابل ترويج.`,
+                  `Immediate action: 1) Post 3x/week on Instagram (before/after, behind scenes, testimonials). 2) Daily stories showing current work. 3) Use local hashtags. 4) Reply to every comment/DM within 1 hour. 5) Collab with local influencers: free shoot for promotion.`
+                )} type="info" />
+
+                {/* ── Pricing Strategy ── */}
+                <Insight icon={Wallet} title={t('💲 استراتيجية التسعير الذكي', '💲 Smart Pricing Strategy')} desc={t(
+                  `الإجراء: 1) اعتمد 3 مستويات تسعير (اقتصادي، متوسط، فاخر) — معظم العملاء سيختارون المتوسط. 2) أضف باقة "الأكثر شعبية" واجعلها مرئية بوضوح. 3) لا تعرض السعر الأرخص أولاً — ابدأ بالأغلى. 4) أضف قيمة بدل تخفيض السعر (صورة إضافية مجاناً > خصم 10%).`,
+                  `Action: 1) Offer 3 pricing tiers (budget, standard, premium) — most clients pick the middle. 2) Label one "Most Popular" and highlight it. 3) Show highest price first, not cheapest. 4) Add value instead of discounting (free extra photo > 10% off).`
+                )} type="info" />
+
+                {totalInvoices === 0 && totalCustomers === 0 && <Insight icon={Sparkles} title={t('🚀 ابدأ الآن!', '🚀 Get Started!')} desc={t(
+                  `أضف عملاء وفواتير لتظهر التحليلات والتوصيات المخصصة لك. كل فاتورة تضيفها تساعد النظام على تقديم نصائح أدق لتحسين أعمالك.`,
+                  `Add customers & invoices to unlock personalized analytics. Every invoice helps the system provide more accurate recommendations.`
+                )} type="info" />}
               </div>
 
               {/* Right column */}
@@ -540,33 +637,45 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
                     {[
                       { l: t('الإيرادات', 'Revenue'), v: totalRevenue, mx: totalRevenue + totalExpenses, c: 'hsl(var(--primary))' },
                       { l: t('المصروفات', 'Expenses'), v: totalExpenses, mx: totalRevenue + totalExpenses, c: '#ef4444' },
+                      { l: t('صافي الربح', 'Net Profit'), v: netProfit, mx: totalRevenue, c: netProfit >= 0 ? '#10b981' : '#ef4444' },
                       { l: t('العملاء', 'Clients'), v: totalCustomers, mx: Math.max(totalCustomers, 10), c: '#10b981' },
                       { l: t('الفواتير', 'Invoices'), v: totalInvoices, mx: Math.max(totalInvoices, 10), c: '#f59e0b' },
                       { l: t('المشتريات', 'Purchases'), v: purchases.length, mx: Math.max(purchases.length, 10), c: '#8b5cf6' },
                     ].map((x, i) => (
-                      <div key={i}><div className="flex justify-between mb-1"><span className="text-[10px] font-bold text-foreground">{x.l}</span><span className="text-[10px] font-black" style={{ color: x.c }}>{x.v.toLocaleString()}</span></div><MiniBar value={x.v} max={x.mx || 1} color={x.c} /></div>
+                      <div key={i}><div className="flex justify-between mb-1"><span className="text-[10px] font-bold text-foreground">{x.l}</span><span className="text-[10px] font-black" style={{ color: x.c }}>{x.v.toLocaleString()}</span></div><MiniBar value={Math.abs(x.v)} max={x.mx || 1} color={x.c} /></div>
                     ))}
                   </div>
                 </Card>
 
-                <Card title={t('أحدث العملاء', 'Latest Customers')} icon={UserPlus}>
+                <Card title={t('أفضل 5 عملاء', 'Top 5 Clients')} icon={Star}>
                   <div className="space-y-1.5">
-                    {customers.slice(0, 5).map((c, i) => (
-                      <motion.div key={c.id || i} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.06 }}>
-                        <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary text-[9px] font-bold">{(c.name || '?').charAt(0)}</div>
-                        <div className="flex-1 min-w-0"><p className="text-[11px] font-semibold text-foreground truncate">{c.name}</p><p className="text-[9px] text-muted-foreground">{c.phone || ''}</p></div>
-                      </motion.div>
+                    {customerRevenue.map(([name, rev], i) => (
+                      <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50">
+                        <div className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: COLORS[i] }}>{i + 1}</div>
+                        <div className="flex-1 min-w-0"><p className="text-[11px] font-semibold text-foreground truncate">{name}</p></div>
+                        <span className="text-[10px] font-black text-primary">{rev.toLocaleString()}</span>
+                      </div>
                     ))}
-                    {customers.length === 0 && <p className="text-center text-muted-foreground text-[10px] py-3">{t('لا يوجد', 'None')}</p>}
+                    {customerRevenue.length === 0 && <p className="text-center text-muted-foreground text-[10px] py-3">{t('لا يوجد', 'None')}</p>}
                   </div>
                 </Card>
 
-                <Card title={t('توصيات', 'Recommendations')} icon={Lightbulb}>
+                <Card title={t('خطة العمل الأسبوعية', 'Weekly Action Plan')} icon={ClipboardList}>
                   <div className="space-y-2">
-                    {totalCustomers < 10 && <div className="flex items-center gap-2 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /><span className="text-muted-foreground">{t('أضف مزيداً من العملاء لتوسيع قاعدتك', 'Add more customers to expand')}</span></div>}
-                    {collectionRate < 90 && totalRevenue > 0 && <div className="flex items-center gap-2 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" /><span className="text-muted-foreground">{t('تابع تحصيل الفواتير المعلقة', 'Follow up on pending invoices')}</span></div>}
-                    {profitMargin < 20 && totalRevenue > 0 && <div className="flex items-center gap-2 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" /><span className="text-muted-foreground">{t('راجع المصروفات لتحسين الهامش', 'Review expenses to improve margin')}</span></div>}
-                    <div className="flex items-center gap-2 text-[10px]"><span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" /><span className="text-muted-foreground">{t('استمر في تتبع كل فاتورة ومشتريات', 'Keep tracking all invoices & purchases')}</span></div>
+                    {[
+                      { d: t('السبت', 'Sat'), a: t('متابعة الفواتير المعلقة', 'Follow up pending invoices'), c: '#ef4444' },
+                      { d: t('الأحد', 'Sun'), a: t('نشر محتوى سوشيال ميديا', 'Post social media content'), c: '#8b5cf6' },
+                      { d: t('الاثنين', 'Mon'), a: t('تواصل مع 3 عملاء محتملين', 'Contact 3 potential clients'), c: '#10b981' },
+                      { d: t('الثلاثاء', 'Tue'), a: t('مراجعة الأسعار والعروض', 'Review prices & offers'), c: '#f59e0b' },
+                      { d: t('الأربعاء', 'Wed'), a: t('تصوير محتوى ترويجي', 'Shoot promotional content'), c: '#06b6d4' },
+                      { d: t('الخميس', 'Thu'), a: t('تقييم أداء الأسبوع', 'Evaluate weekly performance'), c: '#ec4899' },
+                    ].map((x, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: x.c }} />
+                        <span className="text-[10px] font-bold text-foreground w-12">{x.d}</span>
+                        <span className="text-[10px] text-muted-foreground">{x.a}</span>
+                      </div>
+                    ))}
                   </div>
                 </Card>
               </div>
