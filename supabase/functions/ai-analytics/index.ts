@@ -88,8 +88,13 @@ async function callExternalAI(model: ExternalModel, systemPrompt: string, userCo
   }
 
   try {
+    console.log(`Calling external AI: ${provider}, endpoint: ${endpoint}, model: ${body.model || model.model || 'default'}`);
     const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
-    if (!response.ok) return { ok: false, status: response.status };
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`External AI (${provider}) returned ${response.status}: ${errText}`);
+      return { ok: false, status: response.status };
+    }
     const data = await response.json();
 
     // Normalize response to OpenAI format
@@ -173,9 +178,11 @@ serve(async (req) => {
 
     // If Lovable AI fails with 402/429, try external models
     if (!result.ok && (result.status === 402 || result.status === 429) && externalModels?.length > 0) {
-      console.log(`Lovable AI returned ${result.status}, trying external models...`);
+      console.log(`Lovable AI returned ${result.status}, trying ${externalModels.length} external models...`);
+      console.log(`External models received:`, JSON.stringify(externalModels.map((m: any) => ({ provider: m.provider, model: m.model, hasKey: !!m.apiKey, keyLength: m.apiKey?.length }))));
       for (const model of externalModels) {
         if (!model.apiKey) continue;
+        console.log(`Trying external model: ${model.provider}, key length: ${model.apiKey.length}`);
         result = await callExternalAI(model, systemPrompt, userContent);
         if (result.ok) {
           console.log(`External AI (${model.provider}) succeeded`);
