@@ -7,26 +7,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
-
-.wwebjs_cache/
+# WhatsApp & Session Cache
+**/.wwebjs_cache/
+**/.wwebjs_auth/
+**/whatsapp-session/
+**/_IGNORE_*
 _IGNORE_studio-whatsapp/
-server/.wwebjs_cache/
-server/_IGNORE_studio-whatsapp/
-server/whatsapp-session/
-whatsapp-session/
-# ملفات واتساب المؤقتة
-whatsapp-session/
-.wwebjs_cache/
-_IGNORE_studio-whatsapp/
-server/.wwebjs_cache/
+whatsapp-server/
+# Dependencies
+node_modules/
+**/node_modules/
 
+# Build outputs
+dist/
+dist-ssr/
+build/
 
-
-node_modules
-dist
-dist-ssr
+# Env & Secrets
+.env
+.env.local
 *.local
+.env.*.local
 
 # Editor directories and files
 .vscode/*
