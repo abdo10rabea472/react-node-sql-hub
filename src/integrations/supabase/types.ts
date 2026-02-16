@@ -77,6 +77,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          request_count: number
+          token_hash: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          token_hash: string
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_count?: number
+          token_hash?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
