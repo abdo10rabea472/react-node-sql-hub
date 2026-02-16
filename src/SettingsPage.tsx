@@ -393,14 +393,6 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-                    <h4 className="text-xs font-bold text-foreground mb-2">{lang === 'ar' ? '💡 ملاحظة مهمة' : '💡 Important Note'}</h4>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      {lang === 'ar'
-                        ? 'تغيير اسم التطبيق يتطلب إعادة بناء المشروع (npm run build). الأيقونة تتغير مباشرة عند استبدال الملفات. قد تحتاج لمسح ذاكرة التخزين المؤقت للمتصفح لرؤية التغييرات.'
-                        : 'Changing the app name requires a project rebuild (npm run build). Icons update immediately when files are replaced. You may need to clear browser cache to see changes.'}
-                    </p>
-                  </div>
                 </div>
               </div>
             )}
