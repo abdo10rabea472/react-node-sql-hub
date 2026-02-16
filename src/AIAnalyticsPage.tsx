@@ -694,7 +694,7 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   const getExternalModels = () => {
     const models = (settings as any).aiModels;
     if (!models || !Array.isArray(models)) return [];
-    return models.filter((m: any) => m.active && m.apiKey).map((m: any) => ({ provider: m.provider, apiKey: m.apiKey, model: m.model, endpoint: m.endpoint }));
+    return models.filter((m: any) => m.isActive && m.apiKey).map((m: any) => ({ provider: m.provider, apiKey: m.apiKey, model: m.model, endpoint: m.endpoint }));
   };
 
   const runAI = async (type: string) => {
@@ -705,9 +705,10 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const phpToken = localStorage.getItem('token');
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-analytics`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${phpToken || SUPABASE_KEY}`, 'apikey': SUPABASE_KEY },
         body: JSON.stringify({ businessData: rawData, analysisType: type, externalModels: getExternalModels() }),
       });
       if (!resp.ok) {
