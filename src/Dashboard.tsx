@@ -22,6 +22,7 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
+  Brain,
 } from "lucide-react";
 import UsersPage from "./UsersPage";
 import PricingPage from "./PricingPage";
@@ -36,6 +37,7 @@ import AccountDetailsPage from "./AccountDetailsPage";
 import NotificationCenter from "./NotificationCenter";
 import MyReportsPage from "./MyReportsPage";
 const AdvancedDashboard = lazy(() => import("./AdvancedDashboard"));
+const AIAnalyticsPage = lazy(() => import("./AIAnalyticsPage"));
 import { useSettings } from "./SettingsContext";
 import type { User } from "./App";
 
@@ -75,6 +77,7 @@ const translations = {
     purchases: "المخزون والمشتريات",
     expenses: "المصاريف والمرتبات",
     reports: "التقارير",
+    aiAnalytics: "الذكاء الاصطناعي",
   },
   en: {
     dashboard: "Dashboard",
@@ -106,6 +109,7 @@ const translations = {
     purchases: "Inventory & Purchases",
     expenses: "Expenses & Payroll",
     reports: "Reports",
+    aiAnalytics: "AI Analytics",
   },
 };
 
@@ -119,6 +123,7 @@ const navItems = [
   { icon: ShoppingCart, key: "purchases" as const },
   { icon: Wallet, key: "expenses" as const },
   { icon: ClipboardList, key: "reports" as const },
+  { icon: Brain, key: "aiAnalytics" as const },
   { icon: UserCog, key: "users" as const },
   { icon: Settings, key: "settings" as const },
 ];
@@ -156,9 +161,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     if (activeNav === 6) return <PurchasesPage user={user} />;
     if (activeNav === 7) return <ExpensesPage user={user} />;
     if (activeNav === 8) return <MyReportsPage userId={user.id} />;
-    if (activeNav === 9) return <UsersPage />;
-    if (activeNav === 10) return <SettingsPage />;
-    if (activeNav === 11) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
+    if (activeNav === 9) return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-[300px]"><div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+        <AIAnalyticsPage user={user} />
+      </Suspense>
+    );
+    if (activeNav === 10) return <UsersPage />;
+    if (activeNav === 11) return <SettingsPage />;
+    if (activeNav === 12) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
 
     return (
       <Suspense
@@ -319,7 +329,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               <span className="absolute top-1.5 end-1.5 w-2 h-2 bg-destructive rounded-full border-2 border-card" />
             </button>
             <div
-              onClick={() => setActiveNav(10)}
+              onClick={() => setActiveNav(11)}
               className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-xs ms-1 cursor-pointer hover:scale-105 transition-transform shadow-md shadow-primary/20"
             >
               {user.name.charAt(0).toUpperCase()}
