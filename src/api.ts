@@ -132,4 +132,17 @@ export const setPackageMaterials = (packageId: number, packageType: string, mate
 export const getInventoryTransactions = (itemId: number) =>
   api.get(`/inventory.php?path=transactions&itemId=${itemId}`);
 
+// Expenses
+export const getExpenses = () => api.get("/expenses.php?path=expenses");
+export const createExpense = (data: any) => api.post("/expenses.php?path=expenses", data);
+export const deleteExpense = (id: number) => api.delete(`/expenses.php?path=expenses&id=${id}`);
+
+// Salaries
+export const getSalaries = () => api.get("/expenses.php?path=salaries");
+export const createSalary = (data: any) => api.post("/expenses.php?path=salaries", data);
+export const deleteSalary = (id: number) => api.delete(`/expenses.php?path=salaries&id=${id}`);
+
+// Expense Stats
+export const getExpenseStats = () => api.get("/expenses.php?path=stats");
+
 export default api;

@@ -137,13 +137,15 @@ const Insight = ({ icon: Icon, title, desc, type }: { icon: any; title: string; 
 const MO_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const MO_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function aggregateByMonth(inv: any[], wInv: any[], purch: any[]) {
-  const m: Record<number, { revenue: number; expenses: number; invoices: number; weddings: number }> = {};
-  for (let i = 0; i < 12; i++) m[i] = { revenue: 0, expenses: 0, invoices: 0, weddings: 0 };
+function aggregateByMonth(inv: any[], wInv: any[], purch: any[], expenses: any[], salaries: any[]) {
+  const m: Record<number, { revenue: number; expenses: number; invoices: number; weddings: number; regularExp: number; salaryExp: number }> = {};
+  for (let i = 0; i < 12; i++) m[i] = { revenue: 0, expenses: 0, invoices: 0, weddings: 0, regularExp: 0, salaryExp: 0 };
   const yr = new Date().getFullYear();
   (inv || []).forEach((x: any) => { const d = new Date(x.created_at || x.date); if (d.getFullYear() === yr) { m[d.getMonth()].revenue += Number(x.total_amount) || 0; m[d.getMonth()].invoices += 1; } });
   (wInv || []).forEach((x: any) => { const d = new Date(x.created_at || x.date || x.wedding_date); if (d.getFullYear() === yr) { m[d.getMonth()].revenue += Number(x.total_amount) || 0; m[d.getMonth()].weddings += 1; } });
   (purch || []).forEach((x: any) => { const d = new Date(x.created_at || x.date || x.purchase_date); if (d.getFullYear() === yr) { m[d.getMonth()].expenses += Number(x.total_cost || x.amount || x.price) || 0; } });
+  (expenses || []).forEach((x: any) => { const d = new Date(x.created_at || x.expense_date); if (d.getFullYear() === yr) { const amt = Number(x.amount) || 0; m[d.getMonth()].expenses += amt; m[d.getMonth()].regularExp += amt; } });
+  (salaries || []).forEach((x: any) => { const mStr = x.month || ''; const parts = mStr.split('-'); if (parts.length === 2 && Number(parts[0]) === yr) { const amt = Number(x.net_salary) || 0; m[Number(parts[1]) - 1].expenses += amt; m[Number(parts[1]) - 1].salaryExp += amt; } });
   return Array.from({ length: 12 }, (_, i) => ({ name: MO_AR[i], nameEn: MO_EN[i], ...m[i], profit: m[i].revenue - m[i].expenses }));
 }
 
@@ -156,6 +158,8 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
   const [weddingInvoices, setWeddingInvoices] = useState<any[]>([]);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [salaries, setSalaries] = useState<any[]>([]);
   const [activeSection, setActiveSection] = useState<'overview' | 'analytics' | 'insights'>('overview');
 
   useEffect(() => {
@@ -165,15 +169,19 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
       api.get('/weddingInvoices.php').catch(() => ({ data: [] })),
       api.get('/purchases.php').catch(() => ({ data: [] })),
       api.get('/customers.php').catch(() => ({ data: [] })),
-    ]).then(([a, b, c, d]) => {
+      api.get('/expenses.php?path=expenses').catch(() => ({ data: [] })),
+      api.get('/expenses.php?path=salaries').catch(() => ({ data: [] })),
+    ]).then(([a, b, c, d, e, s]) => {
       setInvoices(Array.isArray(a.data) ? a.data : []);
       setWeddingInvoices(Array.isArray(b.data) ? b.data : []);
       setPurchases(Array.isArray(c.data) ? c.data : []);
       setCustomers(Array.isArray(d.data) ? d.data : []);
+      setExpenses(Array.isArray(e.data) ? e.data : []);
+      setSalaries(Array.isArray(s.data) ? s.data : []);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  const monthly = useMemo(() => aggregateByMonth(invoices, weddingInvoices, purchases), [invoices, weddingInvoices, purchases]);
+  const monthly = useMemo(() => aggregateByMonth(invoices, weddingInvoices, purchases, expenses, salaries), [invoices, weddingInvoices, purchases, expenses, salaries]);
   const t = (ar: string, en: string) => lang === 'ar' ? ar : en;
 
   // ── Computed data ──
@@ -210,6 +218,10 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
   const monthsWithRevenue = monthly.filter(m => m.revenue > 0).length;
   const avgMonthlyRevenue = monthsWithRevenue > 0 ? totalRevenue / monthsWithRevenue : 0;
   const cumulativeRevenue = monthly.reduce((acc: number[], m) => { acc.push((acc[acc.length - 1] || 0) + m.revenue); return acc; }, []);
+  const totalRegularExp = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const totalSalaries = salaries.reduce((s, e) => s + (Number(e.net_salary) || 0), 0);
+  const totalAllExpenses = totalExpenses; // already includes expenses+salaries via aggregateByMonth
+  const salaryRatio = totalAllExpenses > 0 ? (totalSalaries / totalAllExpenses * 100) : 0;
 
   // Top customers
   const customerRevenue = useMemo(() => {
@@ -612,6 +624,22 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
                   `Expenses = ${(totalExpenses / totalRevenue * 100).toFixed(0)}% of revenue. Action: Maintain this ratio. Log every expense for accurate tracking. Set a fixed monthly budget and stick to it.`
                 )} type="info" />}
 
+                {/* ── Salaries & Regular Expenses ── */}
+                {totalSalaries > 0 && <Insight icon={Users} title={t('👔 تحليل المرتبات', '👔 Salary Analysis')} desc={t(
+                  `إجمالي المرتبات ${totalSalaries.toLocaleString()} ${currency} (${salaryRatio.toFixed(0)}% من إجمالي المصروفات). الإجراء: إذا تجاوزت المرتبات 40% من الإيرادات، راجع عدد الموظفين أو زِد الإنتاجية. فكّر في نظام حوافز مرتبط بالأداء بدلاً من زيادات ثابتة.`,
+                  `Total salaries: ${totalSalaries.toLocaleString()} ${currency} (${salaryRatio.toFixed(0)}% of expenses). Action: If salaries exceed 40% of revenue, review headcount or boost productivity. Consider performance-based bonuses instead of fixed raises.`
+                )} type={totalSalaries > totalRevenue * 0.4 ? 'warning' : 'info'} />}
+
+                {totalRegularExp > 0 && <Insight icon={Receipt} title={t('📋 تحليل المصاريف العادية', '📋 Regular Expenses Analysis')} desc={t(
+                  `إجمالي المصاريف العادية ${totalRegularExp.toLocaleString()} ${currency}. الإجراء: راجع كل بند شهرياً وحدد أي مصروف يمكن تقليله أو إلغاؤه. قارن فواتير الكهرباء والمياه بالأشهر السابقة. استخدم إضاءة LED وأجهزة موفرة للطاقة.`,
+                  `Total regular expenses: ${totalRegularExp.toLocaleString()} ${currency}. Action: Review each item monthly and identify what can be reduced or eliminated. Compare utility bills with previous months. Use LED lighting and energy-efficient equipment.`
+                )} type="info" />}
+
+                {(totalSalaries + totalRegularExp) > totalRevenue * 0.5 && totalRevenue > 0 && <Insight icon={AlertTriangle} title={t('⚠️ المصاريف الثابتة مرتفعة', '⚠️ High Fixed Costs')} desc={t(
+                  `المصاريف الثابتة (مرتبات + مصاريف عادية) = ${(totalSalaries + totalRegularExp).toLocaleString()} ${currency} وهي ${((totalSalaries + totalRegularExp) / totalRevenue * 100).toFixed(0)}% من الإيرادات! الإجراء: حاول أن لا تتجاوز المصاريف الثابتة 35% من الإيرادات. فكّر في تقليل ساعات العمل غير المنتجة أو مشاركة المساحة.`,
+                  `Fixed costs (salaries + regular expenses) = ${(totalSalaries + totalRegularExp).toLocaleString()} ${currency} which is ${((totalSalaries + totalRegularExp) / totalRevenue * 100).toFixed(0)}% of revenue! Action: Keep fixed costs under 35% of revenue. Consider reducing unproductive hours or sharing workspace.`
+                )} type="error" />}
+
                 {/* ── Marketing Tips ── */}
                 <Insight icon={Lightbulb} title={t('📱 نصائح تسويقية فورية', '📱 Quick Marketing Tips')} desc={t(
                   `الإجراء الفوري: 1) انشر 3 بوستات أسبوعياً على انستجرام (قبل/بعد، كواليس، شهادات عملاء). 2) أنشئ ستوري يومي يظهر عملك الحالي. 3) استخدم هاشتاجات محلية (#تصوير_[مدينتك]). 4) رد على كل تعليق ورسالة خلال ساعة. 5) تعاون مع مؤثرين محليين بتصوير مجاني مقابل ترويج.`,
@@ -636,11 +664,12 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
                   <div className="space-y-3">
                     {[
                       { l: t('الإيرادات', 'Revenue'), v: totalRevenue, mx: totalRevenue + totalExpenses, c: 'hsl(var(--primary))' },
-                      { l: t('المصروفات', 'Expenses'), v: totalExpenses, mx: totalRevenue + totalExpenses, c: '#ef4444' },
+                      { l: t('المصروفات الكلية', 'Total Expenses'), v: totalExpenses, mx: totalRevenue + totalExpenses, c: '#ef4444' },
                       { l: t('صافي الربح', 'Net Profit'), v: netProfit, mx: totalRevenue, c: netProfit >= 0 ? '#10b981' : '#ef4444' },
+                      { l: t('المرتبات', 'Salaries'), v: totalSalaries, mx: totalExpenses || 1, c: '#8b5cf6' },
+                      { l: t('مصاريف عادية', 'Regular Exp'), v: totalRegularExp, mx: totalExpenses || 1, c: '#f59e0b' },
                       { l: t('العملاء', 'Clients'), v: totalCustomers, mx: Math.max(totalCustomers, 10), c: '#10b981' },
-                      { l: t('الفواتير', 'Invoices'), v: totalInvoices, mx: Math.max(totalInvoices, 10), c: '#f59e0b' },
-                      { l: t('المشتريات', 'Purchases'), v: purchases.length, mx: Math.max(purchases.length, 10), c: '#8b5cf6' },
+                      { l: t('الفواتير', 'Invoices'), v: totalInvoices, mx: Math.max(totalInvoices, 10), c: '#06b6d4' },
                     ].map((x, i) => (
                       <div key={i}><div className="flex justify-between mb-1"><span className="text-[10px] font-bold text-foreground">{x.l}</span><span className="text-[10px] font-black" style={{ color: x.c }}>{x.v.toLocaleString()}</span></div><MiniBar value={Math.abs(x.v)} max={x.mx || 1} color={x.c} /></div>
                     ))}
