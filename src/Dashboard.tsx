@@ -172,7 +172,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       </Suspense>
     );
     if (activeNav === 10) return <UsersPage />;
-    if (activeNav === 11) return <SettingsPage />;
+    if (activeNav === 11) return <SettingsPage user={user} />;
     if (activeNav === 12) return <InstallPage onBack={() => setActiveNav(0)} />;
     if (activeNav === 13) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
 
