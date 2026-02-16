@@ -601,10 +601,14 @@ const SettingsPage: React.FC = () => {
                           alt="Scan WhatsApp QR Code"
                           className="w-[240px] h-[240px] object-contain rounded-lg"
                           onError={(e) => {
-                            // If image fails, revert to simple placeholder text
                             (e.target as HTMLImageElement).style.display = 'none';
                             const parent = (e.target as HTMLImageElement).parentElement;
-                            if (parent) parent.innerHTML = '<div class="w-[240px] h-[240px] flex items-center justify-center bg-gray-100 text-gray-400 text-xs">QR Load Error</div>';
+                            if (parent) {
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'w-[240px] h-[240px] flex items-center justify-center bg-muted text-muted-foreground text-xs';
+                              errorDiv.textContent = 'QR Load Error';
+                              parent.appendChild(errorDiv);
+                            }
                           }}
                         />
                       </div>

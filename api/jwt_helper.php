@@ -12,6 +12,8 @@ class JWT
 
     public static function sign($payload)
     {
+        $payload['iat'] = time();
+        $payload['exp'] = time() + (60 * 60 * 24); // 24 hour expiry
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
         $base64UrlHeader = self::base64UrlEncode($header);
         $base64UrlPayload = self::base64UrlEncode(json_encode($payload));
@@ -43,8 +45,18 @@ class JWT
 
         // Decode payload
         $decoded = json_decode(self::base64UrlDecode($payload), true);
+
+        // Validate expiration
+        if (isset($decoded['exp']) && $decoded['exp'] < time()) {
+            return false;
+        }
+
+        // Validate issued-at is not in future
+        if (isset($decoded['iat']) && $decoded['iat'] > time() + 60) {
+            return false;
+        }
+
         return $decoded;
-    }
 
     private static function base64UrlEncode($data)
     {
