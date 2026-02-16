@@ -165,6 +165,15 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
 
   useEffect(() => { fetchBusinessData(); }, []);
 
+  // Build external models from settings
+  const getExternalModels = () => {
+    const models = (settings as any).aiModels;
+    if (!models || !Array.isArray(models)) return [];
+    return models.filter((m: any) => m.active && m.apiKey).map((m: any) => ({
+      provider: m.provider, apiKey: m.apiKey, model: m.model, endpoint: m.endpoint
+    }));
+  };
+
   // Call AI
   const runAI = async (type: string) => {
     if (!rawData) { showToast(isAr ? 'يرجى تحميل البيانات أولاً' : 'Load data first', 'error'); return; }
@@ -172,29 +181,30 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const externalModels = getExternalModels();
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-analytics`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ businessData: rawData, analysisType: type }),
+        body: JSON.stringify({ businessData: rawData, analysisType: type, externalModels }),
       });
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
+        const errorMsg = errData.error || `HTTP ${resp.status}`;
         if (resp.status === 402) {
-          showToast(isAr ? '⚠️ رصيد الذكاء الاصطناعي غير كافٍ. يرجى إضافة رصيد من الإعدادات → Workspace → Usage' : '⚠️ AI credits exhausted. Please add credits in Settings → Workspace → Usage', 'error');
+          showToast(isAr ? `⚠️ ${errorMsg}` : '⚠️ AI credits exhausted. Add external AI model in app Settings → AI Models tab', 'error');
           return;
         }
         if (resp.status === 429) {
           showToast(isAr ? '⏳ تم تجاوز حد الطلبات، يرجى المحاولة بعد دقيقة' : '⏳ Rate limited, please try again in a minute', 'error');
           return;
         }
-        throw new Error(errData.error || `HTTP ${resp.status}`);
+        throw new Error(errorMsg);
       }
       const data = await resp.json();
 
       if (type === 'full-analysis') setAnalyticsResult(data);
       else if (type === 'decisions') {
         setDecisionsResult(data);
-        // Log decisions
         if (data?.decisions) {
           setDecisionLog(prev => [...data.decisions.map((d: any) => ({
             ...d, timestamp: new Date().toISOString(), executedBy: 'AI'
