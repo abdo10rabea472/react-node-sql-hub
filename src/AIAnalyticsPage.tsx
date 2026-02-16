@@ -19,49 +19,73 @@ import { supabase } from './integrations/supabase/client';
 interface Props { user: { id: number; name: string; role: string } }
 
 // ─── Gauge Chart ───
-const GaugeChart = ({ value, size = 120, label }: { value: number; size?: number; label: string }) => {
-  const r = (size - 20) / 2;
+const GaugeChart = ({ value, size = 130, label }: { value: number; size?: number; label: string }) => {
+  const r = (size - 24) / 2;
   const circumference = Math.PI * r;
   const offset = circumference - (value / 100) * circumference;
-  const color = value >= 80 ? '#10b981' : value >= 50 ? '#f59e0b' : '#ef4444';
+  const gradientId = `gauge-${label}-${value}`;
+  const startColor = value >= 80 ? '#10b981' : value >= 50 ? '#f59e0b' : '#ef4444';
+  const endColor = value >= 80 ? '#34d399' : value >= 50 ? '#fbbf24' : '#f87171';
   return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size / 2 + 10} viewBox={`0 0 ${size} ${size / 2 + 10}`}>
-        <path d={`M 10 ${size / 2} A ${r} ${r} 0 0 1 ${size - 10} ${size / 2}`}
-          fill="none" stroke="hsl(var(--border))" strokeWidth="8" strokeLinecap="round" />
-        <motion.path d={`M 10 ${size / 2} A ${r} ${r} 0 0 1 ${size - 10} ${size / 2}`}
-          fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
+    <div className="flex flex-col items-center gap-2">
+      <svg width={size} height={size / 2 + 18} viewBox={`0 0 ${size} ${size / 2 + 18}`}>
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={startColor} />
+            <stop offset="100%" stopColor={endColor} />
+          </linearGradient>
+          <filter id="gauge-glow">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+        <path d={`M 12 ${size / 2} A ${r} ${r} 0 0 1 ${size - 12} ${size / 2}`}
+          fill="none" stroke="hsl(var(--muted))" strokeWidth="10" strokeLinecap="round" />
+        <motion.path d={`M 12 ${size / 2} A ${r} ${r} 0 0 1 ${size - 12} ${size / 2}`}
+          fill="none" stroke={`url(#${gradientId})`} strokeWidth="10" strokeLinecap="round"
+          filter="url(#gauge-glow)"
           strokeDasharray={circumference} initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }} transition={{ duration: 1.5, ease: "easeOut" }} />
-        <text x={size / 2} y={size / 2 - 5} textAnchor="middle" className="fill-foreground" fontSize="18" fontWeight="800">{value}</text>
+        <text x={size / 2} y={size / 2 - 2} textAnchor="middle" className="fill-foreground" fontSize="22" fontWeight="900">{value}</text>
       </svg>
-      <span className="text-[10px] font-bold text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-bold text-muted-foreground tracking-wide">{label}</span>
     </div>
   );
 };
 
 // ─── Mini Bar Chart ───
-const MiniBarChart = ({ data, height = 60 }: { data: number[]; height?: number }) => {
+const MiniBarChart = ({ data, height = 80 }: { data: number[]; height?: number }) => {
   const max = Math.max(...data, 1);
-  const w = 100 / data.length;
+  const barCount = data.length;
+  const gap = 1.5;
+  const barW = Math.max(3, (100 - gap * barCount) / barCount);
   return (
-    <svg width="100%" viewBox={`0 0 100 ${height}`} className="overflow-visible">
-      {data.map((v, i) => (
-        <motion.rect key={i} x={i * w + w * 0.15} width={w * 0.7} y={height} height={0}
-          rx="2" fill={`hsl(var(--primary) / ${0.4 + (v / max) * 0.6})`}
-          animate={{ y: height - (v / max) * height, height: (v / max) * height }}
-          transition={{ duration: 0.5, delay: i * 0.05 }} />
-      ))}
+    <svg width="100%" viewBox={`0 0 ${barCount * (barW + gap)} ${height + 4}`} className="overflow-visible" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="bar-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
+        </linearGradient>
+      </defs>
+      {data.map((v, i) => {
+        const barH = Math.max(2, (v / max) * height);
+        return (
+          <motion.rect key={i} x={i * (barW + gap)} width={barW} rx="2"
+            y={height + 2} height={0} fill="url(#bar-grad)"
+            animate={{ y: height + 2 - barH, height: barH }}
+            transition={{ duration: 0.6, delay: i * 0.03, ease: "easeOut" }} />
+        );
+      })}
     </svg>
   );
 };
 
 // ─── Radar Chart ───
-const RadarChart = ({ data, labels, size = 200 }: { data: number[]; labels: string[]; size?: number }) => {
-  const cx = size / 2, cy = size / 2, r = size * 0.35;
+const RadarChart = ({ data, labels, size = 240 }: { data: number[]; labels: string[]; size?: number }) => {
+  const cx = size / 2, cy = size / 2, r = size * 0.33;
   const n = data.length;
   const angleStep = (Math.PI * 2) / n;
-  const levels = [0.25, 0.5, 0.75, 1];
+  const levels = [0.2, 0.4, 0.6, 0.8, 1];
 
   const getPoint = (index: number, value: number) => {
     const angle = index * angleStep - Math.PI / 2;
@@ -72,32 +96,58 @@ const RadarChart = ({ data, labels, size = 200 }: { data: number[]; labels: stri
   const pathD = dataPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="max-w-[250px] mx-auto">
+    <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="max-w-[300px] mx-auto">
+      <defs>
+        <linearGradient id="radar-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.08" />
+        </linearGradient>
+        <filter id="radar-glow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
       {/* Grid levels */}
       {levels.map((l) => {
         const pts = Array.from({ length: n }, (_, i) => getPoint(i, l));
         return <polygon key={l} points={pts.map(p => `${p.x},${p.y}`).join(' ')}
-          fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.5} />;
+          fill="none" stroke="hsl(var(--border))" strokeWidth="0.8" opacity={0.4}
+          strokeDasharray={l < 1 ? "3,3" : "none"} />;
       })}
-      {/* Axes */}
+      {/* Axes with subtle dots */}
       {Array.from({ length: n }, (_, i) => {
         const p = getPoint(i, 1);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.3} />;
+        return (
+          <g key={i}>
+            <line x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="hsl(var(--border))" strokeWidth="0.6" opacity={0.3} />
+            <circle cx={p.x} cy={p.y} r="2" fill="hsl(var(--border))" opacity={0.5} />
+          </g>
+        );
       })}
       {/* Data polygon */}
-      <motion.path d={pathD} fill="hsl(var(--primary) / 0.15)" stroke="hsl(var(--primary))" strokeWidth="2"
-        initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
-        style={{ transformOrigin: `${cx}px ${cy}px` }} transition={{ duration: 0.8 }} />
-      {/* Data points */}
+      <motion.path d={pathD} fill="url(#radar-fill)" stroke="hsl(var(--primary))" strokeWidth="2.5"
+        filter="url(#radar-glow)" strokeLinejoin="round"
+        initial={{ opacity: 0, scale: 0.3 }} animate={{ opacity: 1, scale: 1 }}
+        style={{ transformOrigin: `${cx}px ${cy}px` }} transition={{ duration: 1, ease: "easeOut" }} />
+      {/* Data points with pulse */}
       {dataPoints.map((p, i) => (
-        <motion.circle key={i} cx={p.x} cy={p.y} r="3" fill="hsl(var(--primary))"
-          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.1 }} />
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="6" fill="hsl(var(--primary))" opacity={0.15} />
+          <motion.circle cx={p.x} cy={p.y} r="3.5" fill="hsl(var(--primary))" stroke="hsl(var(--card))" strokeWidth="1.5"
+            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.1 }} />
+        </g>
       ))}
-      {/* Labels */}
+      {/* Labels with value */}
       {Array.from({ length: n }, (_, i) => {
-        const p = getPoint(i, 1.2);
-        return <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
-          className="fill-muted-foreground" fontSize="8" fontWeight="600">{labels[i]}</text>;
+        const p = getPoint(i, 1.28);
+        return (
+          <g key={`label-${i}`}>
+            <text x={p.x} y={p.y - 5} textAnchor="middle" dominantBaseline="middle"
+              className="fill-foreground" fontSize="9" fontWeight="700">{labels[i]}</text>
+            <text x={p.x} y={p.y + 7} textAnchor="middle" dominantBaseline="middle"
+              className="fill-muted-foreground" fontSize="8" fontWeight="600">{Math.round(data[i])}%</text>
+          </g>
+        );
       })}
     </svg>
   );
@@ -106,31 +156,59 @@ const RadarChart = ({ data, labels, size = 200 }: { data: number[]; labels: stri
 // ─── Heatmap Chart ───
 const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: string[]; yLabels: string[] }) => {
   const maxVal = Math.max(...data.flat(), 1);
-  const cellW = 100 / xLabels.length;
-  const cellH = 100 / yLabels.length;
+  const cols = xLabels.length;
+  const rows = yLabels.length;
+  const cellW = 36;
+  const cellH = 28;
+  const labelW = 42;
+  const labelH = 18;
+  const totalW = labelW + cols * cellW;
+  const totalH = labelH + rows * cellH;
+
+  const getColor = (val: number) => {
+    const intensity = val / maxVal;
+    if (intensity < 0.1) return 'hsl(var(--muted))';
+    if (intensity < 0.3) return 'hsl(var(--primary) / 0.15)';
+    if (intensity < 0.5) return 'hsl(var(--primary) / 0.3)';
+    if (intensity < 0.7) return 'hsl(var(--primary) / 0.5)';
+    if (intensity < 0.9) return 'hsl(var(--primary) / 0.7)';
+    return 'hsl(var(--primary) / 0.9)';
+  };
+
   return (
-    <div className="w-full">
-      <svg width="100%" viewBox={`-30 -15 ${100 + 35} ${100 + 20}`} className="overflow-visible">
-        {data.map((row, y) => row.map((val, x) => {
-          const intensity = val / maxVal;
-          return (
-            <motion.rect key={`${x}-${y}`} x={x * cellW} y={y * cellH} width={cellW - 1} height={cellH - 1}
-              rx="2" fill={`hsl(var(--primary) / ${0.05 + intensity * 0.9})`}
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: (x + y) * 0.02 }}>
-              <title>{`${yLabels[y]} × ${xLabels[x]}: ${val}`}</title>
-            </motion.rect>
-          );
-        }))}
-        {/* X labels */}
-        {xLabels.map((l, i) => (
-          <text key={i} x={i * cellW + cellW / 2} y={100 + 10} textAnchor="middle"
-            className="fill-muted-foreground" fontSize="6" fontWeight="600">{l}</text>
-        ))}
+    <div className="w-full overflow-x-auto">
+      <svg width="100%" viewBox={`0 0 ${totalW} ${totalH}`} className="min-w-[320px]" preserveAspectRatio="xMidYMid meet">
         {/* Y labels */}
         {yLabels.map((l, i) => (
-          <text key={i} x={-5} y={i * cellH + cellH / 2} textAnchor="end" dominantBaseline="middle"
-            className="fill-muted-foreground" fontSize="6" fontWeight="600">{l.slice(0, 6)}</text>
+          <text key={`y-${i}`} x={labelW - 6} y={labelH + i * cellH + cellH / 2}
+            textAnchor="end" dominantBaseline="middle"
+            className="fill-muted-foreground" fontSize="9" fontWeight="600">{l}</text>
         ))}
+        {/* X labels */}
+        {xLabels.map((l, i) => (
+          <text key={`x-${i}`} x={labelW + i * cellW + cellW / 2} y={10}
+            textAnchor="middle" dominantBaseline="middle"
+            className="fill-muted-foreground" fontSize="8" fontWeight="600">{l}</text>
+        ))}
+        {/* Cells */}
+        {data.map((row, y) => row.map((val, x) => (
+          <motion.rect key={`${x}-${y}`}
+            x={labelW + x * cellW + 1.5} y={labelH + y * cellH + 1.5}
+            width={cellW - 3} height={cellH - 3} rx="4"
+            fill={getColor(val)}
+            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: (x + y) * 0.015, duration: 0.3 }}>
+            <title>{`${yLabels[y]} × ${xLabels[x]}: ${val}`}</title>
+          </motion.rect>
+        )))}
+        {/* Cell values */}
+        {data.map((row, y) => row.map((val, x) => val > 0 ? (
+          <text key={`v-${x}-${y}`}
+            x={labelW + x * cellW + cellW / 2} y={labelH + y * cellH + cellH / 2}
+            textAnchor="middle" dominantBaseline="middle"
+            className={val / maxVal > 0.5 ? 'fill-white' : 'fill-muted-foreground'}
+            fontSize="8" fontWeight="700" opacity={0.8}>{val}</text>
+        ) : null))}
       </svg>
     </div>
   );
@@ -138,37 +216,52 @@ const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: s
 
 // ─── Network Graph ───
 const NetworkGraph = ({ nodes, links }: { nodes: { id: string; label: string; size: number; color: string }[]; links: { source: string; target: string }[] }) => {
-  const size = 220;
-  const cx = size / 2, cy = size / 2, r = size * 0.32;
+  const size = 280;
+  const cx = size / 2, cy = size / 2, r = size * 0.3;
   const positions = nodes.map((_, i) => {
-    const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+    const angle = (i / Math.max(nodes.length, 1)) * Math.PI * 2 - Math.PI / 2;
     return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
   });
   const nodeMap = Object.fromEntries(nodes.map((n, i) => [n.id, i]));
 
   return (
-    <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="max-w-[280px] mx-auto">
-      {/* Links */}
+    <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="max-w-[340px] mx-auto">
+      <defs>
+        <filter id="node-shadow">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.2" />
+        </filter>
+      </defs>
+      {/* Links with curves */}
       {links.map((l, i) => {
         const si = nodeMap[l.source], ti = nodeMap[l.target];
         if (si === undefined || ti === undefined) return null;
-        return <motion.line key={i} x1={positions[si].x} y1={positions[si].y}
-          x2={positions[ti].x} y2={positions[ti].y}
-          stroke="hsl(var(--border))" strokeWidth="1" opacity={0.4}
-          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5, delay: i * 0.05 }} />;
+        const midX = (positions[si].x + positions[ti].x) / 2 + (Math.random() - 0.5) * 15;
+        const midY = (positions[si].y + positions[ti].y) / 2 + (Math.random() - 0.5) * 15;
+        return <motion.path key={i}
+          d={`M ${positions[si].x} ${positions[si].y} Q ${midX} ${midY} ${positions[ti].x} ${positions[ti].y}`}
+          fill="none" stroke="hsl(var(--border))" strokeWidth="1.5" opacity={0.35}
+          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8, delay: i * 0.04 }} />;
       })}
       {/* Nodes */}
-      {nodes.map((n, i) => (
-        <g key={n.id}>
-          <motion.circle cx={positions[i].x} cy={positions[i].y} r={Math.max(n.size * 3, 6)}
-            fill={n.color} opacity={0.8}
-            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.08 }}>
-            <title>{n.label}</title>
-          </motion.circle>
-          <text x={positions[i].x} y={positions[i].y + n.size * 3 + 10} textAnchor="middle"
-            className="fill-muted-foreground" fontSize="6" fontWeight="600">{n.label.slice(0, 8)}</text>
-        </g>
-      ))}
+      {nodes.map((n, i) => {
+        const nodeR = Math.max(n.size * 4, 10);
+        return (
+          <g key={n.id} filter="url(#node-shadow)">
+            {/* Outer ring */}
+            <circle cx={positions[i].x} cy={positions[i].y} r={nodeR + 4}
+              fill="none" stroke={n.color} strokeWidth="1" opacity={0.25} />
+            {/* Main node */}
+            <motion.circle cx={positions[i].x} cy={positions[i].y} r={nodeR}
+              fill={n.color} opacity={0.85}
+              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.06, type: "spring" }}>
+              <title>{n.label}</title>
+            </motion.circle>
+            {/* Label */}
+            <text x={positions[i].x} y={positions[i].y + nodeR + 14} textAnchor="middle"
+              className="fill-foreground" fontSize="8" fontWeight="700">{n.label.slice(0, 10)}</text>
+          </g>
+        );
+      })}
     </svg>
   );
 };
