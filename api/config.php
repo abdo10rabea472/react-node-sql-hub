@@ -207,7 +207,9 @@ try {
     $adminCheck = $pdo->query("SELECT id FROM users WHERE email = 'admin@stodio.com'")->fetch(PDO::FETCH_ASSOC);
     $hashedPw = password_hash('admin', PASSWORD_DEFAULT);
     if (!$adminCheck) {
-        $pdo->exec("INSERT INTO users (name, email, password, role, status) VALUES ('Administrator', 'admin@stodio.com', '$hashedPw', 'admin', 'active')");
+        // Use prepared statement to avoid $ sign corruption in bcrypt hash
+        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, status) VALUES ('Administrator', 'admin@stodio.com', ?, 'admin', 'active')");
+        $stmt->execute([$hashedPw]);
     } else {
         // Reset password to 'admin' in case it was corrupted
         $stmt = $pdo->prepare("UPDATE users SET password = ?, status = 'active' WHERE email = 'admin@stodio.com'");
