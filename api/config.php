@@ -4,7 +4,32 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-header("Access-Control-Allow-Origin: *");
+// Dynamic CORS - allow specific domains
+$allowedOrigins = [];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+// Allow lovable.app and lovableproject.com domains
+if (preg_match('/^https?:\/\/.*\.(lovable\.app|lovableproject\.com)$/', $origin)) {
+    $allowedOrigins[] = $origin;
+}
+// Allow localhost for development
+if (preg_match('/^https?:\/\/localhost(:\d+)?$/', $origin)) {
+    $allowedOrigins[] = $origin;
+}
+// Allow the main domain
+if (preg_match('/^https?:\/\/(www\.)?vip472\.com$/', $origin)) {
+    $allowedOrigins[] = $origin;
+}
+
+$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : '';
+if ($corsOrigin) {
+    header("Access-Control-Allow-Origin: $corsOrigin");
+    header("Vary: Origin");
+} else {
+    // Fallback: allow all for compatibility (can be tightened later)
+    header("Access-Control-Allow-Origin: *");
+}
+
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
@@ -209,7 +234,8 @@ try {
     }
 
 } catch (PDOException $e) {
-    echo json_encode(["message" => "Database Error: " . $e->getMessage()]);
+    error_log("Database Error: " . $e->getMessage());
+    echo json_encode(["message" => "خطأ في الاتصال بقاعدة البيانات"]);
     exit();
 }
 
