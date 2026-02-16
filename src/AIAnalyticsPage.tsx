@@ -165,6 +165,28 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
 
   useEffect(() => { fetchBusinessData(); }, []);
 
+  // Auto-run AI when data is loaded
+  const [aiAutoRan, setAiAutoRan] = useState(false);
+  useEffect(() => {
+    if (rawData && !aiAutoRan && !aiLoading) {
+      setAiAutoRan(true);
+      runAI('full-analysis');
+      runAI('decisions');
+      runAI('monitoring');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawData, aiAutoRan]);
+
+  // Auto-run for tab if no result
+  useEffect(() => {
+    if (!rawData || aiLoading) return;
+    if (activeTab === 'analytics' && !analyticsResult) runAI('full-analysis');
+    else if (activeTab === 'decisions' && !decisionsResult) runAI('decisions');
+    else if (activeTab === 'monitoring' && !monitoringResult) runAI('monitoring');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+
   // Build external models from settings
   const getExternalModels = () => {
     const models = (settings as any).aiModels;
