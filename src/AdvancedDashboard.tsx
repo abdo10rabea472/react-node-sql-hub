@@ -7,7 +7,6 @@ import {
   Clock
 } from 'lucide-react';
 import { useSettings } from './SettingsContext';
-import { getStats } from './api';
 import api from './api';
 
 interface AdvancedDashboardProps {
@@ -15,26 +14,7 @@ interface AdvancedDashboardProps {
   userId: number;
 }
 
-// ──── Data ────
-const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6'];
-
-const genMonthly = () => {
-  const m = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  const mEn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return m.map((name, i) => {
-    const rev = Math.floor(Math.random() * 40000) + 10000;
-    const exp = Math.floor(Math.random() * 20000) + 5000;
-    return { name, nameEn: mEn[i], revenue: rev, expenses: exp, profit: rev - exp, sessions: Math.floor(Math.random() * 200) + 50, weddings: Math.floor(Math.random() * 15) + 2 };
-  });
-};
-
-const genHeatmap = () => {
-  const days = 7, hours = 12;
-  return Array.from({ length: days * hours }, (_, idx) => ({
-    day: idx % days, hour: Math.floor(idx / days) + 8,
-    value: Math.floor(Math.random() * 100),
-  }));
-};
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#ec4899', '#06b6d4', '#14b8a6'];
 
 // ──── SVG Chart Components ────
 
@@ -42,8 +22,9 @@ const SVGAreaChart = ({ data, width = 600, height = 220, lang }: { data: any[]; 
   const pad = { t: 10, r: 10, b: 30, l: 50 };
   const w = width - pad.l - pad.r;
   const h = height - pad.t - pad.b;
-  const maxRev = Math.max(...data.map(d => d.revenue));
-  const xStep = w / (data.length - 1);
+  if (!data.length) return <div className="text-center text-muted-foreground text-xs py-8">{lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</div>;
+  const maxRev = Math.max(...data.map(d => d.revenue), 1);
+  const xStep = w / Math.max(data.length - 1, 1);
 
   const revPoints = data.map((d, i) => `${pad.l + i * xStep},${pad.t + h - (d.revenue / maxRev) * h}`).join(' ');
   const expPoints = data.map((d, i) => `${pad.l + i * xStep},${pad.t + h - (d.expenses / maxRev) * h}`).join(' ');
@@ -55,11 +36,10 @@ const SVGAreaChart = ({ data, width = 600, height = 220, lang }: { data: any[]; 
     <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
       <defs>
         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
         </linearGradient>
       </defs>
-      {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map(pct => (
         <g key={pct}>
           <line x1={pad.l} y1={pad.t + h * (1 - pct)} x2={pad.l + w} y2={pad.t + h * (1 - pct)}
@@ -70,22 +50,18 @@ const SVGAreaChart = ({ data, width = 600, height = 220, lang }: { data: any[]; 
           </text>
         </g>
       ))}
-      {/* Area */}
       <motion.polygon points={areaPath} fill="url(#areaGrad)"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} />
-      {/* Revenue line */}
-      <motion.polyline points={revPoints} fill="none" stroke="#0ea5e9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      <motion.polyline points={revPoints} fill="none" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
         initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5 }} />
-      {/* Expenses line */}
-      <motion.polyline points={expPoints} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round"
+      <motion.polyline points={expPoints} fill="none" stroke="hsl(var(--destructive))" strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round"
         initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 1.5, delay: 0.3 }} />
-      {/* Dots + labels */}
       {data.map((d, i) => (
         <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} className="cursor-pointer">
-          <circle cx={pad.l + i * xStep} cy={pad.t + h - (d.revenue / maxRev) * h} r={hovered === i ? 5 : 3} fill="#0ea5e9" />
+          <circle cx={pad.l + i * xStep} cy={pad.t + h - (d.revenue / maxRev) * h} r={hovered === i ? 5 : 3} fill="hsl(var(--primary))" />
           <text x={pad.l + i * xStep} y={pad.t + h + 18} textAnchor="middle"
             className="fill-muted-foreground" fontSize="8" fontWeight="600">
-            {lang === 'ar' ? d.name.slice(0, 3) : d.nameEn}
+            {lang === 'ar' ? d.name : d.nameEn}
           </text>
           {hovered === i && (
             <g>
@@ -107,20 +83,21 @@ const SVGBarChart = ({ data, width = 500, height = 220, lang }: { data: any[]; w
   const pad = { t: 10, r: 10, b: 30, l: 40 };
   const w = width - pad.l - pad.r;
   const h = height - pad.t - pad.b;
-  const max = Math.max(...data.map(d => Math.max(d.sessions, d.weddings * 10)));
+  if (!data.length) return <div className="text-center text-muted-foreground text-xs py-8">{lang === 'ar' ? 'لا توجد بيانات' : 'No data'}</div>;
+  const max = Math.max(...data.map(d => Math.max(d.invoices || 0, d.weddings || 0)), 1);
   const barW = (w / data.length) * 0.35;
   const gap = w / data.length;
 
   return (
     <svg width="100%" viewBox={`0 0 ${width} ${height}`}>
       {data.map((d, i) => {
-        const sH = (d.sessions / max) * h;
-        const wH = ((d.weddings * 10) / max) * h;
+        const iH = ((d.invoices || 0) / max) * h;
+        const wH = ((d.weddings || 0) / max) * h;
         return (
           <g key={i}>
-            <motion.rect x={pad.l + i * gap + gap * 0.1} y={pad.t + h - sH} width={barW} height={sH}
-              rx="4" fill="#0ea5e9"
-              initial={{ height: 0, y: pad.t + h }} animate={{ height: sH, y: pad.t + h - sH }}
+            <motion.rect x={pad.l + i * gap + gap * 0.1} y={pad.t + h - iH} width={barW} height={iH}
+              rx="4" fill="hsl(var(--primary))"
+              initial={{ height: 0, y: pad.t + h }} animate={{ height: iH, y: pad.t + h - iH }}
               transition={{ duration: 0.6, delay: i * 0.05 }} />
             <motion.rect x={pad.l + i * gap + gap * 0.1 + barW + 2} y={pad.t + h - wH} width={barW} height={wH}
               rx="4" fill="#ec4899"
@@ -128,7 +105,7 @@ const SVGBarChart = ({ data, width = 500, height = 220, lang }: { data: any[]; w
               transition={{ duration: 0.6, delay: i * 0.05 + 0.1 }} />
             <text x={pad.l + i * gap + gap * 0.5} y={pad.t + h + 16} textAnchor="middle"
               className="fill-muted-foreground" fontSize="8" fontWeight="600">
-              {lang === 'ar' ? d.name.slice(0, 3) : d.nameEn}
+              {lang === 'ar' ? d.name : d.nameEn}
             </text>
           </g>
         );
@@ -139,28 +116,25 @@ const SVGBarChart = ({ data, width = 500, height = 220, lang }: { data: any[]; w
 
 const SVGPieChart = ({ data, size = 180 }: { data: { name: string; value: number }[]; size?: number }) => {
   const total = data.reduce((s, d) => s + d.value, 0);
+  if (!total) return <div className="text-center text-muted-foreground text-xs py-8">No data</div>;
   const cx = size / 2, cy = size / 2, r = size * 0.35, ir = size * 0.22;
   let cumAngle = -Math.PI / 2;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {data.map((d, i) => {
+      {data.filter(d => d.value > 0).map((d, i) => {
         const angle = (d.value / total) * Math.PI * 2;
         const startAngle = cumAngle;
         cumAngle += angle;
         const endAngle = cumAngle;
-        const x1 = cx + r * Math.cos(startAngle);
-        const y1 = cy + r * Math.sin(startAngle);
-        const x2 = cx + r * Math.cos(endAngle);
-        const y2 = cy + r * Math.sin(endAngle);
-        const ix1 = cx + ir * Math.cos(startAngle);
-        const iy1 = cy + ir * Math.sin(startAngle);
-        const ix2 = cx + ir * Math.cos(endAngle);
-        const iy2 = cy + ir * Math.sin(endAngle);
+        const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
+        const ix1 = cx + ir * Math.cos(startAngle), iy1 = cy + ir * Math.sin(startAngle);
+        const ix2 = cx + ir * Math.cos(endAngle), iy2 = cy + ir * Math.sin(endAngle);
         const largeArc = angle > Math.PI ? 1 : 0;
         const path = `M${ix1},${iy1} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} L${ix2},${iy2} A${ir},${ir} 0 ${largeArc} 0 ${ix1},${iy1}`;
         return (
-          <motion.path key={i} d={path} fill={COLORS[i]}
+          <motion.path key={i} d={path} fill={COLORS[i % COLORS.length]}
             initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: i * 0.1 }}
             className="hover:opacity-80 transition-opacity cursor-pointer" style={{ transformOrigin: `${cx}px ${cy}px` }} />
@@ -199,59 +173,20 @@ const GaugeChart = ({ value, max, label, color }: { value: number; max: number; 
   );
 };
 
-const HeatmapChart = ({ data, lang }: { data: any[]; lang: string }) => {
-  const dayNames = lang === 'ar' ? ['سبت','أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة'] : ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
-  const hours = Array.from({ length: 12 }, (_, i) => i + 8);
-  const maxVal = Math.max(...data.map(d => d.value));
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[480px]">
-        <div className="flex gap-1 mb-1 ms-14">
-          {hours.map(h => <div key={h} className="flex-1 text-center text-[8px] font-bold text-muted-foreground">{h}:00</div>)}
-        </div>
-        {dayNames.map((day, di) => (
-          <div key={day} className="flex items-center gap-1 mb-1">
-            <span className="w-12 text-[9px] font-bold text-muted-foreground text-end">{day}</span>
-            {hours.map((h, hi) => {
-              const cell = data.find(d => d.day === di && d.hour === h);
-              const intensity = cell ? cell.value / maxVal : 0;
-              return (
-                <motion.div key={hi} className="flex-1 h-6 rounded cursor-pointer relative group"
-                  style={{ background: `hsl(199, 89%, ${95 - intensity * 55}%)` }}
-                  initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  transition={{ delay: (di * 12 + hi) * 0.008 }}
-                  whileHover={{ scale: 1.15, zIndex: 10 }}>
-                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-foreground text-background text-[9px] font-bold px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-                    {cell?.value || 0}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const WaterfallChart = ({ data, lang }: { data: any[]; lang: string }) => {
-  const totalRev = data.reduce((s, d) => s + d.revenue, 0);
-  const totalExp = data.reduce((s, d) => s + d.expenses, 0);
+const WaterfallChart = ({ totalRevenue, totalExpenses, lang }: { totalRevenue: number; totalExpenses: number; lang: string }) => {
+  const netProfit = totalRevenue - totalExpenses;
   const items = [
-    { name: lang === 'ar' ? 'الإيرادات' : 'Revenue', value: totalRev, type: 'positive' },
-    { name: lang === 'ar' ? 'جلسات' : 'Sessions', value: Math.floor(totalRev * 0.4), type: 'positive' },
-    { name: lang === 'ar' ? 'زفاف' : 'Weddings', value: Math.floor(totalRev * 0.35), type: 'positive' },
-    { name: lang === 'ar' ? 'المصروفات' : 'Expenses', value: -totalExp, type: 'negative' },
-    { name: lang === 'ar' ? 'صافي' : 'Net', value: totalRev - totalExp, type: 'total' },
+    { name: lang === 'ar' ? 'الإيرادات' : 'Revenue', value: totalRevenue, type: 'positive' },
+    { name: lang === 'ar' ? 'المصروفات' : 'Expenses', value: -totalExpenses, type: 'negative' },
+    { name: lang === 'ar' ? 'صافي الربح' : 'Net Profit', value: netProfit, type: netProfit >= 0 ? 'total' : 'negative' },
   ];
-  const maxVal = Math.max(...items.map(i => Math.abs(i.value)));
+  const maxVal = Math.max(...items.map(i => Math.abs(i.value)), 1);
 
   return (
     <div className="space-y-2">
       {items.map((item, i) => {
         const barW = (Math.abs(item.value) / maxVal) * 100;
-        const color = item.type === 'positive' ? '#10b981' : item.type === 'negative' ? '#ef4444' : '#0ea5e9';
+        const color = item.type === 'positive' ? '#10b981' : item.type === 'negative' ? '#ef4444' : 'hsl(var(--primary))';
         return (
           <motion.div key={i} className="flex items-center gap-3"
             initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}>
@@ -299,56 +234,162 @@ const ChartCard = ({ title, subtitle, children, className = '' }: { title: strin
   </motion.div>
 );
 
+// ──── Helper: aggregate invoices by month ────
+const MONTH_NAMES_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const MONTH_NAMES_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function aggregateByMonth(invoices: any[], weddingInvoices: any[], purchases: any[]) {
+  const monthly: Record<number, { revenue: number; expenses: number; invoices: number; weddings: number }> = {};
+  for (let m = 0; m < 12; m++) monthly[m] = { revenue: 0, expenses: 0, invoices: 0, weddings: 0 };
+
+  const currentYear = new Date().getFullYear();
+
+  (invoices || []).forEach((inv: any) => {
+    const d = new Date(inv.created_at || inv.date);
+    if (d.getFullYear() === currentYear) {
+      const m = d.getMonth();
+      monthly[m].revenue += Number(inv.total_amount) || 0;
+      monthly[m].invoices += 1;
+    }
+  });
+
+  (weddingInvoices || []).forEach((inv: any) => {
+    const d = new Date(inv.created_at || inv.date || inv.wedding_date);
+    if (d.getFullYear() === currentYear) {
+      const m = d.getMonth();
+      monthly[m].revenue += Number(inv.total_amount) || 0;
+      monthly[m].weddings += 1;
+    }
+  });
+
+  (purchases || []).forEach((p: any) => {
+    const d = new Date(p.created_at || p.date || p.purchase_date);
+    if (d.getFullYear() === currentYear) {
+      const m = d.getMonth();
+      monthly[m].expenses += Number(p.total_cost || p.amount || p.price) || 0;
+    }
+  });
+
+  return Array.from({ length: 12 }, (_, i) => ({
+    name: MONTH_NAMES_AR[i],
+    nameEn: MONTH_NAMES_EN[i],
+    ...monthly[i],
+    profit: monthly[i].revenue - monthly[i].expenses,
+  }));
+}
+
 // ──── Main ────
 
 const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
   const { settings } = useSettings();
   const lang = settings.lang;
   const currency = settings.currency;
-  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [weddingInvoices, setWeddingInvoices] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [activeSection, setActiveSection] = useState<'overview' | 'analytics' | 'insights'>('overview');
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getStats(), api.get('/purchases.php')])
-      .then(([s, p]) => setStats({ ...s.data, purchases: p.data }))
+    Promise.all([
+      api.get('/invoices.php').catch(() => ({ data: [] })),
+      api.get('/weddingInvoices.php').catch(() => ({ data: [] })),
+      api.get('/purchases.php').catch(() => ({ data: [] })),
+      api.get('/customers.php').catch(() => ({ data: [] })),
+    ])
+      .then(([inv, wInv, purch, cust]) => {
+        setInvoices(Array.isArray(inv.data) ? inv.data : []);
+        setWeddingInvoices(Array.isArray(wInv.data) ? wInv.data : []);
+        setPurchases(Array.isArray(purch.data) ? purch.data : []);
+        setCustomers(Array.isArray(cust.data) ? cust.data : []);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const monthlyData = useMemo(() => genMonthly(), []);
-  const heatmapData = useMemo(() => genHeatmap(), []);
+  const monthlyData = useMemo(() => aggregateByMonth(invoices, weddingInvoices, purchases), [invoices, weddingInvoices, purchases]);
 
-  const totalRevenue = stats?.revenue || 0;
-  const totalOrders = stats?.totalOrders || 0;
-  const activeUsers = stats?.activeUsers || 0;
-  const dailySales = stats?.dailySales || 0;
+  const totalRevenue = useMemo(() => monthlyData.reduce((s, m) => s + m.revenue, 0), [monthlyData]);
+  const totalExpenses = useMemo(() => monthlyData.reduce((s, m) => s + m.expenses, 0), [monthlyData]);
+  const totalInvoices = useMemo(() => invoices.length + weddingInvoices.length, [invoices, weddingInvoices]);
+  const totalCustomers = customers.length;
+
+  // Today's sales from invoices created today
+  const dailySales = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayInv = invoices.filter(i => (i.created_at || '').slice(0, 10) === today).reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
+    const todayWed = weddingInvoices.filter(i => (i.created_at || '').slice(0, 10) === today).reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
+    return todayInv + todayWed;
+  }, [invoices, weddingInvoices]);
+
+  // Revenue from regular invoices vs wedding invoices
+  const regularRevenue = useMemo(() => invoices.reduce((s, i) => s + (Number(i.total_amount) || 0), 0), [invoices]);
+  const weddingRevenue = useMemo(() => weddingInvoices.reduce((s, i) => s + (Number(i.total_amount) || 0), 0), [weddingInvoices]);
 
   const pieData = useMemo(() => [
-    { name: lang === 'ar' ? 'تصوير' : 'Sessions', value: Math.floor(totalRevenue * 0.4) || 35 },
-    { name: lang === 'ar' ? 'زفاف' : 'Weddings', value: Math.floor(totalRevenue * 0.35) || 30 },
-    { name: lang === 'ar' ? 'طباعة' : 'Prints', value: Math.floor(totalRevenue * 0.15) || 20 },
-    { name: lang === 'ar' ? 'أخرى' : 'Other', value: Math.floor(totalRevenue * 0.1) || 15 },
-  ], [totalRevenue, lang]);
+    { name: lang === 'ar' ? 'فواتير عادية' : 'Regular Invoices', value: regularRevenue },
+    { name: lang === 'ar' ? 'فواتير زفاف' : 'Wedding Invoices', value: weddingRevenue },
+  ], [regularRevenue, weddingRevenue, lang]);
+
+  // Calculate real change percentages (this month vs last month)
+  const currentMonth = new Date().getMonth();
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const currentMonthRev = monthlyData[currentMonth]?.revenue || 0;
+  const prevMonthRev = monthlyData[prevMonth]?.revenue || 0;
+  const revenueChange = prevMonthRev > 0 ? ((currentMonthRev - prevMonthRev) / prevMonthRev * 100).toFixed(1) : '0';
 
   const statCards = useMemo(() => [
-    { icon: DollarSign, title: lang === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue', value: totalRevenue.toLocaleString(), unit: currency, change: '+12.5%', positive: true, gradient: 'from-sky-500 to-cyan-400', shadow: 'shadow-sky-500/20' },
-    { icon: ShoppingCart, title: lang === 'ar' ? 'إجمالي الطلبات' : 'Total Orders', value: totalOrders.toLocaleString(), unit: '', change: '+8.2%', positive: true, gradient: 'from-emerald-500 to-teal-400', shadow: 'shadow-emerald-500/20' },
-    { icon: Users, title: lang === 'ar' ? 'العملاء النشطين' : 'Active Clients', value: activeUsers.toLocaleString(), unit: '', change: '+5.1%', positive: true, gradient: 'from-violet-500 to-purple-400', shadow: 'shadow-violet-500/20' },
-    { icon: Activity, title: lang === 'ar' ? 'مبيعات اليوم' : "Today's Sales", value: dailySales.toLocaleString(), unit: currency, change: dailySales > 0 ? '+100%' : '0%', positive: dailySales > 0, gradient: 'from-amber-500 to-orange-400', shadow: 'shadow-amber-500/20' },
-  ], [totalRevenue, totalOrders, activeUsers, dailySales, currency, lang]);
+    { icon: DollarSign, title: lang === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue', value: totalRevenue.toLocaleString(), unit: currency, change: `${Number(revenueChange) >= 0 ? '+' : ''}${revenueChange}%`, positive: Number(revenueChange) >= 0, gradient: 'from-violet-500 to-purple-400', shadow: 'shadow-violet-500/20' },
+    { icon: ShoppingCart, title: lang === 'ar' ? 'إجمالي الفواتير' : 'Total Invoices', value: totalInvoices.toLocaleString(), unit: '', change: `${totalInvoices}`, positive: true, gradient: 'from-emerald-500 to-teal-400', shadow: 'shadow-emerald-500/20' },
+    { icon: Users, title: lang === 'ar' ? 'العملاء' : 'Customers', value: totalCustomers.toLocaleString(), unit: '', change: `${totalCustomers}`, positive: true, gradient: 'from-sky-500 to-cyan-400', shadow: 'shadow-sky-500/20' },
+    { icon: Activity, title: lang === 'ar' ? 'مبيعات اليوم' : "Today's Sales", value: dailySales.toLocaleString(), unit: currency, change: dailySales > 0 ? `+${dailySales.toLocaleString()}` : '0', positive: dailySales > 0, gradient: 'from-amber-500 to-orange-400', shadow: 'shadow-amber-500/20' },
+  ], [totalRevenue, totalInvoices, totalCustomers, dailySales, currency, lang, revenueChange]);
 
-  const smartInsights = useMemo(() => [
-    ...(dailySales > 0 ? [{
-      icon: TrendingUp,
-      title: lang === 'ar' ? 'أداء ممتاز اليوم!' : 'Great Performance Today!',
-      description: lang === 'ar' ? `حققت مبيعات بقيمة ${dailySales.toLocaleString()} ${currency} اليوم.` : `You made ${dailySales.toLocaleString()} ${currency} in sales today.`,
-      type: 'success' as const,
-    }] : []),
-    { icon: Lightbulb, title: lang === 'ar' ? 'اقتراح ذكي' : 'Smart Suggestion', description: lang === 'ar' ? 'أوقات الذروة بين 10 صباحاً و 2 ظهراً. جدول الحجوزات المهمة في هذه الفترة.' : 'Peak hours are between 10 AM and 2 PM. Schedule important bookings then.', type: 'info' as const },
-    { icon: Brain, title: lang === 'ar' ? 'تحليل الاتجاهات' : 'Trend Analysis', description: lang === 'ar' ? 'حفلات الزفاف تمثل 35% من الإيرادات. فكّر في توسيع خدمات الزفاف.' : 'Weddings = 35% of revenue. Consider expanding wedding services.', type: 'warning' as const },
-  ], [dailySales, currency, lang]);
+  const smartInsights = useMemo(() => {
+    const insights: { icon: any; title: string; description: string; type: 'success' | 'warning' | 'info' }[] = [];
+
+    if (dailySales > 0) {
+      insights.push({
+        icon: TrendingUp,
+        title: lang === 'ar' ? 'أداء ممتاز اليوم!' : 'Great Performance Today!',
+        description: lang === 'ar' ? `حققت مبيعات بقيمة ${dailySales.toLocaleString()} ${currency} اليوم.` : `You made ${dailySales.toLocaleString()} ${currency} in sales today.`,
+        type: 'success',
+      });
+    }
+
+    if (totalRevenue > 0 && totalExpenses > 0) {
+      const profitMargin = ((totalRevenue - totalExpenses) / totalRevenue * 100).toFixed(1);
+      insights.push({
+        icon: Brain,
+        title: lang === 'ar' ? 'هامش الربح' : 'Profit Margin',
+        description: lang === 'ar' ? `هامش الربح الحالي ${profitMargin}% — ${Number(profitMargin) > 30 ? 'ممتاز!' : 'يحتاج تحسين'}` : `Current profit margin is ${profitMargin}% — ${Number(profitMargin) > 30 ? 'Excellent!' : 'Needs improvement'}`,
+        type: Number(profitMargin) > 30 ? 'success' : 'warning',
+      });
+    }
+
+    if (weddingRevenue > 0 && totalRevenue > 0) {
+      const weddingPct = (weddingRevenue / totalRevenue * 100).toFixed(0);
+      insights.push({
+        icon: Lightbulb,
+        title: lang === 'ar' ? 'تحليل الخدمات' : 'Service Analysis',
+        description: lang === 'ar' ? `فواتير الزفاف تمثل ${weddingPct}% من الإيرادات.` : `Wedding invoices represent ${weddingPct}% of revenue.`,
+        type: 'info',
+      });
+    }
+
+    if (insights.length === 0) {
+      insights.push({
+        icon: Lightbulb,
+        title: lang === 'ar' ? 'ابدأ الآن' : 'Get Started',
+        description: lang === 'ar' ? 'أضف فواتير وعملاء لتظهر التحليلات والرؤى الذكية هنا.' : 'Add invoices and customers to see analytics and smart insights here.',
+        type: 'info',
+      });
+    }
+
+    return insights;
+  }, [dailySales, totalRevenue, totalExpenses, weddingRevenue, currency, lang]);
 
   if (loading) {
     return (
@@ -371,7 +412,7 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
             {lang === 'ar' ? `مرحباً، ${userName}` : `Welcome, ${userName}`} <span className="inline-block animate-bounce">👋</span>
           </motion.h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {lang === 'ar' ? 'لوحة التحكم المتقدمة — تحليلات شاملة ورؤى ذكية' : 'Advanced Dashboard — Analytics & Smart Insights'}
+            {lang === 'ar' ? 'لوحة التحكم — بيانات حقيقية من الفواتير والمشتريات' : 'Dashboard — Real data from invoices & purchases'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -417,19 +458,19 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_200px] gap-4 mb-4">
               <ChartCard title={lang === 'ar' ? 'الإيرادات والمصروفات' : 'Revenue & Expenses'}
-                subtitle={lang === 'ar' ? 'المقارنة الشهرية' : 'Monthly comparison'}>
+                subtitle={lang === 'ar' ? 'المقارنة الشهرية — بيانات حقيقية' : 'Monthly comparison — real data'}>
                 <SVGAreaChart data={monthlyData} lang={lang} />
                 <div className="flex gap-4 mt-3">
                   <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />{lang === 'ar' ? 'الإيرادات' : 'Revenue'}
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary" />{lang === 'ar' ? 'الإيرادات' : 'Revenue'}
                   </span>
                   <span className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500" />{lang === 'ar' ? 'المصروفات' : 'Expenses'}
+                    <span className="w-2.5 h-2.5 rounded-full bg-destructive" />{lang === 'ar' ? 'المصروفات' : 'Expenses'}
                   </span>
                 </div>
               </ChartCard>
 
-              <ChartCard title={lang === 'ar' ? 'توزيع الخدمات' : 'Services'}>
+              <ChartCard title={lang === 'ar' ? 'توزيع الإيرادات' : 'Revenue Split'}>
                 <div className="flex justify-center"><SVGPieChart data={pieData} /></div>
                 <div className="flex flex-wrap gap-2 mt-3 justify-center">
                   {pieData.map((d, i) => (
@@ -442,24 +483,24 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <ChartCard title={lang === 'ar' ? 'الطلبات الشهرية' : 'Monthly Orders'}
-                subtitle={lang === 'ar' ? 'جلسات التصوير وحفلات الزفاف' : 'Sessions & weddings'}>
+              <ChartCard title={lang === 'ar' ? 'عدد الفواتير الشهرية' : 'Monthly Invoice Count'}
+                subtitle={lang === 'ar' ? 'فواتير عادية وفواتير زفاف' : 'Regular & wedding invoices'}>
                 <SVGBarChart data={monthlyData} lang={lang} />
                 <div className="flex gap-4 mt-2">
                   <span className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-sky-500" />{lang === 'ar' ? 'جلسات' : 'Sessions'}
+                    <span className="w-2 h-2 rounded-full bg-primary" />{lang === 'ar' ? 'عادية' : 'Regular'}
                   </span>
                   <span className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-pink-500" />{lang === 'ar' ? 'زفاف' : 'Weddings'}
+                    <span className="w-2 h-2 rounded-full bg-pink-500" />{lang === 'ar' ? 'زفاف' : 'Wedding'}
                   </span>
                 </div>
               </ChartCard>
 
               <ChartCard title={lang === 'ar' ? 'مقاييس الأداء' : 'Performance Gauges'}
-                subtitle={lang === 'ar' ? 'مؤشرات الأداء الرئيسية' : 'Key performance indicators'}>
+                subtitle={lang === 'ar' ? 'مؤشرات من البيانات الفعلية' : 'Based on real data'}>
                 <div className="grid grid-cols-3 gap-2">
-                  <GaugeChart value={totalOrders} max={Math.max(totalOrders * 1.5, 100)} label={lang === 'ar' ? 'الطلبات' : 'Orders'} color="#0ea5e9" />
-                  <GaugeChart value={activeUsers} max={Math.max(activeUsers * 2, 50)} label={lang === 'ar' ? 'العملاء' : 'Clients'} color="#10b981" />
+                  <GaugeChart value={totalInvoices} max={Math.max(totalInvoices * 1.5, 10)} label={lang === 'ar' ? 'الفواتير' : 'Invoices'} color="hsl(var(--primary))" />
+                  <GaugeChart value={totalCustomers} max={Math.max(totalCustomers * 2, 10)} label={lang === 'ar' ? 'العملاء' : 'Clients'} color="#10b981" />
                   <GaugeChart value={dailySales} max={Math.max(totalRevenue / 30, 1000)} label={lang === 'ar' ? 'اليوم' : 'Today'} color="#f59e0b" />
                 </div>
               </ChartCard>
@@ -469,21 +510,38 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
 
         {activeSection === 'analytics' && (
           <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <ChartCard title={lang === 'ar' ? 'خريطة حرارية — ساعات النشاط' : 'Activity Heatmap'}
-              subtitle={lang === 'ar' ? 'أوقات الذروة خلال الأسبوع' : 'Peak times during the week'} className="mb-4">
-              <HeatmapChart data={heatmapData} lang={lang} />
-            </ChartCard>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <ChartCard title={lang === 'ar' ? 'مخطط الشلال — تحليل الربح' : 'Waterfall — Profit Breakdown'}>
-                <WaterfallChart data={monthlyData} lang={lang} />
+              <ChartCard title={lang === 'ar' ? 'تحليل الربح' : 'Profit Breakdown'}>
+                <WaterfallChart totalRevenue={totalRevenue} totalExpenses={totalExpenses} lang={lang} />
               </ChartCard>
 
-              <ChartCard title={lang === 'ar' ? 'اتجاهات الأداء' : 'Performance Trends'}
-                subtitle={lang === 'ar' ? 'تحليل الاتجاهات السنوية' : 'Year-long trend analysis'}>
+              <ChartCard title={lang === 'ar' ? 'اتجاه الإيرادات' : 'Revenue Trend'}
+                subtitle={lang === 'ar' ? 'على مدار السنة' : 'Year-long trend'}>
                 <SVGAreaChart data={monthlyData} lang={lang} height={200} />
               </ChartCard>
             </div>
+
+            {/* Recent invoices */}
+            <ChartCard title={lang === 'ar' ? 'أحدث الفواتير' : 'Recent Invoices'} className="mb-4">
+              <div className="space-y-2">
+                {invoices.slice(0, 5).map((inv: any, i: number) => (
+                  <motion.div key={inv.id || i} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-all"
+                    initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">#{inv.id}</div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{inv.customer_name || (lang === 'ar' ? 'عميل' : 'Customer')}</p>
+                        <p className="text-[10px] text-muted-foreground">{inv.created_at?.slice(0, 10)}</p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-foreground">{Number(inv.total_amount || 0).toLocaleString()} {currency}</span>
+                  </motion.div>
+                ))}
+                {invoices.length === 0 && (
+                  <p className="text-center text-muted-foreground text-xs py-4">{lang === 'ar' ? 'لا توجد فواتير بعد' : 'No invoices yet'}</p>
+                )}
+              </div>
+            </ChartCard>
           </motion.div>
         )}
 
@@ -493,29 +551,33 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
               <div>
                 <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                   <Sparkles size={16} className="text-primary" />
-                  {lang === 'ar' ? 'اقتراحات القرارات الذكية' : 'Smart Decision Suggestions'}
+                  {lang === 'ar' ? 'رؤى ذكية من بياناتك' : 'Smart Insights from Your Data'}
                 </h3>
                 <div className="space-y-3">
                   {smartInsights.map((insight, i) => <SmartInsight key={i} {...insight} />)}
-                  <SmartInsight icon={Target}
-                    title={lang === 'ar' ? 'هدف الشهر' : 'Monthly Goal'}
-                    description={lang === 'ar' ? `لتحقيق هدف ${(totalRevenue * 1.2).toLocaleString()} ${currency}، تحتاج ${Math.ceil((totalRevenue * 0.2) / 30)} ${currency} يومياً إضافياً.` : `To reach ${(totalRevenue * 1.2).toLocaleString()} ${currency}, you need an extra ${Math.ceil((totalRevenue * 0.2) / 30)} ${currency}/day.`}
-                    type="info" />
-                  <SmartInsight icon={Clock}
-                    title={lang === 'ar' ? 'تحسين الجدولة' : 'Schedule Optimization'}
-                    description={lang === 'ar' ? 'يوما الخميس والجمعة هما الأكثر ازدحاماً. خصص موارد إضافية.' : 'Thursday and Friday are the busiest. Allocate extra resources.'}
-                    type="warning" />
+                  {totalRevenue > 0 && (
+                    <>
+                      <SmartInsight icon={Target}
+                        title={lang === 'ar' ? 'هدف الشهر' : 'Monthly Goal'}
+                        description={lang === 'ar' ? `لتحقيق هدف ${(totalRevenue * 1.2).toLocaleString()} ${currency}، تحتاج ${Math.ceil((totalRevenue * 0.2) / 30).toLocaleString()} ${currency} يومياً إضافياً.` : `To reach ${(totalRevenue * 1.2).toLocaleString()} ${currency}, you need an extra ${Math.ceil((totalRevenue * 0.2) / 30).toLocaleString()} ${currency}/day.`}
+                        type="info" />
+                      <SmartInsight icon={Clock}
+                        title={lang === 'ar' ? 'ملخص المصروفات' : 'Expenses Summary'}
+                        description={lang === 'ar' ? `إجمالي المصروفات ${totalExpenses.toLocaleString()} ${currency} من ${purchases.length} عملية شراء.` : `Total expenses ${totalExpenses.toLocaleString()} ${currency} from ${purchases.length} purchases.`}
+                        type="warning" />
+                    </>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <ChartCard title={lang === 'ar' ? 'مؤشر الأداء العام' : 'Overall Performance'}>
+                <ChartCard title={lang === 'ar' ? 'ملخص الأرقام' : 'Numbers Summary'}>
                   <div className="space-y-4">
                     {[
-                      { label: lang === 'ar' ? 'الإيرادات' : 'Revenue', pct: 72, color: '#0ea5e9' },
-                      { label: lang === 'ar' ? 'العملاء' : 'Clients', pct: 58, color: '#10b981' },
-                      { label: lang === 'ar' ? 'الرضا' : 'Satisfaction', pct: 91, color: '#f59e0b' },
-                      { label: lang === 'ar' ? 'الكفاءة' : 'Efficiency', pct: 67, color: '#8b5cf6' },
+                      { label: lang === 'ar' ? 'الإيرادات' : 'Revenue', pct: totalRevenue > 0 ? Math.min(Math.round(totalRevenue / (totalRevenue + totalExpenses || 1) * 100), 100) : 0, color: 'hsl(var(--primary))' },
+                      { label: lang === 'ar' ? 'العملاء' : 'Clients', pct: Math.min(totalCustomers * 10, 100), color: '#10b981' },
+                      { label: lang === 'ar' ? 'الفواتير' : 'Invoices', pct: Math.min(totalInvoices * 5, 100), color: '#f59e0b' },
+                      { label: lang === 'ar' ? 'المشتريات' : 'Purchases', pct: Math.min(purchases.length * 5, 100), color: '#8b5cf6' },
                     ].map((item, i) => (
                       <div key={i}>
                         <div className="flex justify-between items-center mb-1.5">
@@ -532,25 +594,24 @@ const AdvancedDashboard: React.FC<AdvancedDashboardProps> = ({ userName }) => {
                   </div>
                 </ChartCard>
 
-                {stats?.recentUsers && (
-                  <ChartCard title={lang === 'ar' ? 'أحدث العملاء' : 'Latest Clients'}>
-                    <div className="space-y-2">
-                      {stats.recentUsers.slice(0, 5).map((u: any, i: number) => (
-                        <motion.div key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-all"
-                          initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{u.name?.charAt(0)}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-foreground truncate">{u.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{u.role}</p>
-                          </div>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${u.status === 'active' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
-                            {u.status === 'active' ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'غير نشط' : 'Inactive')}
-                          </span>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </ChartCard>
-                )}
+                {/* Recent customers */}
+                <ChartCard title={lang === 'ar' ? 'أحدث العملاء' : 'Latest Customers'}>
+                  <div className="space-y-2">
+                    {customers.slice(0, 5).map((c: any, i: number) => (
+                      <motion.div key={c.id || i} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-all"
+                        initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{(c.name || '?').charAt(0)}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.phone || c.email || ''}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {customers.length === 0 && (
+                      <p className="text-center text-muted-foreground text-xs py-4">{lang === 'ar' ? 'لا يوجد عملاء بعد' : 'No customers yet'}</p>
+                    )}
+                  </div>
+                </ChartCard>
               </div>
             </div>
           </motion.div>
