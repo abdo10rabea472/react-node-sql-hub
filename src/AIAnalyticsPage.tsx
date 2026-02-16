@@ -1041,16 +1041,42 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                   />
                 </div>
                 <div className={cardClass}>
-                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                    <BarChart3 size={16} className="text-blue-500" />{isAr ? 'أحدث الفواتير' : 'Recent Invoices'}
+                  <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                    <FileText size={16} className="text-blue-500" />{isAr ? 'أحدث الفواتير' : 'Recent Invoices'}
                   </h3>
-                  <div className="overflow-hidden">
-                    {rawData && <MiniBarChart data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} height={120} />}
+                  <div className="overflow-hidden mb-3">
+                    {rawData && <MiniBarChart 
+                      data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} 
+                      height={100}
+                      labels={rawData.invoices.slice(0, 12).map((i: any) => i.customer_name?.slice(0, 6) || `#${i.id}`)}
+                    />}
                   </div>
-                  <div className="flex justify-between mt-2 text-[10px] text-muted-foreground font-semibold">
-                    <span>{isAr ? 'الأقدم' : 'Oldest'}</span>
-                    <span>{isAr ? 'الأحدث' : 'Newest'}</span>
+                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                    {rawData?.invoices?.slice(0, 8).map((inv: any, i: number) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 hover:bg-muted/60 transition-all group">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                          <FileText size={14} className={Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? 'text-emerald-500' : 'text-amber-500'} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-foreground truncate">{inv.customer_name || `${isAr ? 'فاتورة' : 'Invoice'} #${inv.id}`}</p>
+                          <p className="text-[9px] text-muted-foreground">{inv.created_at ? new Date(inv.created_at).toLocaleDateString('ar-EG') : ''}</p>
+                        </div>
+                        <div className="text-end">
+                          <p className="text-[11px] font-black text-foreground">{Number(inv.total_amount || 0).toLocaleString()}</p>
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold ${Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                            {Number(inv.paid_amount || 0) >= Number(inv.total_amount || 0) ? (isAr ? 'مدفوع' : 'Paid') : (isAr ? 'معلق' : 'Pending')}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
+                  {rawData?.invoices?.length > 0 && (
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                      <span className="text-[10px] text-muted-foreground font-semibold">{isAr ? `${rawData.invoices.length} فاتورة` : `${rawData.invoices.length} invoices`}</span>
+                      <span className="text-[10px] font-bold text-primary">{isAr ? 'الإجمالي:' : 'Total:'} {rawData.invoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0).toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
