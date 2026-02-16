@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download } from 'lucide-react';
+import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download, Lock, Eye, Zap, X } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 
@@ -88,6 +88,13 @@ const SettingsPage: React.FC = () => {
 
   const [pwaAppName, setPwaAppName] = useState(settings.studioName || 'STODIO Photography');
   const [pwaShortName, setPwaShortName] = useState('STODIO');
+
+  // AI Model states
+  const [addingProvider, setAddingProvider] = useState<string | null>(null);
+  const [newModelName, setNewModelName] = useState('');
+  const [newApiKey, setNewApiKey] = useState('');
+  const [newEndpoint, setNewEndpoint] = useState('');
+  const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
 
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
@@ -222,25 +229,55 @@ const SettingsPage: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'aiModels' && (
+            {activeTab === 'aiModels' && (() => {
+              const providerPresets = [
+                { key: 'openai', label: 'OpenAI', icon: '🤖', color: 'emerald', endpoint: 'https://api.openai.com/v1/chat/completions', placeholder: 'sk-...', models: 'GPT-4o, GPT-4, GPT-3.5', guide: { ar: 'اذهب إلى platform.openai.com → API Keys → Create new key', en: 'Go to platform.openai.com → API Keys → Create new key' } },
+                { key: 'google', label: 'Google AI', icon: '🔮', color: 'blue', endpoint: 'https://generativelanguage.googleapis.com/v1beta/chat/completions', placeholder: 'AIza...', models: 'Gemini Pro, Gemini Flash', guide: { ar: 'اذهب إلى aistudio.google.com → Get API Key', en: 'Go to aistudio.google.com → Get API Key' } },
+                { key: 'anthropic', label: 'Anthropic', icon: '🧠', color: 'purple', endpoint: 'https://api.anthropic.com/v1/messages', placeholder: 'sk-ant-...', models: 'Claude 3.5, Claude 3', guide: { ar: 'اذهب إلى console.anthropic.com → API Keys', en: 'Go to console.anthropic.com → API Keys' } },
+                { key: 'custom', label: lang === 'ar' ? 'مخصص' : 'Custom', icon: '⚙️', color: 'gray', endpoint: '', placeholder: 'key...', models: lang === 'ar' ? 'أي نموذج متوافق' : 'Any compatible model', guide: { ar: 'أدخل نقطة النهاية ومفتاح API الخاص بك', en: 'Enter your endpoint URL and API key' } },
+              ];
+
+              const handleAddFromProvider = (providerKey: string) => {
+                const preset = providerPresets.find(p => p.key === providerKey);
+                if (!preset) return;
+                setAddingProvider(providerKey);
+                setNewModelName('');
+                setNewApiKey('');
+                setNewEndpoint(preset.endpoint);
+              };
+
+              const handleSaveNewModel = () => {
+                if (!newApiKey.trim()) return;
+                const preset = providerPresets.find(p => p.key === addingProvider);
+                const newModel = {
+                  id: `model_${Date.now()}`,
+                  name: newModelName || (preset?.models.split(',')[0].trim() || ''),
+                  provider: addingProvider || 'custom',
+                  apiKey: newApiKey,
+                  endpoint: newEndpoint || preset?.endpoint || '',
+                  isActive: true,
+                };
+                updateSettings({ aiModels: [...settings.aiModels, newModel] });
+                setAddingProvider(null);
+                setNewModelName('');
+                setNewApiKey('');
+                setNewEndpoint('');
+              };
+
+              return (
               <div className="p-7">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2.5 text-primary"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
-                  <button onClick={() => {
-                    const newModel = { id: `model_${Date.now()}`, name: '', provider: 'openai', apiKey: '', endpoint: '', isActive: false };
-                    updateSettings({ aiModels: [...settings.aiModels, newModel] });
-                  }} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all">
-                    <Plus size={14} />{lang === 'ar' ? 'إضافة نموذج' : 'Add Model'}
-                  </button>
-                </div>
+                <div className="flex items-center gap-2.5 text-primary mb-2"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
+                <p className="text-xs text-muted-foreground mb-6">{lang === 'ar' ? 'اربط حسابك الخاص بمزود الذكاء الاصطناعي لاستخدام رصيدك الشخصي بدلاً من رصيد النظام' : 'Connect your own AI provider account to use your personal credits instead of the system credits'}</p>
 
                 {/* Built-in Lovable AI models */}
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-5">
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
-                    <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (Lovable AI)' : 'Built-in Models (Lovable AI)'}</span>
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
+                    <div>
+                      <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (مجانية محدودة)' : 'Built-in Models (Limited Free)'}</span>
+                      <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'تعمل تلقائياً - اختر النموذج المفضل' : 'Works automatically - choose preferred model'}</p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'اختر النموذج المدمج الذي سيتم استخدامه في التحليلات. النماذج الأسرع أرخص تكلفة.' : 'Choose the built-in model for analytics. Faster models cost less.'}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
                       { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
@@ -266,64 +303,147 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {settings.aiModels.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Brain size={40} className="mx-auto opacity-20 mb-3" />
-                    <p className="text-sm">{lang === 'ar' ? 'لا يوجد نماذج خارجية مضافة' : 'No external models added'}</p>
+                {/* External AI Providers Section */}
+                <div className="mb-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? '🔗 ربط حساب خارجي' : '🔗 Connect External Account'}</h4>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{lang === 'ar' ? 'استخدم مفتاح API الخاص بك - الاستهلاك من رصيدك' : 'Use your own API key - usage from your balance'}</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {settings.aiModels.map((model, idx) => (
-                      <div key={model.id} className="bg-muted/30 border border-border rounded-xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-muted-foreground">#{idx + 1}</span>
-                          <div className="flex gap-2">
-                            <button onClick={() => {
-                              const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
-                              updateSettings({ aiModels: updated });
-                            }} className={`px-3 py-1 rounded-lg text-[10px] font-bold ${model.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
-                              {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
+
+                  {/* Provider Cards */}
+                  {!addingProvider && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                      {providerPresets.map(p => (
+                        <button key={p.key} onClick={() => handleAddFromProvider(p.key)}
+                          className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group">
+                          <span className="text-2xl">{p.icon}</span>
+                          <span className="text-xs font-bold text-foreground group-hover:text-primary">{p.label}</span>
+                          <span className="text-[9px] text-muted-foreground text-center">{p.models}</span>
+                          <span className="text-[10px] text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"><Plus size={10} />{lang === 'ar' ? 'ربط' : 'Connect'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add New Model Form */}
+                  {addingProvider && (() => {
+                    const preset = providerPresets.find(p => p.key === addingProvider)!;
+                    return (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 mb-5">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{preset.icon}</span>
+                            <div>
+                              <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? `ربط حساب ${preset.label}` : `Connect ${preset.label} Account`}</h4>
+                              <p className="text-[10px] text-muted-foreground">{preset.guide[lang]}</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setAddingProvider(null)} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground"><X size={14} /></button>
+                        </div>
+
+                        {/* Step-by-step guide */}
+                        <div className="bg-background/60 rounded-lg p-3 mb-4 border border-border/50">
+                          <p className="text-[10px] font-bold text-foreground mb-1.5">{lang === 'ar' ? '📋 كيف تحصل على المفتاح؟' : '📋 How to get your key?'}</p>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{preset.guide[lang]}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'اسم النموذج (اختياري)' : 'Model Name (optional)'}</label>
+                              <input value={newModelName} onChange={e => setNewModelName(e.target.value)} className={inputClass} placeholder={preset.models.split(',')[0].trim()} />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-foreground mb-1 flex items-center gap-1">
+                                <Lock size={10} />{lang === 'ar' ? 'مفتاح API *' : 'API Key *'}
+                              </label>
+                              <input type="password" value={newApiKey} onChange={e => setNewApiKey(e.target.value)} className={inputClass} placeholder={preset.placeholder} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
+                            <input value={newEndpoint} onChange={e => setNewEndpoint(e.target.value)} className={inputClass} />
+                            <p className="text-[9px] text-muted-foreground mt-1">{lang === 'ar' ? 'تم ملؤها تلقائياً - غيّرها فقط إذا كان لديك endpoint مخصص' : 'Auto-filled - change only if you have a custom endpoint'}</p>
+                          </div>
+                          <div className="flex items-center gap-3 pt-2">
+                            <button onClick={handleSaveNewModel} disabled={!newApiKey.trim()}
+                              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20">
+                              <CheckCircle size={14} />{lang === 'ar' ? 'ربط الحساب وتفعيله' : 'Connect & Activate'}
                             </button>
-                            <button onClick={() => {
-                              updateSettings({ aiModels: settings.aiModels.filter(m => m.id !== model.id) });
-                            }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center">
-                              <Trash2 size={14} />
+                            <button onClick={() => setAddingProvider(null)} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
+                              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'اسم النموذج' : 'Model Name'}</label>
-                            <input value={model.name} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, name: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass} placeholder="gpt-4, claude-3, etc." />
+                      </motion.div>
+                    );
+                  })()}
+                </div>
+
+                {/* Connected External Models */}
+                {settings.aiModels.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Zap size={14} className="text-primary" />
+                      {lang === 'ar' ? 'الحسابات المربوطة' : 'Connected Accounts'}
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{settings.aiModels.length}</span>
+                    </h4>
+                    <div className="space-y-3">
+                      {settings.aiModels.map((model) => {
+                        const preset = providerPresets.find(p => p.key === model.provider);
+                        return (
+                          <div key={model.id} className={`rounded-xl p-4 border transition-all ${model.isActive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-muted/30 border-border'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-lg">{preset?.icon || '⚙️'}</span>
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">{preset?.label || model.provider}</p>
+                                  <p className="text-[10px] text-muted-foreground">{model.name || preset?.models.split(',')[0].trim()}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => {
+                                  const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
+                                  updateSettings({ aiModels: updated });
+                                }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${model.isActive ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-muted text-muted-foreground border border-border'}`}>
+                                  {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
+                                </button>
+                                <button onClick={() => updateSettings({ aiModels: settings.aiModels.filter(m => m.id !== model.id) })}
+                                  className="w-8 h-8 rounded-lg text-destructive/40 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all">
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-1"><Lock size={10} />
+                                {showApiKey[model.id] ? model.apiKey : '••••••••' + model.apiKey.slice(-4)}
+                              </span>
+                              <button onClick={() => setShowApiKey(prev => ({ ...prev, [model.id]: !prev[model.id] }))}
+                                className="text-primary hover:underline flex items-center gap-0.5">
+                                {showApiKey[model.id] ? <><Eye size={10} />{lang === 'ar' ? 'إخفاء' : 'Hide'}</> : <><Eye size={10} />{lang === 'ar' ? 'إظهار' : 'Show'}</>}
+                              </button>
+                              <span className="text-muted-foreground/50">|</span>
+                              <span className="truncate max-w-[200px]">{model.endpoint}</span>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'المزود' : 'Provider'}</label>
-                            <select value={model.provider} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, provider: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass}>
-                              <option value="openai">OpenAI</option>
-                              <option value="anthropic">Anthropic</option>
-                              <option value="google">Google AI</option>
-                              <option value="custom">{lang === 'ar' ? 'مخصص' : 'Custom'}</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'مفتاح API' : 'API Key'}</label>
-                            <input type="password" value={model.apiKey} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, apiKey: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass} placeholder="sk-..." />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
-                            <input value={model.endpoint} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, endpoint: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass} placeholder="https://api.openai.com/v1/chat/completions" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {settings.aiModels.length === 0 && !addingProvider && (
+                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
+                    <div className="text-3xl mb-2">🔌</div>
+                    <p className="text-sm font-semibold">{lang === 'ar' ? 'لم يتم ربط حساب خارجي بعد' : 'No external account connected yet'}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{lang === 'ar' ? 'اختر مزود من الأعلى لربط حسابك الشخصي' : 'Choose a provider above to connect your personal account'}</p>
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {activeTab === 'pwa' && (
               <div className="p-7">
