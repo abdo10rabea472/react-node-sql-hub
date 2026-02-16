@@ -873,9 +873,9 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
           {aiLoading && !analyticsResult && (
             <div className="text-center py-20"><Loader size={48} className="mx-auto text-primary animate-spin mb-4" /><p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري التحليل...' : 'Running AI...'}</p></div>
           )}
-          {analyticsResult ? (
-            <div className="space-y-4">
-              {/* Overall Score */}
+           {analyticsResult ? (
+            <div className="space-y-5">
+              {/* Overall Score + Summary */}
               <div className={`${cardClass} bg-gradient-to-br from-card to-primary/5`}>
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <GaugeChart value={analyticsResult.overallScore || 75} label={isAr ? 'الأداء العام' : 'Overall'} />
@@ -886,36 +886,79 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 </div>
               </div>
 
-              {/* Key Insights Grid */}
+              {/* Charts Row 1: Sales Trend + Revenue Distribution */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {analyticsResult.salesAnalysis && (
                   <div className={cardClass}>
-                    <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                      <TrendingUp size={16} className="text-emerald-500" />{isAr ? 'المبيعات' : 'Sales'}
+                    <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+                      <TrendingUp size={16} className="text-emerald-500" />{isAr ? 'اتجاه المبيعات' : 'Sales Trend'}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${analyticsResult.salesAnalysis.trend === 'up' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
                         {analyticsResult.salesAnalysis.trend === 'up' ? '↑' : '↓'} {analyticsResult.salesAnalysis.growthRate}%
                       </span>
                     </h3>
-                    <p className="text-xs text-muted-foreground mb-3">{analyticsResult.salesAnalysis.summary}</p>
-                    {rawData && <MiniBarChart data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} />}
+                    <p className="text-[11px] text-muted-foreground mb-3">{analyticsResult.salesAnalysis.summary}</p>
+                    {rawData && <AreaChart data={rawData.invoices.slice(0, 15).map((i: any) => Number(i.total_amount || 0))} color="#10b981" />}
                   </div>
                 )}
-                {analyticsResult.recommendations?.length > 0 && (
-                  <div className={cardClass}>
-                    <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2"><Zap size={16} className="text-primary" />{isAr ? 'توصيات AI' : 'AI Tips'}</h3>
-                    <div className="space-y-2">
-                      {analyticsResult.recommendations.slice(0, 4).map((r: any, i: number) => (
-                        <div key={i} className="flex items-start gap-2 p-2 bg-muted/50 rounded-xl">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${r.impact === 'high' ? 'bg-red-500/10 text-red-600' : r.impact === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'}`}>
-                            {r.impact === 'high' ? '🔴' : r.impact === 'medium' ? '🟡' : '🔵'}
-                          </span>
-                          <div><p className="text-xs font-bold text-foreground">{r.title}</p><p className="text-[10px] text-muted-foreground">{r.description}</p></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <BarChart3 size={16} className="text-purple-500" />{isAr ? 'توزيع الإيرادات' : 'Revenue Distribution'}
+                  </h3>
+                  {rawData && (
+                    <DonutChart segments={[
+                      { value: rawData.invoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0), color: '#10b981', label: isAr ? 'إيرادات' : 'Revenue' },
+                      { value: rawData.expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0), color: '#ef4444', label: isAr ? 'مصروفات' : 'Expenses' },
+                      { value: rawData.purchases.reduce((s: number, p: any) => s + Number(p.total_cost || 0), 0), color: '#f59e0b', label: isAr ? 'مشتريات' : 'Purchases' },
+                    ]} label={rawData.invoices.length.toString()} />
+                  )}
+                </div>
               </div>
+
+              {/* Charts Row 2: Performance Radar + Top Items Bar */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <Target size={16} className="text-indigo-500" />{isAr ? 'مؤشرات الأداء' : 'Performance Radar'}
+                  </h3>
+                  <RadarChart
+                    data={[
+                      analyticsResult.overallScore || 70,
+                      analyticsResult.customerAnalysis?.retentionRate || 60,
+                      Math.min(100, (rawData?.invoices?.length || 0) * 3),
+                      analyticsResult.forecasting?.confidence || 50,
+                      Math.min(100, 100 - (analyticsResult.customerAnalysis?.atRisk || 0) * 10),
+                    ]}
+                    labels={isAr ? ['الأداء', 'الاحتفاظ', 'المبيعات', 'التنبؤ', 'الاستقرار'] : ['Performance', 'Retention', 'Sales', 'Forecast', 'Stability']}
+                  />
+                </div>
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <BarChart3 size={16} className="text-blue-500" />{isAr ? 'أحدث الفواتير' : 'Recent Invoices'}
+                  </h3>
+                  {rawData && <MiniBarChart data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} height={100} />}
+                  <div className="flex justify-between mt-3 text-[10px] text-muted-foreground font-semibold">
+                    <span>{isAr ? 'الأقدم' : 'Oldest'}</span>
+                    <span>{isAr ? 'الأحدث' : 'Newest'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Recommendations */}
+              {analyticsResult.recommendations?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2"><Zap size={16} className="text-primary" />{isAr ? 'توصيات AI' : 'AI Recommendations'}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {analyticsResult.recommendations.slice(0, 4).map((r: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 p-3 bg-muted/50 rounded-xl border border-border/50">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 mt-0.5 ${r.impact === 'high' ? 'bg-red-500/10 text-red-600' : r.impact === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {r.impact === 'high' ? '🔴' : r.impact === 'medium' ? '🟡' : '🔵'}
+                        </span>
+                        <div><p className="text-xs font-bold text-foreground">{r.title}</p><p className="text-[10px] text-muted-foreground">{r.description}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Fraud Alerts */}
               {analyticsResult.fraudAlerts?.length > 0 && (
@@ -936,7 +979,7 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 </div>
               )}
             </div>
-          ) : !aiLoading && (
+           ) : !aiLoading && (
             <div className="text-center py-20"><Brain size={48} className="mx-auto text-muted-foreground/20 mb-4" /><p className="text-muted-foreground text-sm">{isAr ? 'جاري تحميل التحليلات...' : 'Loading...'}</p></div>
           )}
         </div>
