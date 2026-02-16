@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.8221da28221b4d0cab5484da531691bb',
+  appId: 'com.stodio.app',
   appName: 'STODIO',
   webDir: 'dist',
   server: {
