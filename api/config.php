@@ -61,10 +61,10 @@ function getEnvValue($key, $default = null)
 }
 
 $host = getEnvValue('DB_HOST', 'localhost');
-$db_name = getEnvValue('DB_NAME', 'u842627858_eltahan');
-$username = getEnvValue('DB_USER', 'u842627858_eltahan');
-$password = getEnvValue('DB_PASSWORD', '@Lloush//722');
-$jwt_secret = getEnvValue('JWT_SECRET', '@Lloush//722');
+$db_name = getEnvValue('DB_NAME', '');
+$username = getEnvValue('DB_USER', '');
+$password = getEnvValue('DB_PASSWORD', '');
+$jwt_secret = getEnvValue('JWT_SECRET', '');
 
 if (empty($db_name) || empty($username) || empty($password) || empty($jwt_secret)) {
     error_log("CRITICAL: Missing required environment variables (DB_NAME, DB_USER, DB_PASSWORD, JWT_SECRET)");
