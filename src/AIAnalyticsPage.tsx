@@ -5,8 +5,9 @@ import {
   Users, AlertTriangle, Clock, Target,
   Zap, Eye, Lock, Unlock, Trash2, RotateCcw,
   Award, RefreshCw, Loader,
-  Lightbulb, Package,
-  UserCheck, FileText, Bell, Info
+  Lightbulb, Package, BarChart3, DollarSign, Gauge,
+  UserCheck, FileText, Bell, Info, LineChart,
+  Wallet, Star, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import {
@@ -140,7 +141,7 @@ async function loadDecisionLog(): Promise<any[]> {
 const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   const { settings } = useSettings();
   const isAr = settings.lang === 'ar';
-  const [activeTab, setActiveTab] = useState<'analytics' | 'decisions' | 'permissions' | 'monitoring'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'decisions' | 'permissions' | 'monitoring' | 'forecasting' | 'financial' | 'customers' | 'employees' | 'inventory' | 'decision-log' | 'trash' | 'kpis' | 'strategic'>('analytics');
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
@@ -360,10 +361,19 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   };
 
   const tabs = [
-    { key: 'analytics' as const, label: isAr ? 'التحليلات الذكية' : 'AI Analytics', icon: Brain, color: 'from-purple-500 to-indigo-600' },
+    { key: 'analytics' as const, label: isAr ? 'التحليلات الذكية' : 'Smart Analytics', icon: Brain, color: 'from-purple-500 to-indigo-600' },
     { key: 'decisions' as const, label: isAr ? 'مركز القرارات' : 'Decision Center', icon: Target, color: 'from-emerald-500 to-teal-600' },
     { key: 'permissions' as const, label: isAr ? 'الصلاحيات' : 'Permissions', icon: Shield, color: 'from-amber-500 to-orange-600' },
-    { key: 'monitoring' as const, label: isAr ? 'المراقبة الذكية' : 'Smart Monitor', icon: Eye, color: 'from-red-500 to-pink-600' },
+    { key: 'monitoring' as const, label: isAr ? 'المراقبة الذكية' : 'Monitoring', icon: Eye, color: 'from-red-500 to-pink-600' },
+    { key: 'forecasting' as const, label: isAr ? 'التنبؤات المستقبلية' : 'Forecasting', icon: Lightbulb, color: 'from-cyan-500 to-blue-600' },
+    { key: 'financial' as const, label: isAr ? 'الأداء المالي' : 'Financial', icon: DollarSign, color: 'from-green-500 to-emerald-600' },
+    { key: 'customers' as const, label: isAr ? 'تحليل العملاء' : 'Customers', icon: Users, color: 'from-blue-500 to-indigo-600' },
+    { key: 'employees' as const, label: isAr ? 'تحليل الموظفين' : 'Employees', icon: UserCheck, color: 'from-violet-500 to-purple-600' },
+    { key: 'inventory' as const, label: isAr ? 'تحليل المخزون' : 'Inventory', icon: Package, color: 'from-amber-500 to-yellow-600' },
+    { key: 'decision-log' as const, label: isAr ? 'سجل القرارات' : 'Decision Log', icon: FileText, color: 'from-slate-500 to-gray-600' },
+    { key: 'trash' as const, label: isAr ? 'سلة المهملات' : 'Trash', icon: Trash2, color: 'from-rose-500 to-red-600' },
+    { key: 'kpis' as const, label: isAr ? 'مؤشرات الأداء' : 'KPIs', icon: Gauge, color: 'from-teal-500 to-cyan-600' },
+    { key: 'strategic' as const, label: isAr ? 'الإجراءات الاستراتيجية' : 'Strategic', icon: Zap, color: 'from-orange-500 to-red-600' },
   ];
 
   const cardClass = "bg-card border border-border rounded-2xl p-5 transition-all hover:shadow-lg hover:shadow-primary/5";
@@ -970,6 +980,516 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
             <div className="text-center py-20">
               <Eye size={48} className="mx-auto text-muted-foreground/20 mb-4" />
               <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحميل المراقبة...' : 'Loading monitoring...'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ FORECASTING TAB ═══════════════ */}
+      {activeTab === 'forecasting' && (
+        <div className="space-y-5">
+          {analyticsResult?.forecasting ? (
+            <>
+              <div className={`${cardClass} bg-gradient-to-br from-card to-cyan-500/5`}>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Lightbulb size={16} className="text-cyan-500" />
+                  {isAr ? 'التنبؤات المستقبلية' : 'Forecasting & Predictions'}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{analyticsResult.forecasting.summary}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-muted rounded-xl p-4 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.forecasting.nextMonthRevenue?.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'إيرادات الشهر القادم' : 'Next Month Revenue'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-4 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.forecasting.confidence}%</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'نسبة الثقة' : 'Confidence'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-4 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.forecasting.expectedGrowth || '—'}%</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'النمو المتوقع' : 'Expected Growth'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-4 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.forecasting.seasonalTrend || '—'}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'الاتجاه الموسمي' : 'Seasonal Trend'}</p>
+                  </div>
+                </div>
+              </div>
+              {analyticsResult.forecasting.predictions?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'تنبؤات تفصيلية' : 'Detailed Predictions'}</h3>
+                  <div className="space-y-2">
+                    {analyticsResult.forecasting.predictions.map((p: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
+                        <span className="text-[10px] px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-600 font-bold">{p.type || p.category}</span>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold">{p.title || p.description}</p>
+                          <p className="text-[10px] text-muted-foreground">{p.details || p.impact}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <Lightbulb size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل أولاً للحصول على التنبؤات' : 'Run analysis first for predictions'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ FINANCIAL TAB ═══════════════ */}
+      {activeTab === 'financial' && (
+        <div className="space-y-5">
+          {analyticsResult?.salesAnalysis ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: isAr ? 'إجمالي الإيرادات' : 'Total Revenue', value: rawData?.invoices?.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0)?.toLocaleString() || '0', icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                  { label: isAr ? 'إجمالي المصروفات' : 'Total Expenses', value: rawData?.expenses?.reduce((s: number, e: any) => s + Number(e.amount || 0), 0)?.toLocaleString() || '0', icon: Wallet, color: 'text-red-500', bg: 'bg-red-500/10' },
+                  { label: isAr ? 'صافي الربح' : 'Net Profit', value: ((rawData?.invoices?.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0) || 0) - (rawData?.expenses?.reduce((s: number, e: any) => s + Number(e.amount || 0), 0) || 0)).toLocaleString(), icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                  { label: isAr ? 'عدد المعاملات' : 'Transactions', value: (rawData?.invoices?.length || 0) + (rawData?.expenses?.length || 0), icon: BarChart3, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                ].map((s, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className={cardClass}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center`}>
+                        <s.icon size={16} className={s.color} />
+                      </div>
+                    </div>
+                    <p className="text-lg font-black text-foreground">{s.value}</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground">{s.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+              <div className={cardClass}>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <LineChart size={16} className="text-emerald-500" />
+                  {isAr ? 'تحليل المبيعات المالي' : 'Financial Sales Analysis'}
+                </h3>
+                <p className="text-xs text-muted-foreground mb-3">{analyticsResult.salesAnalysis.summary}</p>
+                {rawData && <MiniBarChart data={rawData.invoices.slice(0, 20).map((i: any) => Number(i.total_amount || 0))} height={80} />}
+              </div>
+              {analyticsResult.financialInsights && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'رؤى مالية متقدمة' : 'Advanced Financial Insights'}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{analyticsResult.financialInsights.summary || analyticsResult.financialInsights}</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <DollarSign size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل للحصول على البيانات المالية' : 'Run analysis for financial data'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ CUSTOMER INSIGHTS TAB ═══════════════ */}
+      {activeTab === 'customers' && (
+        <div className="space-y-5">
+          {analyticsResult?.customerAnalysis ? (
+            <>
+              <div className={`${cardClass} bg-gradient-to-br from-card to-blue-500/5`}>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Users size={16} className="text-blue-500" />
+                  {isAr ? 'تحليل العملاء الشامل' : 'Customer Insights'}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{analyticsResult.customerAnalysis.summary}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.customerAnalysis.totalActive}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'عملاء نشطين' : 'Active'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.customerAnalysis.retentionRate}%</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'معدل الاحتفاظ' : 'Retention'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.customerAnalysis.atRisk || 0}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'معرضين للفقد' : 'At Risk'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{rawData?.customers?.length || 0}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'إجمالي العملاء' : 'Total'}</p>
+                  </div>
+                </div>
+              </div>
+              {analyticsResult.customerAnalysis.topCustomers?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'أفضل العملاء' : 'Top Customers'}</h3>
+                  <div className="space-y-2">
+                    {analyticsResult.customerAnalysis.topCustomers.map((c: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">{(c.name || '?')[0]}</div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.details || c.totalSpent}</p>
+                        </div>
+                        <Star size={14} className="text-amber-500" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analyticsResult.customerAnalysis.riskCustomers?.length > 0 && (
+                <div className={`${cardClass} border-amber-500/20`}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-amber-500" />
+                    {isAr ? 'العملاء الأكثر خطورة' : 'At-Risk Customers'}
+                  </h3>
+                  <div className="space-y-2">
+                    {analyticsResult.customerAnalysis.riskCustomers.map((c: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-amber-500/5 rounded-xl border border-amber-500/10">
+                        <RiskBadge level={c.riskLevel || 'medium'} />
+                        <div className="flex-1">
+                          <p className="text-xs font-bold">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.reason}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <Users size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل للحصول على رؤى العملاء' : 'Run analysis for customer insights'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ EMPLOYEE ANALYTICS TAB ═══════════════ */}
+      {activeTab === 'employees' && (
+        <div className="space-y-5">
+          {analyticsResult?.employeeAnalysis?.length > 0 || decisionsResult?.employeeScores?.length > 0 ? (
+            <>
+              {decisionsResult?.employeeScores?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Award size={16} className="text-purple-500" />
+                    {isAr ? 'تقييم أداء الموظفين بالنقاط' : 'Employee Performance Scores'}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {decisionsResult.employeeScores.map((e: any, i: number) => (
+                      <div key={i} className="bg-muted/50 rounded-xl p-4 text-center space-y-2">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent mx-auto flex items-center justify-center text-white font-bold text-sm">
+                          {(e.name || '?')[0]}
+                        </div>
+                        <p className="text-xs font-bold truncate">{e.name}</p>
+                        <GaugeChart value={e.overallScore || 0} size={80} label={isAr ? 'الكلي' : 'Overall'} />
+                        <div className="flex gap-2 text-[10px]">
+                          <span className="flex-1 bg-card rounded-lg py-1.5 font-bold">📊 {e.performanceScore}</span>
+                          <span className="flex-1 bg-card rounded-lg py-1.5 font-bold">⏰ {e.attendanceScore}</span>
+                        </div>
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold inline-block ${e.recommendation === 'promote' ? 'bg-emerald-500/10 text-emerald-600' : e.recommendation === 'warn' ? 'bg-amber-500/10 text-amber-600' : e.recommendation === 'review' ? 'bg-red-500/10 text-red-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {e.recommendation === 'promote' ? (isAr ? '⬆️ ترقية' : '⬆️ Promote') :
+                            e.recommendation === 'warn' ? (isAr ? '⚠️ تحذير' : '⚠️ Warn') :
+                              e.recommendation === 'review' ? (isAr ? '🔍 مراجعة' : '🔍 Review') :
+                                (isAr ? '✅ استمرار' : '✅ Maintain')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analyticsResult?.employeeAnalysis?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <UserCheck size={16} className="text-violet-500" />
+                    {isAr ? 'تقييم الموظفين' : 'Employee Ratings'}
+                  </h3>
+                  <div className="space-y-2">
+                    {analyticsResult.employeeAnalysis.map((e: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          {(e.name || '?')[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate">{e.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{e.notes}</p>
+                        </div>
+                        <p className={`text-sm font-black ${e.score >= 80 ? 'text-emerald-600' : e.score >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{e.score}/100</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <UserCheck size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل للحصول على تحليلات الموظفين' : 'Run analysis for employee analytics'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ INVENTORY ANALYTICS TAB ═══════════════ */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-5">
+          {analyticsResult?.inventoryAnalysis ? (
+            <>
+              <div className={`${cardClass} bg-gradient-to-br from-card to-amber-500/5`}>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Package size={16} className="text-amber-500" />
+                  {isAr ? 'تحليل المخزون الشامل' : 'Inventory Analytics'}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{analyticsResult.inventoryAnalysis.summary}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{rawData?.inventory?.length || 0}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'إجمالي المنتجات' : 'Total Products'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.inventoryAnalysis.lowStock || 0}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'مخزون منخفض' : 'Low Stock'}</p>
+                  </div>
+                  <div className="bg-muted rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-foreground">{analyticsResult.inventoryAnalysis.outOfStock || 0}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{isAr ? 'نفد المخزون' : 'Out of Stock'}</p>
+                  </div>
+                </div>
+              </div>
+              {analyticsResult.inventoryAnalysis.alerts?.length > 0 && (
+                <div className={`${cardClass} border-amber-500/20`}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-amber-500" />
+                    {isAr ? 'تنبيهات المخزون' : 'Inventory Alerts'}
+                  </h3>
+                  <div className="space-y-2">
+                    {analyticsResult.inventoryAnalysis.alerts.map((a: string, i: number) => (
+                      <div key={i} className="flex items-start gap-2 text-[11px] text-amber-600 bg-amber-500/5 rounded-lg px-3 py-2">
+                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />{a}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analyticsResult.inventoryAnalysis.fastMoving?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'المنتجات السريعة الحركة' : 'Fast Moving Products'}</h3>
+                  <div className="space-y-1.5">
+                    {analyticsResult.inventoryAnalysis.fastMoving.map((p: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-2 bg-emerald-500/5 rounded-lg">
+                        <ArrowUpRight size={14} className="text-emerald-500" />
+                        <span className="text-xs font-bold flex-1">{p.name || p}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analyticsResult.inventoryAnalysis.slowMoving?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'المنتجات الراكدة' : 'Slow Moving Products'}</h3>
+                  <div className="space-y-1.5">
+                    {analyticsResult.inventoryAnalysis.slowMoving.map((p: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-2 bg-red-500/5 rounded-lg">
+                        <ArrowDownRight size={14} className="text-red-500" />
+                        <span className="text-xs font-bold flex-1">{p.name || p}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <Package size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل للحصول على تحليلات المخزون' : 'Run analysis for inventory analytics'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ DECISION LOG TAB ═══════════════ */}
+      {activeTab === 'decision-log' && (
+        <div className="space-y-5">
+          <div className={cardClass}>
+            <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <FileText size={16} className="text-slate-500" />
+              {isAr ? 'سجل جميع قرارات الذكاء الاصطناعي' : 'All AI Decision Log'}
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">{decisionLog.length} {isAr ? 'قرار' : 'decisions'}</span>
+            </h3>
+            {decisionLog.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">{isAr ? 'لا يوجد قرارات مسجلة بعد' : 'No decisions logged yet'}</p>
+            ) : (
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {decisionLog.map((d: any, i: number) => (
+                  <motion.div key={i} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                    className={`p-4 rounded-xl border ${d.severity === 'critical' ? 'border-red-500/20 bg-red-500/5' : d.severity === 'warning' ? 'border-amber-500/20 bg-amber-500/5' : 'border-border bg-muted/30'}`}>
+                    <div className="flex items-start gap-3">
+                      <Clock size={14} className="text-muted-foreground shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-xs font-bold text-foreground">{d.title}</p>
+                          <RiskBadge level={d.severity || 'info'} />
+                        </div>
+                        {d.description && <p className="text-[11px] text-muted-foreground mb-1">{d.description}</p>}
+                        {d.reasoning && <p className="text-[10px] text-primary font-semibold">🎯 {d.reasoning}</p>}
+                        <p className="text-[9px] text-muted-foreground mt-1">
+                          {new Date(d.timestamp || d.created_at).toLocaleString('ar-EG')}
+                          {d.targetName && ` • ${isAr ? 'الهدف:' : 'Target:'} ${d.targetName}`}
+                          {d.executedBy && ` • ${isAr ? 'بواسطة:' : 'By:'} ${d.executedBy}`}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ TRASH TAB ═══════════════ */}
+      {activeTab === 'trash' && (
+        <div className="space-y-5">
+          <div className={cardClass}>
+            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+              <Trash2 size={16} className="text-red-500" />
+              {isAr ? 'سلة المهملات الذكية' : 'Smart Trash Bin'}
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">{trashItems.length} {isAr ? 'عنصر' : 'items'}</span>
+            </h3>
+            {trashItems.length === 0 ? (
+              <div className="text-center py-12">
+                <Trash2 size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+                <p className="text-sm text-muted-foreground font-semibold">{isAr ? 'سلة المهملات فارغة - جميع العمليات الحساسة محمية' : 'Trash is empty - all sensitive operations are protected'}</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {trashItems.map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 p-4 bg-red-500/5 rounded-xl border border-red-500/10">
+                    <Trash2 size={14} className="text-red-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate">{item.name || item.description || item.invoice_no || `#${item.id}`}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item._trashType} • {isAr ? 'حذف بواسطة' : 'By'} {item._deletedBy} • {new Date(item._deletedAt).toLocaleString('ar-EG')}
+                      </p>
+                    </div>
+                    <button onClick={() => restoreFromTrash(i)}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold hover:bg-emerald-500/20 transition-all flex items-center gap-1">
+                      <RotateCcw size={10} />{isAr ? 'استعادة' : 'Restore'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════ KPIs TAB ═══════════════ */}
+      {activeTab === 'kpis' && (
+        <div className="space-y-5">
+          {rawData ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {(() => {
+                  const totalRevenue = rawData.invoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+                  const totalExpenses = rawData.expenses.reduce((s: number, e: any) => s + Number(e.amount || 0), 0);
+                  const todayInvoices = rawData.invoices.filter((i: any) => new Date(i.created_at).toDateString() === new Date().toDateString());
+                  const todayRevenue = todayInvoices.reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+                  return [
+                    { label: isAr ? 'مبيعات اليوم' : 'Today Sales', value: todayRevenue.toLocaleString(), sub: `${todayInvoices.length} ${isAr ? 'فاتورة' : 'invoices'}`, color: 'text-emerald-500' },
+                    { label: isAr ? 'إجمالي الإيرادات' : 'Total Revenue', value: totalRevenue.toLocaleString(), sub: settings.currency, color: 'text-blue-500' },
+                    { label: isAr ? 'صافي الربح' : 'Net Profit', value: (totalRevenue - totalExpenses).toLocaleString(), sub: `${((totalRevenue - totalExpenses) / (totalRevenue || 1) * 100).toFixed(1)}%`, color: 'text-purple-500' },
+                    { label: isAr ? 'العملاء النشطين' : 'Active Clients', value: rawData.customers.length, sub: isAr ? 'عميل' : 'clients', color: 'text-amber-500' },
+                  ].map((kpi, i) => (
+                    <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }} className={cardClass}>
+                      <p className={`text-xl font-black ${kpi.color}`}>{kpi.value}</p>
+                      <p className="text-[11px] font-bold text-foreground mt-1">{kpi.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{kpi.sub}</p>
+                    </motion.div>
+                  ));
+                })()}
+              </div>
+              {analyticsResult && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className={`${cardClass} text-center`}>
+                    <GaugeChart value={analyticsResult.overallScore || 0} label={isAr ? 'الأداء العام' : 'Overall'} />
+                  </div>
+                  <div className={`${cardClass} text-center`}>
+                    <GaugeChart value={analyticsResult.customerAnalysis?.retentionRate || 0} label={isAr ? 'الاحتفاظ بالعملاء' : 'Retention'} />
+                  </div>
+                  <div className={`${cardClass} text-center`}>
+                    <GaugeChart value={analyticsResult.forecasting?.confidence || 0} label={isAr ? 'ثقة التنبؤ' : 'Forecast Confidence'} />
+                  </div>
+                </div>
+              )}
+              <div className={cardClass}>
+                <h3 className="text-sm font-bold text-foreground mb-3">{isAr ? 'مخطط الإيرادات' : 'Revenue Chart'}</h3>
+                <MiniBarChart data={rawData.invoices.slice(0, 20).map((i: any) => Number(i.total_amount || 0))} height={100} />
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <Gauge size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحميل المؤشرات...' : 'Loading KPIs...'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════ STRATEGIC ACTIONS TAB ═══════════════ */}
+      {activeTab === 'strategic' && (
+        <div className="space-y-5">
+          {decisionsResult?.strategicActions?.length > 0 || analyticsResult?.recommendations?.length > 0 ? (
+            <>
+              {decisionsResult?.strategicActions?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Zap size={16} className="text-orange-500" />
+                    {isAr ? 'الإجراءات الاستراتيجية المقترحة' : 'Proposed Strategic Actions'}
+                  </h3>
+                  <div className="space-y-3">
+                    {decisionsResult.strategicActions.map((a: any, i: number) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                        className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl border border-border/50">
+                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold ${a.priority === 'high' ? 'bg-red-500/10 text-red-600' : a.priority === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {a.priority === 'high' ? (isAr ? '🔴 حرج' : '🔴 High') : a.priority === 'medium' ? (isAr ? '🟡 متوسط' : '🟡 Medium') : (isAr ? '🔵 منخفض' : '🔵 Low')}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold">{a.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{a.expectedImpact}</p>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-muted font-semibold text-muted-foreground">{a.category}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {analyticsResult?.recommendations?.length > 0 && (
+                <div className={cardClass}>
+                  <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <Sparkles size={16} className="text-primary" />
+                    {isAr ? 'توصيات AI لزيادة الأرباح' : 'AI Profit Recommendations'}
+                  </h3>
+                  <div className="space-y-2">
+                    {analyticsResult.recommendations.map((r: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 p-3 bg-muted/50 rounded-xl">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${r.impact === 'high' ? 'bg-red-500/10 text-red-600' : r.impact === 'medium' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                          {r.impact === 'high' ? '🔴' : r.impact === 'medium' ? '🟡' : '🔵'}
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-foreground">{r.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{r.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-20">
+              <Zap size={48} className="mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'شغّل التحليل للحصول على الإجراءات الاستراتيجية' : 'Run analysis for strategic actions'}</p>
             </div>
           )}
         </div>
