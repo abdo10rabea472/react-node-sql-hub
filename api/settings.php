@@ -3,12 +3,15 @@
 require_once 'config.php';
 require_once 'jwt_helper.php';
 
-JWT::setSecret($jwt_secret);
-$token = getBearerToken();
-if (!JWT::verify($token))
-    sendResponse(["message" => "غير مصرح"], 401);
-
 $method = $_SERVER['REQUEST_METHOD'];
+
+// GET settings is public (needed before login), PUT requires auth
+if ($method !== 'GET') {
+    JWT::setSecret($jwt_secret);
+    $token = getBearerToken();
+    if (!JWT::verify($token))
+        sendResponse(["message" => "غير مصرح"], 401);
+}
 
 if ($method === 'GET') {
     // Auto-add missing columns

@@ -203,7 +203,12 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // Admin bootstrap removed - admin user should already exist in database
+    // --- Bootstrap default admin if none exists ---
+    $adminCheck = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+    if ($adminCheck == 0) {
+        $hashedPw = password_hash('admin', PASSWORD_DEFAULT);
+        $pdo->exec("INSERT INTO users (name, email, password, role, status) VALUES ('Administrator', 'admin@stodio.com', '$hashedPw', 'admin', 'active')");
+    }
 
     // --- SEED SAMPLE DATA IF NO ACTIVITIES EXIST ---
     $activityCount = $pdo->query("SELECT COUNT(*) FROM activity_logs")->fetchColumn();
