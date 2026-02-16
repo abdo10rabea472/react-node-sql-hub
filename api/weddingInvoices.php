@@ -57,7 +57,8 @@ if ($method === 'POST') {
         sendResponse(["id" => $invoice_id, "invoice_no" => $invoice_no]);
     } catch (Exception $e) {
         $pdo->rollBack();
-        sendResponse(["message" => "Error creating wedding invoice: " . $e->getMessage()], 500);
+        error_log("Wedding invoice error: " . $e->getMessage());
+        sendResponse(["message" => "خطأ في إنشاء فاتورة الزفاف"], 500);
     }
 }
 

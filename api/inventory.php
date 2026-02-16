@@ -72,6 +72,9 @@ if ($path === '' || empty($path)) {
         sendResponse(["message" => "Item updated"]);
     }
     if ($method === 'DELETE' && $id) {
+        if ($decoded['role'] !== 'admin') {
+            sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+        }
         $pdo->prepare("DELETE FROM inventory WHERE id = ?")->execute([$id]);
         sendResponse(["message" => "Item deleted"]);
     }

@@ -94,9 +94,12 @@ $salaryColumns = [
     ['advances_deduction', "DECIMAL(10,2) DEFAULT 0 AFTER late_deduction"],
     ['attendance_summary', "TEXT AFTER notes"],
 ];
+$allowedSalaryCols = array_column($salaryColumns, 0);
 foreach ($salaryColumns as [$col, $def]) {
+    if (!in_array($col, $allowedSalaryCols)) continue;
+    if (!preg_match('/^[a-z_]+$/', $col)) continue;
     if (!columnExists($pdo, 'salaries', $col)) {
-        $pdo->exec("ALTER TABLE salaries ADD COLUMN $col $def");
+        $pdo->exec("ALTER TABLE salaries ADD COLUMN " . $col . " " . $def);
     }
 }
 
@@ -120,6 +123,9 @@ if ($path === '' || $path === 'expenses') {
         sendResponse(["message" => "Expense added", "id" => $pdo->lastInsertId()]);
     }
     if ($method === 'DELETE' && $id) {
+        if ($decoded['role'] !== 'admin') {
+            sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+        }
         $pdo->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
         sendResponse(["message" => "Expense deleted"]);
     }

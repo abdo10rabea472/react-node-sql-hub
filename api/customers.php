@@ -65,7 +65,9 @@ if ($method === 'PUT' && $id) {
 }
 
 if ($method === 'DELETE' && $id) {
-    // Get customer name before deletion for logging
+    if ($decoded['role'] !== 'admin') {
+        sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+    }
     $stmt = $pdo->prepare("SELECT name FROM customers WHERE id = ?");
     $stmt->execute([$id]);
     $customer = $stmt->fetch(PDO::FETCH_ASSOC);
