@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Users, Bell, Settings, LogOut, Search, Sun, Moon, Menu, X, ShoppingCart, Globe, Camera, FileText, UserCog, Heart, Sparkles, ClipboardList, Aperture } from 'lucide-react';
 import UsersPage from './UsersPage';
@@ -12,7 +12,7 @@ import PurchasesPage from './PurchasesPage';
 import AccountDetailsPage from './AccountDetailsPage';
 import NotificationCenter from './NotificationCenter';
 import MyReportsPage from './MyReportsPage';
-import AdvancedDashboard from './AdvancedDashboard';
+const AdvancedDashboard = lazy(() => import('./AdvancedDashboard'));
 import { useSettings } from './SettingsContext';
 import type { User } from './App';
 
@@ -62,7 +62,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     if (activeNav === 9) return <SettingsPage />;
     if (activeNav === 10) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
 
-    return <AdvancedDashboard userName={user.name} userId={user.id} />;
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-[300px]"><div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" /></div>}>
+        <AdvancedDashboard userName={user.name} userId={user.id} />
+      </Suspense>
+    );
   };
 
   return (
