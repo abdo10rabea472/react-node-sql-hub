@@ -13,7 +13,9 @@ lerna-debug.log*
 **/whatsapp-session/
 **/_IGNORE_*
 _IGNORE_studio-whatsapp/
-whatsapp-server/
+# WhatsApp Code (Sessions are still ignored below)
+# whatsapp-server/ (Removed this line to allow code upload)
+
 # Dependencies
 node_modules/
 **/node_modules/

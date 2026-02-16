@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">STODIO</string>
+    <string name="title_activity_main">STODIO</string>
+    <string name="package_name">com.stodio.app</string>
+    <string name="custom_url_scheme">com.stodio.app</string>
+</resources>
