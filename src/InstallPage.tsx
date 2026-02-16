@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Download, CheckCircle, Loader, ExternalLink, Share } from 'lucide-react';
+import { Download, CheckCircle, Loader } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -92,39 +92,35 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <Download size={22} />{lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
           </button>
         ) : (
-          /* Fallback instructions */
-          <div className="space-y-4 text-start">
-            {isIOS ? (
-              <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-                <p className="text-sm font-bold text-foreground text-center mb-3">{lang === 'ar' ? 'خطوات التثبيت على iPhone' : 'Install on iPhone'}</p>
-                {[
-                  { step: '1', text: lang === 'ar' ? 'اضغط على زر المشاركة' : 'Tap the Share button', icon: <Share size={14} /> },
-                  { step: '2', text: lang === 'ar' ? 'اختر "إضافة إلى الشاشة الرئيسية"' : 'Select "Add to Home Screen"' },
-                  { step: '3', text: lang === 'ar' ? 'اضغط "إضافة"' : 'Tap "Add"' },
-                ].map(s => (
-                  <div key={s.step} className="flex items-center gap-3 bg-muted/30 rounded-lg px-4 py-2.5">
-                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{s.step}</span>
-                    <span className="text-sm text-foreground flex items-center gap-1.5">{s.text} {s.icon}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    // Open app URL in new tab so beforeinstallprompt can fire
-                    window.open(window.location.origin, '_blank');
-                  }}
-                  className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-base hover:opacity-90 transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
-                >
-                  <ExternalLink size={22} />{lang === 'ar' ? 'فتح التطبيق للتثبيت' : 'Open App to Install'}
-                </button>
-                <p className="text-xs text-muted-foreground text-center">
-                  {lang === 'ar'
-                    ? 'سيُفتح التطبيق في نافذة جديدة، ثم اضغط على أيقونة التثبيت ⬇️ في شريط العنوان'
-                    : 'App will open in a new window, then click the install icon ⬇️ in the address bar'}
-                </p>
-              </div>
+          /* Fallback: try to trigger install or register SW and retry */
+          <div className="space-y-4">
+            <button
+              onClick={async () => {
+                setIsInstalling(true);
+                // Try registering SW to trigger beforeinstallprompt
+                if ('serviceWorker' in navigator) {
+                  await navigator.serviceWorker.register('/sw.js').catch(() => {});
+                }
+                // Wait briefly for prompt event
+                await new Promise(r => setTimeout(r, 1500));
+                if (deferredPrompt) {
+                  handleInstall();
+                } else {
+                  // Last resort: open in standalone window
+                  window.open(window.location.origin, '_blank', 'noopener');
+                  setIsInstalling(false);
+                }
+              }}
+              className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-base hover:opacity-90 transition-all shadow-lg shadow-primary/25 active:scale-[0.98]"
+            >
+              <Download size={22} />{lang === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
+            </button>
+            {isIOS && (
+              <p className="text-xs text-muted-foreground text-center">
+                {lang === 'ar'
+                  ? 'على iPhone: اضغط زر المشاركة ← "إضافة إلى الشاشة الرئيسية"'
+                  : 'On iPhone: Tap Share → "Add to Home Screen"'}
+              </p>
             )}
           </div>
         )}
