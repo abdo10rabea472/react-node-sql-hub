@@ -4,6 +4,7 @@ import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphon
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 import { supabase } from './integrations/supabase/client';
+import AccountDetailsPage from './AccountDetailsPage';
 
 const currencies = [
   { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
@@ -34,7 +35,11 @@ const translations = {
   en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending', deductions: 'Deductions & Incentives', aiModels: 'AI Models', deductionMode: 'Deduction Mode', perMinute: 'Per Minute', perHour: 'Per Hour', perHalfDay: 'Per Half Day', graceMinutes: 'Grace Period (minutes)', overtimeMultiplier: 'Overtime Multiplier', deductionAmount: 'Deduction Amount' },
 };
 
-const SettingsPage: React.FC = () => {
+interface SettingsPageProps {
+  user?: { id: number; name: string; email: string; role: string };
+}
+
+const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
   const { settings, updateSettings } = useSettings();
   const lang = settings.lang;
   const t = translations[lang];
@@ -156,11 +161,17 @@ const SettingsPage: React.FC = () => {
           <motion.div key={activeTab} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             {activeTab === 'profile' && (
               <div className="p-7">
-                <div className="flex items-center gap-2.5 text-primary mb-6"><User size={20} /><h3 className="text-base font-bold text-foreground">{t.profile}</h3></div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.adminName}</label><input value={adminName} onChange={e => setAdminName(e.target.value)} className={inputClass} /></div>
-                  <div><label className="block text-xs font-semibold text-foreground mb-2">{t.phone}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Smartphone size={16} className="text-muted-foreground" /><input defaultValue="+201068694941" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
-                </div>
+                {user ? (
+                  <AccountDetailsPage user={user} onUpdate={() => {}} />
+                ) : (
+                  <div>
+                    <div className="flex items-center gap-2.5 text-primary mb-6"><User size={20} /><h3 className="text-base font-bold text-foreground">{t.profile}</h3></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div><label className="block text-xs font-semibold text-foreground mb-2">{t.adminName}</label><input value={adminName} onChange={e => setAdminName(e.target.value)} className={inputClass} /></div>
+                      <div><label className="block text-xs font-semibold text-foreground mb-2">{t.phone}</label><div className="flex items-center gap-2.5 bg-muted border border-border rounded-lg px-3.5 h-11 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10"><Smartphone size={16} className="text-muted-foreground" /><input defaultValue="+201068694941" className="flex-1 bg-transparent border-none outline-none text-foreground text-sm font-cairo" /></div></div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
