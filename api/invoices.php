@@ -98,7 +98,8 @@ if ($method === 'POST') {
         sendResponse(["id" => $invoice_id, "invoice_no" => $invoice_no, "message" => "Invoice created successfully"]);
     } catch (Exception $e) {
         $pdo->rollBack();
-        sendResponse(["message" => "خطأ في إنشاء الفاتورة", "error" => $e->getMessage()], 500);
+        error_log("Invoice creation error: " . $e->getMessage());
+        sendResponse(["message" => "خطأ في إنشاء الفاتورة"], 500);
     }
 }
 
@@ -122,6 +123,9 @@ if ($method === 'PUT' && $id) {
 }
 
 if ($method === 'DELETE' && $id) {
+    if ($decoded['role'] !== 'admin') {
+        sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+    }
     $stmt = $pdo->prepare("DELETE FROM invoices WHERE id = ?");
     $stmt->execute([$id]);
     logActivity($pdo, $decoded['id'], "حذف فاتورة استوديو", "invoice", $id);

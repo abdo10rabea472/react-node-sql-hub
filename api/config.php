@@ -25,10 +25,8 @@ $corsOrigin = in_array($origin, $allowedOrigins) ? $origin : '';
 if ($corsOrigin) {
     header("Access-Control-Allow-Origin: $corsOrigin");
     header("Vary: Origin");
-} else {
-    // Fallback: allow all for compatibility (can be tightened later)
-    header("Access-Control-Allow-Origin: *");
 }
+// No fallback wildcard - unknown origins are denied
 
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -63,10 +61,17 @@ function getEnvValue($key, $default = null)
 }
 
 $host = getEnvValue('DB_HOST', 'localhost');
-$db_name = getEnvValue('DB_NAME', 'u842627858_eltahan');
-$username = getEnvValue('DB_USER', 'u842627858_eltahan');
-$password = getEnvValue('DB_PASSWORD', '@Lloush//722');
-$jwt_secret = getEnvValue('JWT_SECRET', 'your-secret-key-here-change-in-production');
+$db_name = getEnvValue('DB_NAME', '');
+$username = getEnvValue('DB_USER', '');
+$password = getEnvValue('DB_PASSWORD', '');
+$jwt_secret = getEnvValue('JWT_SECRET', '');
+
+if (empty($db_name) || empty($username) || empty($password) || empty($jwt_secret)) {
+    error_log("CRITICAL: Missing required environment variables (DB_NAME, DB_USER, DB_PASSWORD, JWT_SECRET)");
+    http_response_code(500);
+    echo json_encode(["message" => "خطأ في إعدادات الخادم"]);
+    exit();
+}
 
 try {
     $pdo = new PDO("mysql:host=$host", $username, $password);
@@ -238,6 +243,9 @@ try {
     echo json_encode(["message" => "خطأ في الاتصال بقاعدة البيانات"]);
     exit();
 }
+
+// CORS fallback: remove wildcard, deny unknown origins
+
 
 function sendResponse($data, $status = 200)
 {

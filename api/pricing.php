@@ -37,6 +37,10 @@ if ($method === 'PUT' && $id) {
 }
 
 if ($method === 'DELETE' && $id) {
+    $decoded = JWT::verify($token);
+    if (!$decoded || $decoded['role'] !== 'admin') {
+        sendResponse(["message" => "غير مصرح - صلاحيات غير كافية"], 403);
+    }
     $pdo->prepare("DELETE FROM pricing_packages WHERE id = ?")->execute([$id]);
     sendResponse(["message" => "Package deleted"]);
 }

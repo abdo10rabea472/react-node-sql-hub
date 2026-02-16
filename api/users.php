@@ -117,16 +117,23 @@ if ($method === 'GET' && $path === 'stats') {
 
     } catch (Exception $e) {
         // Fallback or error report for any unhandled exception in the stats block
-        sendResponse(["message" => "Error calculating stats: " . $e->getMessage()], 500);
+        error_log("Stats error: " . $e->getMessage());
+        sendResponse(["message" => "خطأ في حساب الإحصائيات"], 500);
     }
 }
 
 // Add missing columns
-foreach (['base_salary' => 'DECIMAL(10,2) DEFAULT 0', 'shift_start' => "VARCHAR(10) DEFAULT '09:00'", 'shift_end' => "VARCHAR(10) DEFAULT '17:00'"] as $col => $def) {
+$allowedUserColumns = [
+    'base_salary' => 'DECIMAL(10,2) DEFAULT 0',
+    'shift_start' => "VARCHAR(10) DEFAULT '09:00'",
+    'shift_end' => "VARCHAR(10) DEFAULT '17:00'"
+];
+foreach ($allowedUserColumns as $col => $def) {
+    if (!preg_match('/^[a-z_]+$/', $col)) continue;
     $chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = ?");
     $chk->execute([$col]);
     if ((int)$chk->fetchColumn() === 0) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN $col $def");
+        $pdo->exec("ALTER TABLE users ADD COLUMN " . $col . " " . $def);
     }
 }
 
