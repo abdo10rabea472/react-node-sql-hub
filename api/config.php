@@ -203,18 +203,7 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
-    // Ensure Admin exists
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = 'admin@stodio.com'");
-    $stmt->execute();
-    if (!$stmt->fetch()) {
-        $adminPass = password_hash('admin', PASSWORD_DEFAULT);
-        $pdo->exec("INSERT INTO users (name, email, password, role) VALUES ('Administrator', 'admin@stodio.com', '$adminPass', 'admin')");
-        $newAdminId = $pdo->lastInsertId();
-
-        // Log Initial Activity
-        $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type) VALUES (?, ?, ?)")
-            ->execute([$newAdminId, "نظام سجل الأنشطة متصل وجاهز", "system"]);
-    }
+    // Admin bootstrap removed - admin user should already exist in database
 
     // --- SEED SAMPLE DATA IF NO ACTIVITIES EXIST ---
     $activityCount = $pdo->query("SELECT COUNT(*) FROM activity_logs")->fetchColumn();
