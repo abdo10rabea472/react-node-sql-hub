@@ -117,16 +117,19 @@ if ($method === 'GET' && $path === 'stats') {
     }
 }
 
+// Add base_salary column if not exists
+try { $pdo->exec("ALTER TABLE users ADD COLUMN base_salary DECIMAL(10,2) DEFAULT 0"); } catch (Exception $e) {}
+
 if ($method === 'GET') {
     if ($id) {
-        $stmt = $pdo->prepare("SELECT id, name, email, role, status, created_at FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, name, email, role, status, base_salary, created_at FROM users WHERE id = ?");
         $stmt->execute([$id]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$user)
             sendResponse(["message" => "مستخدم غير موجود"], 404);
         sendResponse($user);
     } else {
-        $users = $pdo->query("SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $users = $pdo->query("SELECT id, name, email, role, status, base_salary, created_at FROM users ORDER BY created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
         sendResponse($users);
     }
 }
@@ -153,7 +156,7 @@ if ($method === 'PUT' && $id) {
     $data = json_decode(file_get_contents("php://input"), true);
     $fields = [];
     $values = [];
-    foreach (['name', 'email', 'role', 'status'] as $key) {
+    foreach (['name', 'email', 'role', 'status', 'base_salary'] as $key) {
         if (isset($data[$key])) {
             $fields[] = "$key = ?";
             $values[] = $data[$key];

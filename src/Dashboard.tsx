@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   ShoppingCart,
+  Wallet,
   Globe,
   Camera,
   FileText,
@@ -30,6 +31,7 @@ import InvoicesPage from "./InvoicesPage";
 import WeddingPricingPage from "./WeddingPricingPage";
 import WeddingInvoicesPage from "./WeddingInvoicesPage";
 import PurchasesPage from "./PurchasesPage";
+import ExpensesPage from "./ExpensesPage";
 import AccountDetailsPage from "./AccountDetailsPage";
 import NotificationCenter from "./NotificationCenter";
 import MyReportsPage from "./MyReportsPage";
@@ -70,7 +72,8 @@ const translations = {
     invoices: "الفواتير",
     weddingPricing: "أسعار الزفاف",
     weddingInvoices: "فواتير الزفاف",
-    purchases: "المشتريات",
+    purchases: "المخزون والمشتريات",
+    expenses: "المصاريف والمرتبات",
     reports: "التقارير",
   },
   en: {
@@ -100,7 +103,8 @@ const translations = {
     invoices: "Invoices",
     weddingPricing: "Wedding Pricing",
     weddingInvoices: "Wedding Invoices",
-    purchases: "Purchases",
+    purchases: "Inventory & Purchases",
+    expenses: "Expenses & Payroll",
     reports: "Reports",
   },
 };
@@ -113,6 +117,7 @@ const navItems = [
   { icon: Sparkles, key: "weddingPricing" as const },
   { icon: Heart, key: "weddingInvoices" as const },
   { icon: ShoppingCart, key: "purchases" as const },
+  { icon: Wallet, key: "expenses" as const },
   { icon: ClipboardList, key: "reports" as const },
   { icon: UserCog, key: "users" as const },
   { icon: Settings, key: "settings" as const },
@@ -149,10 +154,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     if (activeNav === 4) return <WeddingPricingPage />;
     if (activeNav === 5) return <WeddingInvoicesPage user={user} />;
     if (activeNav === 6) return <PurchasesPage user={user} />;
-    if (activeNav === 7) return <MyReportsPage userId={user.id} />;
-    if (activeNav === 8) return <UsersPage />;
-    if (activeNav === 9) return <SettingsPage />;
-    if (activeNav === 10) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
+    if (activeNav === 7) return <ExpensesPage user={user} />;
+    if (activeNav === 8) return <MyReportsPage userId={user.id} />;
+    if (activeNav === 9) return <UsersPage />;
+    if (activeNav === 10) return <SettingsPage />;
+    if (activeNav === 11) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
 
     return (
       <Suspense

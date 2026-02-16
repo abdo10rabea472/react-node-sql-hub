@@ -137,6 +137,26 @@ export const getExpenses = () => api.get("/expenses.php?path=expenses");
 export const createExpense = (data: any) => api.post("/expenses.php?path=expenses", data);
 export const deleteExpense = (id: number) => api.delete(`/expenses.php?path=expenses&id=${id}`);
 
+// Advances (سلف)
+export const getAdvances = () => api.get("/expenses.php?path=advances");
+export const getAdvancesByUser = (userId: number) => api.get(`/expenses.php?path=advances&user_id=${userId}`);
+export const createAdvance = (data: any) => api.post("/expenses.php?path=advances", data);
+export const updateAdvance = (id: number, data: any) => api.put(`/expenses.php?path=advances&id=${id}`, data);
+export const deleteAdvance = (id: number) => api.delete(`/expenses.php?path=advances&id=${id}`);
+
+// Attendance
+export const getAttendance = (userId?: number, month?: string) => {
+  let url = "/expenses.php?path=attendance";
+  if (userId) url += `&user_id=${userId}`;
+  if (month) url += `&month=${month}`;
+  return api.get(url);
+};
+export const createAttendance = (data: any) => api.post("/expenses.php?path=attendance", data);
+export const deleteAttendance = (id: number) => api.delete(`/expenses.php?path=attendance&id=${id}`);
+
+// Salary Report
+export const getSalaryReport = (userId: number, month: string) => api.get(`/expenses.php?path=salary-report&user_id=${userId}&month=${month}`);
+
 // Salaries
 export const getSalaries = () => api.get("/expenses.php?path=salaries");
 export const createSalary = (data: any) => api.post("/expenses.php?path=salaries", data);
