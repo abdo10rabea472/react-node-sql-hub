@@ -66,8 +66,23 @@ const GaugeChart = ({ value, size = 140, label }: { value: number; size?: number
   );
 };
 
+// ─── Tooltip Component ───
+const ChartTooltip = ({ x, y, content, visible }: { x: number; y: number; content: string; visible: boolean }) => {
+  if (!visible) return null;
+  return (
+    <motion.g initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.15 }}>
+      <rect x={x - 45} y={y - 32} width="90" height="24" rx="6"
+        fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" filter="url(#tooltip-shadow)" />
+      <text x={x} y={y - 17} textAnchor="middle" dominantBaseline="middle"
+        className="fill-popover-foreground" fontSize="10" fontWeight="700">{content}</text>
+      <polygon points={`${x - 5},${y - 8} ${x + 5},${y - 8} ${x},${y - 2}`} fill="hsl(var(--popover))" />
+    </motion.g>
+  );
+};
+
 // ─── Donut Chart ───
 const DonutChart = ({ segments, size = 160, label }: { segments: { value: number; color: string; label: string }[]; size?: number; label?: string }) => {
+  const [hovered, setHovered] = useState<number | null>(null);
   const r = (size - 40) / 2;
   const circumference = 2 * Math.PI * r;
   const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
@@ -76,27 +91,43 @@ const DonutChart = ({ segments, size = 160, label }: { segments: { value: number
   return (
     <div className="flex flex-col items-center gap-3">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <filter id="tooltip-shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
+        </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="14" />
         {segments.map((seg, i) => {
           const segLen = (seg.value / total) * circumference;
-          void 0; // accumulated offset for rotation
           const rotation = (accumulated / total) * 360 - 90;
           accumulated += seg.value;
+          const isHov = hovered === i;
           return (
             <motion.circle key={i} cx={size / 2} cy={size / 2} r={r}
-              fill="none" stroke={seg.color} strokeWidth="14" strokeLinecap="round"
+              fill="none" stroke={seg.color} strokeWidth={isHov ? 20 : 14} strokeLinecap="round"
               strokeDasharray={`${segLen} ${circumference - segLen}`}
-              style={{ transformOrigin: `${size / 2}px ${size / 2}px` }}
+              style={{ transformOrigin: `${size / 2}px ${size / 2}px`, cursor: 'pointer' }}
               initial={{ rotate: rotation, opacity: 0 }}
-              animate={{ rotate: rotation, opacity: 1 }}
-              transition={{ duration: 0.8, delay: i * 0.15 }} />
+              animate={{ rotate: rotation, opacity: 1, strokeWidth: isHov ? 20 : 14 }}
+              transition={{ duration: 0.3 }}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)} />
           );
         })}
-        {label && <text x={size / 2} y={size / 2 + 5} textAnchor="middle" className="fill-foreground" fontSize="13" fontWeight="800">{label}</text>}
+        {hovered !== null && (
+          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <text x={size / 2} y={size / 2 - 6} textAnchor="middle" className="fill-foreground" fontSize="16" fontWeight="900">
+              {segments[hovered].value.toLocaleString()}
+            </text>
+            <text x={size / 2} y={size / 2 + 12} textAnchor="middle" className="fill-muted-foreground" fontSize="10" fontWeight="600">
+              {segments[hovered].label} ({((segments[hovered].value / total) * 100).toFixed(1)}%)
+            </text>
+          </motion.g>
+        )}
+        {hovered === null && label && <text x={size / 2} y={size / 2 + 5} textAnchor="middle" className="fill-foreground" fontSize="13" fontWeight="800">{label}</text>}
       </svg>
       <div className="flex flex-wrap justify-center gap-3">
         {segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1.5">
+          <div key={i} className={`flex items-center gap-1.5 cursor-pointer transition-all ${hovered === i ? 'scale-110' : ''}`}
+            onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}>
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: seg.color }} />
             <span className="text-[10px] font-semibold text-muted-foreground">{seg.label} ({seg.value})</span>
           </div>
@@ -107,7 +138,8 @@ const DonutChart = ({ segments, size = 160, label }: { segments: { value: number
 };
 
 // ─── Area Chart ───
-const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data: number[]; height?: number; color?: string }) => {
+const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))', labels }: { data: number[]; height?: number; color?: string; labels?: string[] }) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const filteredData = data.filter(v => v > 0);
   if (filteredData.length < 2) {
     return (
@@ -116,7 +148,7 @@ const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data
       </div>
     );
   }
-  const padding = { top: 15, right: 15, bottom: 10, left: 15 };
+  const padding = { top: 25, right: 15, bottom: 10, left: 15 };
   const w = 500;
   const h = height;
   const chartW = w - padding.left - padding.right;
@@ -128,11 +160,11 @@ const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data
   const points = filteredData.map((v, i) => ({
     x: padding.left + (i / Math.max(filteredData.length - 1, 1)) * chartW,
     y: padding.top + chartH - ((v - min) / range) * chartH,
+    value: v,
   }));
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
   const areaPath = `${linePath} L ${points[points.length - 1]?.x || 0} ${padding.top + chartH} L ${padding.left} ${padding.top + chartH} Z`;
-
   const uid = `area-${Math.random().toString(36).slice(2, 6)}`;
 
   return (
@@ -142,6 +174,7 @@ const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data
           <stop offset="0%" stopColor={color} stopOpacity="0.35" />
           <stop offset="100%" stopColor={color} stopOpacity="0.03" />
         </linearGradient>
+        <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
       </defs>
       {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
@@ -149,57 +182,88 @@ const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data
           y1={padding.top + chartH * (1 - ratio)} y2={padding.top + chartH * (1 - ratio)}
           stroke="hsl(var(--border))" strokeWidth="0.6" strokeDasharray="4,4" opacity={0.3} />
       ))}
-      {/* Area fill */}
       <motion.path d={areaPath} fill={`url(#${uid}-fill)`}
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} />
-      {/* Line */}
       <motion.path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
         initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeOut" }} />
-      {/* Data points */}
+      {/* Hover vertical line */}
+      {hoveredIdx !== null && (
+        <line x1={points[hoveredIdx].x} x2={points[hoveredIdx].x}
+          y1={padding.top} y2={padding.top + chartH}
+          stroke={color} strokeWidth="1" strokeDasharray="3,3" opacity={0.5} />
+      )}
+      {/* Data points with hover */}
       {points.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r="5" fill={color} opacity={0.12} />
-          <motion.circle cx={p.x} cy={p.y} r="3" fill={color} stroke="hsl(var(--card))" strokeWidth="1.5"
-            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.04 }} />
+        <g key={i} onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)} style={{ cursor: 'pointer' }}>
+          <circle cx={p.x} cy={p.y} r="12" fill="transparent" />
+          <circle cx={p.x} cy={p.y} r={hoveredIdx === i ? 7 : 5} fill={color} opacity={hoveredIdx === i ? 0.25 : 0.12}
+            style={{ transition: 'all 0.2s' }} />
+          <motion.circle cx={p.x} cy={p.y} r={hoveredIdx === i ? 5 : 3} fill={color} stroke="hsl(var(--card))" strokeWidth="1.5"
+            initial={{ scale: 0 }} animate={{ scale: hoveredIdx === i ? 1.3 : 1 }}
+            transition={{ delay: hoveredIdx === i ? 0 : 0.3 + i * 0.04 }} />
         </g>
       ))}
+      {/* Tooltip */}
+      {hoveredIdx !== null && (
+        <ChartTooltip x={points[hoveredIdx].x} y={points[hoveredIdx].y}
+          content={`${labels?.[hoveredIdx] || `#${hoveredIdx + 1}`}: ${points[hoveredIdx].value.toLocaleString()}`}
+          visible={true} />
+      )}
     </svg>
   );
 };
 
 // ─── Mini Bar Chart ───
-const MiniBarChart = ({ data, height = 80, colors }: { data: number[]; height?: number; colors?: string[] }) => {
+const MiniBarChart = ({ data, height = 80, colors, labels }: { data: number[]; height?: number; colors?: string[]; labels?: string[] }) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const max = Math.max(...data, 1);
   const barCount = data.length;
   const gap = 2;
   const barW = Math.max(4, (120 - gap * barCount) / barCount);
   const uid = `bar-${Math.random().toString(36).slice(2, 6)}`;
+  const totalW = barCount * (barW + gap);
   return (
-    <svg width="100%" viewBox={`0 0 ${barCount * (barW + gap)} ${height + 8}`} preserveAspectRatio="xMidYMid meet">
+    <svg width="100%" viewBox={`0 0 ${totalW} ${height + 32}`} preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id={`${uid}-grad`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.95" />
           <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.3" />
         </linearGradient>
+        <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
       </defs>
       {data.map((v, i) => {
         const barH = Math.max(3, (v / max) * height);
         const barColor = colors?.[i] || `url(#${uid}-grad)`;
+        const isHov = hoveredIdx === i;
         return (
-          <g key={i}>
+          <g key={i} onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)} style={{ cursor: 'pointer' }}>
+            <rect x={i * (barW + gap) - 2} width={barW + 4} y={0} height={height + 8} fill="transparent" />
             <motion.rect x={i * (barW + gap)} width={barW} rx="3"
               y={height + 4} height={0} fill={barColor}
-              animate={{ y: height + 4 - barH, height: barH }}
-              transition={{ duration: 0.7, delay: i * 0.03, ease: "easeOut" }} />
+              animate={{ y: height + 4 - barH, height: barH, opacity: isHov ? 1 : 0.85 }}
+              transition={{ duration: 0.7, delay: i * 0.03, ease: "easeOut" }}
+              stroke={isHov ? 'hsl(var(--primary))' : 'none'} strokeWidth={isHov ? 1.5 : 0} />
           </g>
         );
       })}
+      {hoveredIdx !== null && (
+        <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <rect x={Math.max(0, Math.min(hoveredIdx * (barW + gap) + barW / 2 - 30, totalW - 60))}
+            y={0} width="60" height="20" rx="5"
+            fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" filter={`url(#${uid}-ts)`} />
+          <text x={hoveredIdx * (barW + gap) + barW / 2}
+            y={13} textAnchor="middle" className="fill-popover-foreground" fontSize="9" fontWeight="700">
+            {labels?.[hoveredIdx] || ''} {data[hoveredIdx].toLocaleString()}
+          </text>
+        </motion.g>
+      )}
     </svg>
   );
 };
 
 // ─── Radar Chart ───
 const RadarChart = ({ data, labels, size = 260, colors }: { data: number[]; labels: string[]; size?: number; colors?: string[] }) => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const cx = size / 2, cy = size / 2, r = size * 0.32;
   const n = data.length;
   const angleStep = (Math.PI * 2) / n;
@@ -225,45 +289,54 @@ const RadarChart = ({ data, labels, size = 260, colors }: { data: number[]; labe
           <feGaussianBlur stdDeviation="2" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
+        <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
       </defs>
-      {/* Background shape fill */}
       {(() => {
         const pts = Array.from({ length: n }, (_, i) => getPoint(i, 1));
         return <polygon points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="hsl(var(--muted))" opacity={0.15} />;
       })()}
-      {/* Grid levels */}
       {levels.map((l) => {
         const pts = Array.from({ length: n }, (_, i) => getPoint(i, l));
         return <polygon key={l} points={pts.map(p => `${p.x},${p.y}`).join(' ')}
           fill="none" stroke="hsl(var(--border))" strokeWidth="0.7" opacity={0.35}
           strokeDasharray={l < 1 ? "2,3" : "none"} />;
       })}
-      {/* Axes */}
       {Array.from({ length: n }, (_, i) => {
         const p = getPoint(i, 1);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.25} />;
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y}
+          stroke={hoveredIdx === i ? "hsl(var(--primary))" : "hsl(var(--border))"} strokeWidth={hoveredIdx === i ? 1.5 : 0.5} opacity={hoveredIdx === i ? 0.6 : 0.25}
+          style={{ transition: 'all 0.2s' }} />;
       })}
-      {/* Data polygon */}
       <motion.path d={pathD} fill={`url(#${uid}-fill)`} stroke="hsl(var(--primary))" strokeWidth="2.5"
         filter={`url(#${uid}-glow)`} strokeLinejoin="round"
         initial={{ opacity: 0, scale: 0.2 }} animate={{ opacity: 1, scale: 1 }}
         style={{ transformOrigin: `${cx}px ${cy}px` }} transition={{ duration: 1.2, ease: "easeOut" }} />
-      {/* Data points */}
-      {dataPoints.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r="7" fill={colors?.[i] || "hsl(var(--primary))"} opacity={0.12} />
-          <motion.circle cx={p.x} cy={p.y} r="4" fill={colors?.[i] || "hsl(var(--primary))"} stroke="hsl(var(--card))" strokeWidth="2"
-            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.4 + i * 0.08 }} />
-        </g>
-      ))}
-      {/* Labels with value badges */}
+      {dataPoints.map((p, i) => {
+        const isHov = hoveredIdx === i;
+        return (
+          <g key={i} onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)} style={{ cursor: 'pointer' }}>
+            <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
+            <circle cx={p.x} cy={p.y} r={isHov ? 10 : 7} fill={colors?.[i] || "hsl(var(--primary))"} opacity={isHov ? 0.2 : 0.12}
+              style={{ transition: 'all 0.2s' }} />
+            <motion.circle cx={p.x} cy={p.y} r={isHov ? 6 : 4} fill={colors?.[i] || "hsl(var(--primary))"} stroke="hsl(var(--card))" strokeWidth="2"
+              animate={{ scale: isHov ? 1.4 : 1 }} transition={{ duration: 0.2 }} />
+          </g>
+        );
+      })}
+      {hoveredIdx !== null && (
+        <ChartTooltip x={dataPoints[hoveredIdx].x} y={dataPoints[hoveredIdx].y}
+          content={`${labels[hoveredIdx]}: ${Math.round(data[hoveredIdx])}%`} visible={true} />
+      )}
       {Array.from({ length: n }, (_, i) => {
         const p = getPoint(i, 1.35);
         const val = Math.round(data[i]);
+        const isHov = hoveredIdx === i;
         return (
-          <g key={`label-${i}`}>
+          <g key={`label-${i}`} style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setHoveredIdx(i)} onMouseLeave={() => setHoveredIdx(null)}>
             <text x={p.x} y={p.y - 7} textAnchor="middle" dominantBaseline="middle"
-              className="fill-foreground" fontSize="9.5" fontWeight="800">{labels[i]}</text>
+              className="fill-foreground" fontSize={isHov ? "11" : "9.5"} fontWeight="800"
+              style={{ transition: 'font-size 0.2s' }}>{labels[i]}</text>
             <rect x={p.x - 14} y={p.y + 1} width="28" height="14" rx="4"
               fill={val >= 70 ? '#10b98120' : val >= 40 ? '#f59e0b20' : '#ef444420'} />
             <text x={p.x} y={p.y + 9} textAnchor="middle" dominantBaseline="middle"
@@ -278,6 +351,7 @@ const RadarChart = ({ data, labels, size = 260, colors }: { data: number[]; labe
 
 // ─── Heatmap Chart ───
 const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: string[]; yLabels: string[] }) => {
+  const [hovered, setHovered] = useState<{ x: number; y: number } | null>(null);
   const maxVal = Math.max(...data.flat(), 1);
   const cols = xLabels.length;
   const rows = yLabels.length;
@@ -287,6 +361,7 @@ const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: s
   const labelH = 22;
   const totalW = labelW + cols * cellW + 12;
   const totalH = labelH + rows * cellH + 30;
+  const uid = `hm-${Math.random().toString(36).slice(2, 6)}`;
 
   const getColor = (val: number) => {
     const intensity = val / maxVal;
@@ -298,38 +373,56 @@ const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: s
   return (
     <div className="w-full overflow-x-auto">
       <svg width="100%" viewBox={`0 0 ${totalW} ${totalH}`} className="min-w-[340px]" preserveAspectRatio="xMidYMid meet">
-        {/* Y labels */}
+        <defs>
+          <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
+        </defs>
         {yLabels.map((l, i) => (
           <text key={`y-${i}`} x={labelW - 8} y={labelH + i * cellH + cellH / 2}
             textAnchor="end" dominantBaseline="middle"
             className="fill-muted-foreground" fontSize="9" fontWeight="700">{l}</text>
         ))}
-        {/* X labels - rotated */}
         {xLabels.map((l, i) => (
           <text key={`x-${i}`} x={labelW + i * cellW + cellW / 2} y={14}
             textAnchor="middle" dominantBaseline="middle"
             className="fill-muted-foreground" fontSize="8.5" fontWeight="700">{l}</text>
         ))}
-        {/* Cells with rounded corners */}
-        {data.map((row, y) => row.map((val, x) => (
-          <motion.rect key={`${x}-${y}`}
-            x={labelW + x * cellW + 2} y={labelH + y * cellH + 2}
-            width={cellW - 4} height={cellH - 4} rx="5"
-            fill={getColor(val)}
-            initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: (x + y) * 0.012, duration: 0.35 }}>
-            <title>{`${yLabels[y]} × ${xLabels[x]}: ${val}`}</title>
-          </motion.rect>
-        )))}
-        {/* Cell values */}
+        {data.map((row, y) => row.map((val, x) => {
+          const isHov = hovered?.x === x && hovered?.y === y;
+          return (
+            <motion.rect key={`${x}-${y}`}
+              x={labelW + x * cellW + 2} y={labelH + y * cellH + 2}
+              width={cellW - 4} height={cellH - 4} rx="5"
+              fill={getColor(val)}
+              stroke={isHov ? 'hsl(var(--primary))' : 'transparent'} strokeWidth={isHov ? 2 : 0}
+              style={{ cursor: 'pointer' }}
+              initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: isHov ? 1.08 : 1 }}
+              transition={{ delay: isHov ? 0 : (x + y) * 0.012, duration: 0.2 }}
+              onMouseEnter={() => setHovered({ x, y })}
+              onMouseLeave={() => setHovered(null)} />
+          );
+        }))}
         {data.map((row, y) => row.map((val, x) => val > 0 ? (
           <text key={`v-${x}-${y}`}
             x={labelW + x * cellW + cellW / 2} y={labelH + y * cellH + cellH / 2}
             textAnchor="middle" dominantBaseline="middle"
             className={val / maxVal > 0.5 ? 'fill-white' : 'fill-muted-foreground'}
-            fontSize="8.5" fontWeight="800" opacity={0.85}>{val}</text>
+            fontSize="8.5" fontWeight="800" opacity={0.85} style={{ pointerEvents: 'none' }}>{val}</text>
         ) : null))}
-        {/* Legend bar */}
+        {hovered && (() => {
+          const val = data[hovered.y][hovered.x];
+          const tx = labelW + hovered.x * cellW + cellW / 2;
+          const ty = labelH + hovered.y * cellH - 4;
+          return (
+            <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <rect x={tx - 50} y={ty - 28} width="100" height="22" rx="6"
+                fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" filter={`url(#${uid}-ts)`} />
+              <text x={tx} y={ty - 14} textAnchor="middle" dominantBaseline="middle"
+                className="fill-popover-foreground" fontSize="9" fontWeight="700">
+                {yLabels[hovered.y]} × {xLabels[hovered.x]}: {val}
+              </text>
+            </motion.g>
+          );
+        })()}
         <defs>
           <linearGradient id="heatmap-legend" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="hsl(var(--muted))" />
@@ -346,6 +439,7 @@ const HeatmapChart = ({ data, xLabels, yLabels }: { data: number[][]; xLabels: s
 
 // ─── Network Graph ───
 const NetworkGraph = ({ nodes, links }: { nodes: { id: string; label: string; size: number; color: string }[]; links: { source: string; target: string }[] }) => {
+  const [hoveredNode, setHoveredNode] = useState<number | null>(null);
   const size = 300;
   const cx = size / 2, cy = size / 2, r = size * 0.32;
   const positions = nodes.map((_, i) => {
@@ -353,15 +447,16 @@ const NetworkGraph = ({ nodes, links }: { nodes: { id: string; label: string; si
     return { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
   });
   const nodeMap = Object.fromEntries(nodes.map((n, i) => [n.id, i]));
+  const uid = `net-${Math.random().toString(36).slice(2, 6)}`;
 
   return (
     <svg width="100%" viewBox={`0 0 ${size} ${size}`} className="max-w-[360px] mx-auto">
       <defs>
-        <filter id="net-shadow">
+        <filter id={`${uid}-shadow`}>
           <feDropShadow dx="0" dy="1.5" stdDeviation="2.5" floodOpacity="0.15" />
         </filter>
+        <filter id={`${uid}-ts`}><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" /></filter>
       </defs>
-      {/* Links with gradient */}
       {links.map((l, i) => {
         const si = nodeMap[l.source], ti = nodeMap[l.target];
         if (si === undefined || ti === undefined) return null;
@@ -369,28 +464,29 @@ const NetworkGraph = ({ nodes, links }: { nodes: { id: string; label: string; si
         const my = (positions[si].y + positions[ti].y) / 2;
         const cx2 = mx + (cy - my) * 0.2;
         const cy2 = my + (mx - cx) * 0.2;
+        const isHighlighted = hoveredNode === si || hoveredNode === ti;
         return <motion.path key={i}
           d={`M ${positions[si].x} ${positions[si].y} Q ${cx2} ${cy2} ${positions[ti].x} ${positions[ti].y}`}
-          fill="none" stroke="hsl(var(--border))" strokeWidth="1.5" opacity={0.3}
+          fill="none" stroke={isHighlighted ? "hsl(var(--primary))" : "hsl(var(--border))"} 
+          strokeWidth={isHighlighted ? 2.5 : 1.5} opacity={isHighlighted ? 0.6 : 0.3}
+          style={{ transition: 'all 0.2s' }}
           initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7, delay: i * 0.03 }} />;
       })}
-      {/* Nodes */}
       {nodes.map((n, i) => {
         const nodeR = Math.max(n.size * 4, 12);
+        const isHov = hoveredNode === i;
         return (
-          <g key={n.id} filter="url(#net-shadow)">
-            {/* Pulse ring */}
+          <g key={n.id} filter={`url(#${uid}-shadow)`} style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setHoveredNode(i)} onMouseLeave={() => setHoveredNode(null)}>
             <motion.circle cx={positions[i].x} cy={positions[i].y} r={nodeR + 6}
-              fill="none" stroke={n.color} strokeWidth="1.5" opacity={0.2}
-              animate={{ r: [nodeR + 5, nodeR + 9, nodeR + 5] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} />
-            {/* Main node */}
+              fill="none" stroke={n.color} strokeWidth={isHov ? 2.5 : 1.5} opacity={isHov ? 0.4 : 0.2}
+              animate={{ r: isHov ? [nodeR + 6, nodeR + 12, nodeR + 6] : [nodeR + 5, nodeR + 9, nodeR + 5] }}
+              transition={{ duration: isHov ? 1.5 : 3, repeat: Infinity, ease: "easeInOut" }} />
             <motion.circle cx={positions[i].x} cy={positions[i].y} r={nodeR}
-              fill={n.color} opacity={0.9} stroke="hsl(var(--card))" strokeWidth="2"
-              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.06, type: "spring" }}>
-              <title>{n.label}</title>
-            </motion.circle>
-            {/* Label bg */}
+              fill={n.color} opacity={isHov ? 1 : 0.9} stroke="hsl(var(--card))" strokeWidth="2"
+              animate={{ scale: isHov ? 1.15 : 1 }}
+              style={{ transformOrigin: `${positions[i].x}px ${positions[i].y}px` }}
+              transition={{ duration: 0.2 }} />
             <rect x={positions[i].x - 22} y={positions[i].y + nodeR + 6} width="44" height="14" rx="4"
               fill="hsl(var(--card))" stroke="hsl(var(--border))" strokeWidth="0.5" opacity={0.9} />
             <text x={positions[i].x} y={positions[i].y + nodeR + 15} textAnchor="middle"
@@ -398,7 +494,21 @@ const NetworkGraph = ({ nodes, links }: { nodes: { id: string; label: string; si
           </g>
         );
       })}
-      {/* Legend */}
+      {hoveredNode !== null && (() => {
+        const hnR = Math.max(nodes[hoveredNode].size * 4, 12);
+        return (
+          <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <rect x={positions[hoveredNode].x - 50} y={positions[hoveredNode].y - hnR - 30}
+              width="100" height="22" rx="6"
+              fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" filter={`url(#${uid}-ts)`} />
+            <text x={positions[hoveredNode].x} y={positions[hoveredNode].y - hnR - 16}
+              textAnchor="middle" dominantBaseline="middle"
+              className="fill-popover-foreground" fontSize="9" fontWeight="700">
+              {nodes[hoveredNode].label} (حجم: {nodes[hoveredNode].size})
+            </text>
+          </motion.g>
+        );
+      })()}
       {[
         { color: '#10b981', label: '● In Stock' },
         { color: '#f59e0b', label: '● Low' },
