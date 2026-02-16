@@ -226,62 +226,78 @@ const SettingsPage: React.FC = () => {
               <div className="p-7">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2.5 text-primary"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
-                  <button onClick={() => {
-                    const newModel = { id: `model_${Date.now()}`, name: '', provider: 'openai', apiKey: '', endpoint: '', isActive: false };
-                    updateSettings({ aiModels: [...settings.aiModels, newModel] });
-                  }} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all">
-                    <Plus size={14} />{lang === 'ar' ? 'إضافة نموذج' : 'Add Model'}
-                  </button>
                 </div>
 
-                {/* Built-in Lovable AI models */}
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
-                    <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (Lovable AI)' : 'Built-in Models (Lovable AI)'}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'اختر النموذج المدمج الذي سيتم استخدامه في التحليلات. النماذج الأسرع أرخص تكلفة.' : 'Choose the built-in model for analytics. Faster models cost less.'}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
-                      { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning', cost: '💰💰💰' },
-                      { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context', cost: '💰💰💰' },
-                      { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost', cost: '💰' },
-                      { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest', cost: '💰' },
-                      { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning', cost: '💰💰💰' },
-                      { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost', cost: '💰💰' },
-                      { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical', cost: '💰' },
-                      { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning', cost: '💰💰💰' },
-                    ].map(m => (
-                      <button key={m.name} onClick={() => updateSettings({ selectedLovableModel: m.name } as any)}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start transition-all ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500/10 border-2 border-emerald-500/50 ring-1 ring-emerald-500/20' : 'bg-background/50 border border-border/50 hover:border-primary/30'}`}>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{m.desc} {m.cost}</p>
-                        </div>
-                        {(settings as any).selectedLovableModel === m.name && <CheckCircle size={14} className="text-emerald-500 shrink-0" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {settings.aiModels.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Brain size={40} className="mx-auto opacity-20 mb-3" />
-                    <p className="text-sm">{lang === 'ar' ? 'لا يوجد نماذج خارجية مضافة' : 'No external models added'}</p>
+                {/* Connection Status Banner */}
+                {settings.aiModels.some(m => m.isActive && m.apiKey) ? (
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 mb-5 flex items-center gap-3">
+                    <CheckCircle size={20} className="text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{lang === 'ar' ? 'حسابك مربوط ✓' : 'Your Account Connected ✓'}</p>
+                      <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'الذكاء الاصطناعي يعمل من رصيدك الخاص' : 'AI runs from your own balance'}</p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {settings.aiModels.map((model, idx) => (
-                      <div key={model.id} className="bg-muted/30 border border-border rounded-xl p-4 space-y-3">
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-center gap-3">
+                    <Brain size={20} className="text-amber-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{lang === 'ar' ? 'ربط حسابك مطلوب' : 'Account Connection Required'}</p>
+                      <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'أضف مفتاح API الخاص بك لتشغيل الذكاء الاصطناعي من رصيدك' : 'Add your API key to run AI from your own balance'}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Connect Section */}
+                <div className="bg-card border-2 border-dashed border-primary/30 rounded-xl p-5 mb-5">
+                  <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                    <Plus size={16} className="text-primary" />
+                    {lang === 'ar' ? 'ربط حسابك' : 'Connect Your Account'}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mb-4">
+                    {lang === 'ar' 
+                      ? 'اختر مزود الذكاء الاصطناعي وأدخل مفتاح API الخاص بك. التكاليف ستُخصم من حسابك مباشرة.' 
+                      : 'Choose your AI provider and enter your API key. Costs will be charged to your account directly.'}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                    {[
+                      { provider: 'openai', label: 'OpenAI', desc: 'GPT-4, GPT-3.5', endpoint: 'https://api.openai.com/v1/chat/completions', placeholder: 'sk-...' },
+                      { provider: 'google', label: 'Google AI', desc: 'Gemini Pro, Flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta', placeholder: 'AIza...' },
+                      { provider: 'anthropic', label: 'Anthropic', desc: 'Claude 3, 3.5', endpoint: 'https://api.anthropic.com/v1/messages', placeholder: 'sk-ant-...' },
+                    ].map(p => {
+                      const existing = settings.aiModels.find(m => m.provider === p.provider);
+                      return (
+                        <button key={p.provider} onClick={() => {
+                          if (existing) return;
+                          const newModel = { id: `model_${Date.now()}`, name: p.label, provider: p.provider, apiKey: '', endpoint: p.endpoint, isActive: true };
+                          updateSettings({ aiModels: [...settings.aiModels, newModel] });
+                        }}
+                          className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${existing ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer'}`}>
+                          {existing && <CheckCircle size={14} className="absolute top-2 end-2 text-emerald-500" />}
+                          <span className="text-sm font-bold text-foreground">{p.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{p.desc}</span>
+                          {!existing && <span className="text-[10px] text-primary font-semibold">{lang === 'ar' ? '+ إضافة' : '+ Add'}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Connected Models */}
+                {settings.aiModels.length > 0 && (
+                  <div className="space-y-4 mb-5">
+                    <h4 className="text-xs font-bold text-muted-foreground">{lang === 'ar' ? 'الحسابات المربوطة' : 'Connected Accounts'}</h4>
+                    {settings.aiModels.map((model) => (
+                      <div key={model.id} className={`border rounded-xl p-4 space-y-3 transition-all ${model.isActive && model.apiKey ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-muted/30 border-border'}`}>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-muted-foreground">#{idx + 1}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-foreground">{model.name || model.provider}</span>
+                            {model.isActive && model.apiKey && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-600 text-[10px] font-bold rounded-full">{lang === 'ar' ? 'مربوط' : 'Connected'}</span>}
+                          </div>
                           <div className="flex gap-2">
                             <button onClick={() => {
                               const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
                               updateSettings({ aiModels: updated });
-                            }} className={`px-3 py-1 rounded-lg text-[10px] font-bold ${model.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
+                            }} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${model.isActive ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground'}`}>
                               {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
                             </button>
                             <button onClick={() => {
@@ -292,28 +308,23 @@ const SettingsPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'مفتاح API الخاص بك' : 'Your API Key'}</label>
+                            <input type="password" value={model.apiKey} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, apiKey: e.target.value } : m); updateSettings({ aiModels: updated }); }}
+                              className={inputClass} placeholder={model.provider === 'openai' ? 'sk-...' : model.provider === 'google' ? 'AIza...' : 'sk-ant-...'} />
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {lang === 'ar' 
+                                ? `احصل على المفتاح من ${model.provider === 'openai' ? 'platform.openai.com' : model.provider === 'google' ? 'aistudio.google.com' : 'console.anthropic.com'}` 
+                                : `Get your key from ${model.provider === 'openai' ? 'platform.openai.com' : model.provider === 'google' ? 'aistudio.google.com' : 'console.anthropic.com'}`}
+                            </p>
+                          </div>
                           <div>
                             <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'اسم النموذج' : 'Model Name'}</label>
                             <input value={model.name} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, name: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass} placeholder="gpt-4, claude-3, etc." />
+                              className={inputClass} placeholder="gpt-4, gemini-pro, claude-3" />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'المزود' : 'Provider'}</label>
-                            <select value={model.provider} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, provider: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass}>
-                              <option value="openai">OpenAI</option>
-                              <option value="anthropic">Anthropic</option>
-                              <option value="google">Google AI</option>
-                              <option value="custom">{lang === 'ar' ? 'مخصص' : 'Custom'}</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'مفتاح API' : 'API Key'}</label>
-                            <input type="password" value={model.apiKey} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, apiKey: e.target.value } : m); updateSettings({ aiModels: updated }); }}
-                              className={inputClass} placeholder="sk-..." />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
+                            <label className="block text-[10px] font-semibold text-muted-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية' : 'Endpoint URL'}</label>
                             <input value={model.endpoint} onChange={e => { const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, endpoint: e.target.value } : m); updateSettings({ aiModels: updated }); }}
                               className={inputClass} placeholder="https://api.openai.com/v1/chat/completions" />
                           </div>
@@ -322,6 +333,38 @@ const SettingsPage: React.FC = () => {
                     ))}
                   </div>
                 )}
+
+                {/* Built-in Lovable AI models - secondary */}
+                <details className="group">
+                  <summary className="cursor-pointer text-xs font-bold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 mb-3">
+                    <span className="group-open:rotate-90 transition-transform">▶</span>
+                    {lang === 'ar' ? 'النماذج المدمجة (احتياطي)' : 'Built-in Models (Fallback)'}
+                  </summary>
+                  <div className="bg-muted/30 border border-border rounded-xl p-4">
+                    <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'تُستخدم تلقائياً إذا لم يتم ربط حساب خارجي. التكلفة من رصيد صاحب المشروع.' : 'Used automatically if no external account is connected. Cost from project owner\'s balance.'}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
+                        { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context', cost: '💰💰💰' },
+                        { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost', cost: '💰' },
+                        { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest', cost: '💰' },
+                        { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning', cost: '💰💰💰' },
+                        { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost', cost: '💰💰' },
+                        { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical', cost: '💰' },
+                      ].map(m => (
+                        <button key={m.name} onClick={() => updateSettings({ selectedLovableModel: m.name } as any)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start transition-all ${(settings as any).selectedLovableModel === m.name ? 'bg-primary/10 border-2 border-primary/50 ring-1 ring-primary/20' : 'bg-background/50 border border-border/50 hover:border-primary/30'}`}>
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${(settings as any).selectedLovableModel === m.name ? 'bg-primary' : 'bg-muted-foreground/30'}`}></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{m.desc} {m.cost}</p>
+                          </div>
+                          {(settings as any).selectedLovableModel === m.name && <CheckCircle size={14} className="text-primary shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </details>
               </div>
             )}
 
