@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download, Lock, Eye, Zap, X } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
+import { supabase } from './integrations/supabase/client';
 
 const currencies = [
   { code: 'EGP', label: { ar: 'جنيه مصري', en: 'Egyptian Pound' }, symbol: 'ج.م' },
@@ -95,6 +96,33 @@ const SettingsPage: React.FC = () => {
   const [newApiKey, setNewApiKey] = useState('');
   const [newEndpoint, setNewEndpoint] = useState('');
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
+  const [testingKey, setTestingKey] = useState<string | null>(null); // null or model id / 'new'
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const testApiKey = async (provider: string, apiKey: string, endpoint?: string, model?: string, id?: string) => {
+    const testId = id || 'new';
+    setTestingKey(testId);
+    setTestResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-api-key', {
+        body: { provider, apiKey, endpoint, model },
+      });
+      if (error) {
+        setTestResult({ success: false, message: lang === 'ar' ? 'فشل الاتصال بالخادم' : 'Server connection failed' });
+      } else {
+        setTestResult({
+          success: data.success,
+          message: data.success
+            ? (lang === 'ar' ? '✅ المفتاح صالح - الاتصال ناجح!' : '✅ Key valid - connection successful!')
+            : (lang === 'ar' ? `❌ ${data.message || 'مفتاح غير صالح'}` : `❌ ${data.message || 'Invalid key'}`),
+        });
+      }
+    } catch {
+      setTestResult({ success: false, message: lang === 'ar' ? 'خطأ في الاتصال' : 'Connection error' });
+    } finally {
+      setTestingKey(null);
+    }
+  };
 
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
@@ -368,14 +396,25 @@ const SettingsPage: React.FC = () => {
                             <p className="text-[9px] text-muted-foreground mt-1">{lang === 'ar' ? 'تم ملؤها تلقائياً - غيّرها فقط إذا كان لديك endpoint مخصص' : 'Auto-filled - change only if you have a custom endpoint'}</p>
                           </div>
                           <div className="flex items-center gap-3 pt-2">
+                            <button onClick={() => testApiKey(addingProvider || 'custom', newApiKey, newEndpoint, newModelName, 'new')} disabled={!newApiKey.trim() || testingKey === 'new'}
+                              className="flex items-center gap-2 px-4 py-2.5 bg-muted border border-border text-foreground rounded-lg text-xs font-bold hover:bg-muted/80 transition-all disabled:opacity-40">
+                              {testingKey === 'new' ? <Loader size={14} className="animate-spin" /> : <Wifi size={14} />}
+                              {lang === 'ar' ? 'اختبار الاتصال' : 'Test Connection'}
+                            </button>
                             <button onClick={handleSaveNewModel} disabled={!newApiKey.trim()}
                               className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20">
                               <CheckCircle size={14} />{lang === 'ar' ? 'ربط الحساب وتفعيله' : 'Connect & Activate'}
                             </button>
-                            <button onClick={() => setAddingProvider(null)} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
+                            <button onClick={() => { setAddingProvider(null); setTestResult(null); }} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
                               {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                             </button>
                           </div>
+                          {testResult && testingKey === null && (
+                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                              className={`mt-3 p-3 rounded-lg border text-xs font-semibold ${testResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
+                              {testResult.message}
+                            </motion.div>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -425,8 +464,21 @@ const SettingsPage: React.FC = () => {
                                 {showApiKey[model.id] ? <><Eye size={10} />{lang === 'ar' ? 'إخفاء' : 'Hide'}</> : <><Eye size={10} />{lang === 'ar' ? 'إظهار' : 'Show'}</>}
                               </button>
                               <span className="text-muted-foreground/50">|</span>
+                              <button onClick={() => testApiKey(model.provider, model.apiKey, model.endpoint, model.name, model.id)}
+                                disabled={testingKey === model.id}
+                                className="text-primary hover:underline flex items-center gap-1">
+                                {testingKey === model.id ? <Loader size={10} className="animate-spin" /> : <Wifi size={10} />}
+                                {lang === 'ar' ? 'اختبار' : 'Test'}
+                              </button>
+                              <span className="text-muted-foreground/50">|</span>
                               <span className="truncate max-w-[200px]">{model.endpoint}</span>
                             </div>
+                            {testResult && testingKey === null && testResult.message && (
+                              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                className={`mt-2 p-2 rounded-lg text-[10px] font-semibold ${testResult.success ? 'bg-emerald-500/10 text-emerald-600' : 'bg-destructive/10 text-destructive'}`}>
+                                {testResult.message}
+                              </motion.div>
+                            )}
                           </div>
                         );
                       })}
