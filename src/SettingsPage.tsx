@@ -230,13 +230,34 @@ const SettingsPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Built-in model info */}
+                {/* Built-in Lovable AI models */}
                 <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-5">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
-                    <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النموذج المدمج (Lovable AI)' : 'Built-in Model (Lovable AI)'}</span>
+                    <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (Lovable AI)' : 'Built-in Models (Lovable AI)'}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'النموذج المدمج يعمل تلقائياً - google/gemini-3-flash-preview. يمكنك إضافة نماذج خارجية أدناه.' : 'Built-in model works automatically - google/gemini-3-flash-preview. Add external models below.'}</p>
+                  <p className="text-[11px] text-muted-foreground mb-3">{lang === 'ar' ? 'هذه النماذج تعمل تلقائياً عبر بوابة Lovable AI. يمكنك إضافة نماذج خارجية أدناه.' : 'These models work automatically via Lovable AI Gateway. Add external models below.'}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced' },
+                      { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning' },
+                      { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context' },
+                      { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost' },
+                      { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest' },
+                      { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning' },
+                      { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost' },
+                      { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical' },
+                      { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning' },
+                    ].map(m => (
+                      <div key={m.name} className="flex items-center gap-2 bg-background/50 border border-border/50 rounded-lg px-3 py-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{m.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {settings.aiModels.length === 0 ? (
