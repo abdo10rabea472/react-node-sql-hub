@@ -15,7 +15,9 @@ const AccountDetailsPage: React.FC<AccountDetailsProps> = ({ user, onUpdate }) =
 
     const [name, setName] = useState(user.name);
     const [email, setEmail] = useState(user.email);
-    const [password, setPassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -24,31 +26,41 @@ const AccountDetailsPage: React.FC<AccountDetailsProps> = ({ user, onUpdate }) =
             title: 'إعدادات الحساب',
             subtitle: 'تعديل بياناتك الشخصية وتأمين حسابك',
             personalInfo: 'المعلومات الشخصية',
-            security: 'الأمان',
+            security: 'تغيير كلمة المرور',
             name: 'الاسم الكامل',
             email: 'البريد الإلكتروني',
-            newPassword: 'كلمة المرور الجديدة (اختياري)',
+            currentPassword: 'كلمة المرور الحالية',
+            newPassword: 'كلمة المرور الجديدة',
+            confirmPassword: 'تأكيد كلمة المرور الجديدة',
             passwordHint: 'اتركه فارغاً إذا كنت لا ترغب في التغيير',
             saveBtn: 'حفظ التغييرات',
             saving: 'جاري الحفظ...',
             successMsg: 'تم تحديث بيانات الحساب بنجاح',
             errorMsg: 'فشل تحديث البيانات، حاول مرة أخرى',
-            role: 'نوع الحساب (الدور)'
+            role: 'نوع الحساب (الدور)',
+            passwordMismatch: 'كلمة المرور الجديدة وتأكيدها غير متطابقين',
+            currentPasswordRequired: 'يجب إدخال كلمة المرور الحالية',
+            wrongCurrentPassword: 'كلمة المرور الحالية غير صحيحة',
         },
         en: {
             title: 'Account Settings',
             subtitle: 'Manage your personal information and security',
             personalInfo: 'Personal Information',
-            security: 'Security',
+            security: 'Change Password',
             name: 'Full Name',
             email: 'Email Address',
-            newPassword: 'New Password (Optional)',
+            currentPassword: 'Current Password',
+            newPassword: 'New Password',
+            confirmPassword: 'Confirm New Password',
             passwordHint: 'Leave blank to keep current password',
             saveBtn: 'Save Changes',
             saving: 'Saving...',
             successMsg: 'Account updated successfully',
             errorMsg: 'Failed to update account, try again',
-            role: 'Account Role'
+            role: 'Account Role',
+            passwordMismatch: 'New password and confirmation do not match',
+            currentPasswordRequired: 'Current password is required',
+            wrongCurrentPassword: 'Current password is incorrect',
         }
     };
 
@@ -59,17 +71,39 @@ const AccountDetailsPage: React.FC<AccountDetailsProps> = ({ user, onUpdate }) =
         setIsSaving(true);
         setMessage(null);
 
+        if (newPassword) {
+            if (!currentPassword) {
+                setMessage({ text: l.currentPasswordRequired, type: 'error' });
+                setIsSaving(false);
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                setMessage({ text: l.passwordMismatch, type: 'error' });
+                setIsSaving(false);
+                return;
+            }
+        }
+
         try {
             const updateData: any = { name, email };
-            if (password) updateData.password = password;
+            if (newPassword) {
+                updateData.password = newPassword;
+                updateData.current_password = currentPassword;
+            }
 
             await updateUser(user.id, updateData);
             onUpdate({ ...user, name, email });
             setMessage({ text: l.successMsg, type: 'success' });
-            setPassword('');
-        } catch (err) {
-            console.error(err);
-            setMessage({ text: l.errorMsg, type: 'error' });
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (err: any) {
+            const serverMsg = err?.response?.data?.message;
+            if (serverMsg?.includes('الحالية')) {
+                setMessage({ text: l.wrongCurrentPassword, type: 'error' });
+            } else {
+                setMessage({ text: l.errorMsg, type: 'error' });
+            }
         } finally {
             setIsSaving(false);
         }
@@ -133,12 +167,26 @@ const AccountDetailsPage: React.FC<AccountDetailsProps> = ({ user, onUpdate }) =
                             <Key size={16} /> {l.security}
                         </h3>
 
-                        <div>
-                            <label className="block text-xs font-bold text-muted-foreground mb-2 ms-1">{l.newPassword}</label>
-                            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className={inputClass} />
-                            <p className="text-[10px] text-muted-foreground mt-2 ms-1">{l.passwordHint}</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-muted-foreground mb-2 ms-1">{l.currentPassword}</label>
+                                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className={inputClass} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-muted-foreground mb-2 ms-1">{l.newPassword}</label>
+                                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className={inputClass} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-muted-foreground mb-2 ms-1">{l.confirmPassword}</label>
+                                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    className={inputClass} />
+                                <p className="text-[10px] text-muted-foreground mt-2 ms-1">{l.passwordHint}</p>
+                            </div>
                         </div>
                     </motion.section>
                 </div>

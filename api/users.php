@@ -173,6 +173,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PUT' && $id) {
+    $data = json_decode(file_get_contents("php://input"), true);
     // Only admins can change roles/status, users can update their own basic info
     if (isset($data['role']) || isset($data['status'])) {
         if ($decoded['role'] !== 'admin') {
@@ -182,7 +183,6 @@ if ($method === 'PUT' && $id) {
     if ($decoded['role'] !== 'admin' && $id != $decoded['id']) {
         sendResponse(["message" => "غير مصرح - لا يمكنك تعديل مستخدم آخر"], 403);
     }
-    $data = json_decode(file_get_contents("php://input"), true);
     $fields = [];
     $values = [];
     foreach (['name', 'email', 'role', 'status', 'base_salary', 'shift_start', 'shift_end'] as $key) {
@@ -191,7 +191,19 @@ if ($method === 'PUT' && $id) {
             $values[] = $data[$key];
         }
     }
-    if (isset($data['password'])) {
+    if (isset($data['password']) && !empty($data['password'])) {
+        // Require current_password verification when user changes their own password
+        if ($id == $decoded['id']) {
+            if (empty($data['current_password'])) {
+                sendResponse(["message" => "يجب إدخال كلمة المرور الحالية"], 400);
+            }
+            $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+            $stmt->execute([$id]);
+            $userRow = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$userRow || !password_verify($data['current_password'], $userRow['password'])) {
+                sendResponse(["message" => "كلمة المرور الحالية غير صحيحة"], 400);
+            }
+        }
         $fields[] = "password = ?";
         $values[] = password_hash($data['password'], PASSWORD_DEFAULT);
     }
