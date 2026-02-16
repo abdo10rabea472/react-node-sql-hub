@@ -19,7 +19,7 @@ const NotificationCenter = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     const { settings } = useSettings();
     const lang = settings.lang;
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     const fetchRealActivities = async () => {
         setLoading(true);
