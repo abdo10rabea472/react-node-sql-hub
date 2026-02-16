@@ -40,6 +40,27 @@ if ($path === 'login' && $method === 'POST') {
     }
 }
 
+// Temporary debug endpoint - REMOVE AFTER FIXING
+if ($path === 'debug-login') {
+    $stmt = $pdo->prepare("SELECT id, email, password, status FROM users WHERE email = 'admin@stodio.com'");
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$user) {
+        sendResponse(["debug" => "No admin user found in DB"]);
+    }
+    $testHash = password_hash('admin', PASSWORD_DEFAULT);
+    $verifyResult = password_verify('admin', $user['password']);
+    sendResponse([
+        "user_exists" => true,
+        "status" => $user['status'],
+        "password_hash_length" => strlen($user['password']),
+        "password_hash_prefix" => substr($user['password'], 0, 7),
+        "password_verify_result" => $verifyResult,
+        "new_hash_verify" => password_verify('admin', $testHash),
+        "php_version" => PHP_VERSION
+    ]);
+}
+
 if ($path === 'verify') {
     $token = getBearerToken();
     if (!$token)
