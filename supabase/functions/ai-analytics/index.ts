@@ -197,11 +197,18 @@ serve(async (req) => {
 
     if (!result.ok) {
       const status = result.status || 500;
-      const errorMessages: Record<number, string> = {
-        402: "رصيد الذكاء الاصطناعي غير كافٍ. أضف رصيد من الإعدادات أو أضف نموذج AI خارجي من إعدادات التطبيق",
-        429: "تم تجاوز حد الطلبات، يرجى المحاولة لاحقاً",
-      };
-      return new Response(JSON.stringify({ error: errorMessages[status] || "خطأ في خدمة الذكاء الاصطناعي" }), {
+      // Check if this is from Lovable AI (402) with no external fallback success
+      // vs external AI failure
+      let errorMsg = "خطأ في خدمة الذكاء الاصطناعي";
+      if (status === 402) {
+        errorMsg = "رصيد الذكاء الاصطناعي غير كافٍ. أضف رصيد من الإعدادات أو أضف نموذج AI خارجي من إعدادات التطبيق";
+      } else if (status === 429) {
+        errorMsg = "تم تجاوز حد طلبات مزود الذكاء الاصطناعي الخارجي. انتظر دقيقة وحاول مرة أخرى أو استخدم مفتاح API مختلف";
+      } else if (status === 400) {
+        errorMsg = "خطأ في طلب الذكاء الاصطناعي - تحقق من إعدادات النموذج الخارجي";
+      }
+      // Return 200 with error field so frontend can show a toast instead of crashing
+      return new Response(JSON.stringify({ error: errorMsg }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
