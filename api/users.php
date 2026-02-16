@@ -118,7 +118,11 @@ if ($method === 'GET' && $path === 'stats') {
 }
 
 // Add base_salary column if not exists
-try { $pdo->exec("ALTER TABLE users ADD COLUMN base_salary DECIMAL(10,2) DEFAULT 0"); } catch (Exception $e) {}
+$chk = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'base_salary'");
+$chk->execute();
+if ((int)$chk->fetchColumn() === 0) {
+    $pdo->exec("ALTER TABLE users ADD COLUMN base_salary DECIMAL(10,2) DEFAULT 0");
+}
 
 if ($method === 'GET') {
     if ($id) {
