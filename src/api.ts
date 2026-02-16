@@ -36,7 +36,7 @@ export const verifyToken = () => api.get("/auth.php?path=verify");
 // Users
 export const getUsers = () => api.get("/users.php");
 export const getStats = () => api.get("/users.php?path=stats");
-export const createUser = (data: { name: string; email: string; password: string; role?: string }) =>
+export const createUser = (data: { name: string; email: string; password: string; role?: string; base_salary?: string; shift_start?: string; shift_end?: string }) =>
   api.post("/users.php", data);
 export const updateUser = (id: number, data: Record<string, string>) => api.put(`/users.php?id=${id}`, data);
 export const deleteUser = (id: number) => api.delete(`/users.php?id=${id}`);
