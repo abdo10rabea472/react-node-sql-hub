@@ -694,7 +694,8 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   const getExternalModels = () => {
     const models = (settings as any).aiModels;
     if (!models || !Array.isArray(models)) return [];
-    return models.filter((m: any) => m.isActive && m.apiKey).map((m: any) => ({ provider: m.provider, apiKey: m.apiKey, model: m.model, endpoint: m.endpoint }));
+    // For fallback: use any model that has an API key, regardless of isActive status
+    return models.filter((m: any) => m.apiKey).map((m: any) => ({ provider: m.provider, apiKey: m.apiKey, model: m.model, endpoint: m.endpoint }));
   };
 
   const runAI = async (type: string) => {
