@@ -345,15 +345,50 @@ const SettingsPage: React.FC = () => {
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'أيقونة التطبيق' : 'App Icon'}</label>
                     <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 rounded-2xl bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
-                        <img src="/pwa-icon-192.png" alt="App Icon" className="w-full h-full object-cover rounded-2xl" />
+                      <div className="w-20 h-20 rounded-2xl bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden relative group cursor-pointer"
+                        onClick={() => document.getElementById('pwa-icon-upload')?.click()}>
+                        <img src={localStorage.getItem('pwa-custom-icon') || '/pwa-icon-192.png'} alt="App Icon" className="w-full h-full object-cover rounded-2xl" />
+                        <div className="absolute inset-0 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera size={24} className="text-white" />
+                        </div>
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-2">{lang === 'ar' ? 'لتغيير الأيقونة، استبدل الملفات التالية في مجلد public:' : 'To change the icon, replace these files in the public folder:'}</p>
-                        <div className="bg-muted/50 rounded-lg p-3 space-y-1 font-mono text-[11px] text-muted-foreground">
-                          <p>📁 public/pwa-icon-192.png <span className="text-foreground/50">(192×192px)</span></p>
-                          <p>📁 public/pwa-icon-512.png <span className="text-foreground/50">(512×512px)</span></p>
-                        </div>
+                        <input id="pwa-icon-upload" type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const img = new window.Image();
+                            img.onload = () => {
+                              // Generate 192 and 512 versions
+                              [192, 512].forEach(size => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = size; canvas.height = size;
+                                const ctx = canvas.getContext('2d')!;
+                                ctx.drawImage(img, 0, 0, size, size);
+                                const dataUrl = canvas.toDataURL('image/png');
+                                localStorage.setItem(size === 192 ? 'pwa-custom-icon' : 'pwa-custom-icon-512', dataUrl);
+                              });
+                              // Update favicon
+                              const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                              if (link) link.href = localStorage.getItem('pwa-custom-icon')!;
+                              // Force re-render
+                              setPwaAppName(prev => prev);
+                              setShowToast(true); setTimeout(() => setShowToast(false), 3000);
+                            };
+                            img.src = ev.target?.result as string;
+                          };
+                          reader.readAsDataURL(file);
+                        }} />
+                        <button onClick={() => document.getElementById('pwa-icon-upload')?.click()}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-xl text-sm font-bold hover:bg-primary/20 transition-all mb-2">
+                          <Camera size={16} />{lang === 'ar' ? 'رفع أيقونة جديدة' : 'Upload New Icon'}
+                        </button>
+                        <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'يُفضل صورة مربعة بحجم 512×512 بكسل أو أكبر' : 'Square image, 512×512px or larger recommended'}</p>
+                        {localStorage.getItem('pwa-custom-icon') && (
+                          <button onClick={() => { localStorage.removeItem('pwa-custom-icon'); localStorage.removeItem('pwa-custom-icon-512'); setPwaAppName(prev => prev); }}
+                            className="text-[10px] text-destructive hover:underline mt-1">{lang === 'ar' ? 'إزالة الأيقونة المخصصة' : 'Remove custom icon'}</button>
+                        )}
                       </div>
                     </div>
                   </div>
