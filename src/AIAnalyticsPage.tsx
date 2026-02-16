@@ -107,18 +107,26 @@ const DonutChart = ({ segments, size = 160, label }: { segments: { value: number
 };
 
 // ─── Area Chart ───
-const AreaChart = ({ data, labels, height = 120, color = 'hsl(var(--primary))' }: { data: number[]; labels?: string[]; height?: number; color?: string }) => {
-  const padding = { top: 10, right: 10, bottom: 24, left: 10 };
+const AreaChart = ({ data, height = 160, color = 'hsl(var(--primary))' }: { data: number[]; height?: number; color?: string }) => {
+  const filteredData = data.filter(v => v > 0);
+  if (filteredData.length < 2) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground text-xs font-semibold opacity-50">
+        لا توجد بيانات كافية للرسم البياني
+      </div>
+    );
+  }
+  const padding = { top: 15, right: 15, bottom: 10, left: 15 };
   const w = 500;
   const h = height;
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
+  const max = Math.max(...filteredData, 1);
+  const min = 0;
   const range = max - min || 1;
 
-  const points = data.map((v, i) => ({
-    x: padding.left + (i / Math.max(data.length - 1, 1)) * chartW,
+  const points = filteredData.map((v, i) => ({
+    x: padding.left + (i / Math.max(filteredData.length - 1, 1)) * chartW,
     y: padding.top + chartH - ((v - min) / range) * chartH,
   }));
 
@@ -128,41 +136,32 @@ const AreaChart = ({ data, labels, height = 120, color = 'hsl(var(--primary))' }
   const uid = `area-${Math.random().toString(36).slice(2, 6)}`;
 
   return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+    <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id={`${uid}-fill`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-        <linearGradient id={`${uid}-stroke`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={color} stopOpacity="0.8" />
-          <stop offset="100%" stopColor={color} stopOpacity="1" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.03" />
         </linearGradient>
       </defs>
       {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
         <line key={i} x1={padding.left} x2={w - padding.right}
           y1={padding.top + chartH * (1 - ratio)} y2={padding.top + chartH * (1 - ratio)}
-          stroke="hsl(var(--border))" strokeWidth="0.8" strokeDasharray="4,4" opacity={0.4} />
+          stroke="hsl(var(--border))" strokeWidth="0.6" strokeDasharray="4,4" opacity={0.3} />
       ))}
       {/* Area fill */}
       <motion.path d={areaPath} fill={`url(#${uid}-fill)`}
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }} />
       {/* Line */}
-      <motion.path d={linePath} fill="none" stroke={`url(#${uid}-stroke)`} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      <motion.path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
         initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, ease: "easeOut" }} />
       {/* Data points */}
       {points.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r="5" fill={color} opacity={0.15} />
+          <circle cx={p.x} cy={p.y} r="5" fill={color} opacity={0.12} />
           <motion.circle cx={p.x} cy={p.y} r="3" fill={color} stroke="hsl(var(--card))" strokeWidth="1.5"
-            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 + i * 0.05 }} />
+            initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 + i * 0.04 }} />
         </g>
-      ))}
-      {/* X labels */}
-      {labels?.map((l, i) => (
-        <text key={i} x={padding.left + (i / Math.max(labels.length - 1, 1)) * chartW} y={h - 4}
-          textAnchor="middle" className="fill-muted-foreground" fontSize="9" fontWeight="600">{l}</text>
       ))}
     </svg>
   );
@@ -176,7 +175,7 @@ const MiniBarChart = ({ data, height = 80, colors }: { data: number[]; height?: 
   const barW = Math.max(4, (120 - gap * barCount) / barCount);
   const uid = `bar-${Math.random().toString(36).slice(2, 6)}`;
   return (
-    <svg width="100%" viewBox={`0 0 ${barCount * (barW + gap)} ${height + 8}`} className="overflow-visible" preserveAspectRatio="xMidYMid meet">
+    <svg width="100%" viewBox={`0 0 ${barCount * (barW + gap)} ${height + 8}`} preserveAspectRatio="xMidYMid meet">
       <defs>
         <linearGradient id={`${uid}-grad`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.95" />
@@ -935,8 +934,10 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                   <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <BarChart3 size={16} className="text-blue-500" />{isAr ? 'أحدث الفواتير' : 'Recent Invoices'}
                   </h3>
-                  {rawData && <MiniBarChart data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} height={100} />}
-                  <div className="flex justify-between mt-3 text-[10px] text-muted-foreground font-semibold">
+                  <div className="overflow-hidden">
+                    {rawData && <MiniBarChart data={rawData.invoices.slice(0, 12).map((i: any) => Number(i.total_amount || 0))} height={120} />}
+                  </div>
+                  <div className="flex justify-between mt-2 text-[10px] text-muted-foreground font-semibold">
                     <span>{isAr ? 'الأقدم' : 'Oldest'}</span>
                     <span>{isAr ? 'الأحدث' : 'Newest'}</span>
                   </div>
