@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2 } from 'lucide-react';
+import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
 
@@ -37,7 +37,7 @@ const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const lang = settings.lang;
   const t = translations[lang];
-  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp' | 'deductions' | 'aiModels'>('studio');
+  const [activeTab, setActiveTab] = useState<'studio' | 'profile' | 'system' | 'whatsapp' | 'deductions' | 'aiModels' | 'pwa'>('studio');
   const [selectedCurrency, setSelectedCurrency] = useState(settings.currency);
   const [selectedCountry, setSelectedCountry] = useState(settings.countryCode);
   const [showToast, setShowToast] = useState(false);
@@ -86,10 +86,14 @@ const SettingsPage: React.FC = () => {
 
   const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme, countryCode: selectedCountry, aiModels: settings.aiModels, deductionRules: settings.deductionRules }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
+  const [pwaAppName, setPwaAppName] = useState(settings.studioName || 'STODIO Photography');
+  const [pwaShortName, setPwaShortName] = useState('STODIO');
+
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
     { key: 'studio' as const, icon: Store, label: t.studio },
     { key: 'system' as const, icon: Globe, label: t.system },
+    { key: 'pwa' as const, icon: Download, label: lang === 'ar' ? 'التطبيق (PWA)' : 'App (PWA)' },
     { key: 'deductions' as const, icon: Clock, label: t.deductions },
     { key: 'aiModels' as const, icon: Brain, label: t.aiModels },
     { key: 'whatsapp' as const, icon: MessageCircle, label: t.whatsapp },
@@ -318,6 +322,51 @@ const SettingsPage: React.FC = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'pwa' && (
+              <div className="p-7">
+                <div className="flex items-center gap-2.5 text-primary mb-6"><Download size={20} /><h3 className="text-base font-bold text-foreground">{lang === 'ar' ? 'إعدادات التطبيق (PWA)' : 'App Settings (PWA)'}</h3></div>
+                <p className="text-xs text-muted-foreground mb-6">{lang === 'ar' ? 'تحكم في اسم التطبيق والأيقونة التي تظهر عند التثبيت على الهاتف أو سطح المكتب' : 'Control the app name and icon shown when installed on mobile or desktop'}</p>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'اسم التطبيق الكامل' : 'Full App Name'}</label>
+                    <input value={pwaAppName} onChange={e => setPwaAppName(e.target.value)} className={inputClass} placeholder="STODIO Photography" />
+                    <p className="text-[10px] text-muted-foreground mt-1">{lang === 'ar' ? 'يظهر في شاشة التحميل وقائمة التطبيقات' : 'Shown on splash screen and app list'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'الاسم المختصر' : 'Short Name'}</label>
+                    <input value={pwaShortName} onChange={e => setPwaShortName(e.target.value)} className={inputClass} placeholder="STODIO" />
+                    <p className="text-[10px] text-muted-foreground mt-1">{lang === 'ar' ? 'يظهر أسفل الأيقونة على الشاشة الرئيسية' : 'Shown under the icon on home screen'}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'أيقونة التطبيق' : 'App Icon'}</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 rounded-2xl bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                        <img src="/pwa-icon-192.png" alt="App Icon" className="w-full h-full object-cover rounded-2xl" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-2">{lang === 'ar' ? 'لتغيير الأيقونة، استبدل الملفات التالية في مجلد public:' : 'To change the icon, replace these files in the public folder:'}</p>
+                        <div className="bg-muted/50 rounded-lg p-3 space-y-1 font-mono text-[11px] text-muted-foreground">
+                          <p>📁 public/pwa-icon-192.png <span className="text-foreground/50">(192×192px)</span></p>
+                          <p>📁 public/pwa-icon-512.png <span className="text-foreground/50">(512×512px)</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-foreground mb-2">{lang === 'ar' ? '💡 ملاحظة مهمة' : '💡 Important Note'}</h4>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {lang === 'ar'
+                        ? 'تغيير اسم التطبيق يتطلب إعادة بناء المشروع (npm run build). الأيقونة تتغير مباشرة عند استبدال الملفات. قد تحتاج لمسح ذاكرة التخزين المؤقت للمتصفح لرؤية التغييرات.'
+                        : 'Changing the app name requires a project rebuild (npm run build). Icons update immediately when files are replaced. You may need to clear browser cache to see changes.'}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
