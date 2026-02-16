@@ -84,7 +84,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme, countryCode: selectedCountry }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
+  const handleSave = () => { updateSettings({ currency: selectedCurrency, studioName, lang: settings.lang, theme: settings.theme, countryCode: selectedCountry, aiModels: settings.aiModels, deductionRules: settings.deductionRules }); setShowToast(true); setTimeout(() => setShowToast(false), 3000); };
 
   const tabs = [
     { key: 'profile' as const, icon: User, label: t.profile },
