@@ -465,7 +465,7 @@ const SettingsPage: React.FC = () => {
                               </button>
                               <span className="text-muted-foreground/50">|</span>
                               <button onClick={() => testApiKey(model.provider, model.apiKey, model.endpoint, model.name, model.id)}
-                                disabled={testingKey === model.id}
+                                disabled={testingKey === model.id || !model.apiKey}
                                 className="text-primary hover:underline flex items-center gap-1">
                                 {testingKey === model.id ? <Loader size={10} className="animate-spin" /> : <Wifi size={10} />}
                                 {lang === 'ar' ? 'اختبار' : 'Test'}
