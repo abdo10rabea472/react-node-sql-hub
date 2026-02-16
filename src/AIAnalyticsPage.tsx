@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, Sparkles, Shield, Activity, TrendingUp,
@@ -13,6 +13,7 @@ import {
   getInvoices, getCustomers, getUsers, getInventoryItems,
   getExpenses, getAdvances, getAttendance, getSalaries, getPurchases
 } from './api';
+import { supabase } from './integrations/supabase/client';
 
 interface Props { user: { id: number; name: string; role: string } }
 
@@ -66,6 +67,76 @@ const RiskBadge = ({ level }: { level: string }) => {
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${c.bg} ${c.text}`}>{c.label}</span>;
 };
 
+// ─── DB helpers ───
+async function loadCachedResults(): Promise<Record<string, any>> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_analysis_results')
+      .select('analysis_type, result_data, updated_at');
+    if (error) throw error;
+    const map: Record<string, any> = {};
+    data?.forEach((row: any) => {
+      map[row.analysis_type] = { data: row.result_data, updatedAt: row.updated_at };
+    });
+    return map;
+  } catch (e) {
+    console.error('Failed to load cached AI results:', e);
+    return {};
+  }
+}
+
+async function saveCachedResult(analysisType: string, resultData: any) {
+  try {
+    await supabase.from('ai_analysis_results').upsert(
+      { analysis_type: analysisType, result_data: resultData },
+      { onConflict: 'analysis_type' }
+    );
+  } catch (e) {
+    console.error('Failed to save AI result:', e);
+  }
+}
+
+async function saveDecisionLog(decisions: any[]) {
+  try {
+    const rows = decisions.map((d: any) => ({
+      title: d.title || '',
+      description: d.description || '',
+      action: d.action || '',
+      severity: d.severity || 'info',
+      target_name: d.targetName || '',
+      target_type: d.targetType || '',
+      reasoning: d.reasoning || '',
+      executed_by: 'AI',
+    }));
+    if (rows.length > 0) {
+      await supabase.from('ai_decision_log').insert(rows);
+    }
+  } catch (e) {
+    console.error('Failed to save decision log:', e);
+  }
+}
+
+async function loadDecisionLog(): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_decision_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data || []).map((d: any) => ({
+      ...d,
+      timestamp: d.created_at,
+      targetName: d.target_name,
+      targetType: d.target_type,
+      executedBy: d.executed_by,
+    }));
+  } catch (e) {
+    console.error('Failed to load decision log:', e);
+    return [];
+  }
+}
+
 const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   const { settings } = useSettings();
   const isAr = settings.lang === 'ar';
@@ -101,6 +172,9 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  // Track running analyses to prevent duplicates
+  const runningRef = useRef<Set<string>>(new Set());
 
   const allPages = [
     { key: 'dashboard', label: isAr ? 'لوحة التحكم' : 'Dashboard' },
@@ -163,29 +237,49 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
     }
   }, []);
 
-  useEffect(() => { fetchBusinessData(); }, []);
+  // Load cached results from DB on mount
+  useEffect(() => {
+    const loadCached = async () => {
+      const [cached, log] = await Promise.all([loadCachedResults(), loadDecisionLog()]);
+      if (cached['full-analysis']?.data) {
+        setAnalyticsResult(cached['full-analysis'].data);
+        setLastUpdate(new Date(cached['full-analysis'].updatedAt).toLocaleTimeString('ar-EG'));
+      }
+      if (cached['decisions']?.data) setDecisionsResult(cached['decisions'].data);
+      if (cached['monitoring']?.data) setMonitoringResult(cached['monitoring'].data);
+      if (log.length > 0) setDecisionLog(log);
+    };
+    loadCached();
+    fetchBusinessData();
+  }, []);
 
-  // Auto-run AI when data is loaded
+  // Auto-run AI when data is loaded AND no cached results exist
   const [aiAutoRan, setAiAutoRan] = useState(false);
   useEffect(() => {
-    if (rawData && !aiAutoRan && !aiLoading) {
+    if (rawData && !aiAutoRan && !aiLoading && !analyticsResult && !decisionsResult && !monitoringResult) {
       setAiAutoRan(true);
       runAI('full-analysis');
       runAI('decisions');
       runAI('monitoring');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawData, aiAutoRan]);
+  }, [rawData, aiAutoRan, analyticsResult]);
 
-  // Auto-run for tab if no result
+  // Auto-refresh every 5 minutes
   useEffect(() => {
-    if (!rawData || aiLoading) return;
-    if (activeTab === 'analytics' && !analyticsResult) runAI('full-analysis');
-    else if (activeTab === 'decisions' && !decisionsResult) runAI('decisions');
-    else if (activeTab === 'monitoring' && !monitoringResult) runAI('monitoring');
+    const interval = setInterval(() => {
+      if (rawData && !aiLoading) {
+        console.log('[AI] Auto-refresh triggered');
+        fetchBusinessData().then(() => {
+          runAI('full-analysis');
+          runAI('decisions');
+          runAI('monitoring');
+        });
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
+  }, [rawData, aiLoading]);
 
   // Build external models from settings
   const getExternalModels = () => {
@@ -199,6 +293,8 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
   // Call AI
   const runAI = async (type: string) => {
     if (!rawData) { showToast(isAr ? 'يرجى تحميل البيانات أولاً' : 'Load data first', 'error'); return; }
+    if (runningRef.current.has(type)) return; // prevent duplicate runs
+    runningRef.current.add(type);
     setAiLoading(true);
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -224,22 +320,29 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
       }
       const data = await resp.json();
 
-      if (type === 'full-analysis') setAnalyticsResult(data);
-      else if (type === 'decisions') {
+      if (type === 'full-analysis') {
+        setAnalyticsResult(data);
+        saveCachedResult('full-analysis', data);
+      } else if (type === 'decisions') {
         setDecisionsResult(data);
+        saveCachedResult('decisions', data);
         if (data?.decisions) {
+          saveDecisionLog(data.decisions);
           setDecisionLog(prev => [...data.decisions.map((d: any) => ({
             ...d, timestamp: new Date().toISOString(), executedBy: 'AI'
           })), ...prev].slice(0, 50));
         }
+      } else if (type === 'monitoring') {
+        setMonitoringResult(data);
+        saveCachedResult('monitoring', data);
       }
-      else if (type === 'monitoring') setMonitoringResult(data);
 
       setLastUpdate(new Date().toLocaleTimeString('ar-EG'));
       showToast(isAr ? 'تم التحليل بنجاح ✨' : 'Analysis complete ✨', 'success');
     } catch (e: any) {
       showToast(e?.message || (isAr ? 'فشل التحليل' : 'Analysis failed'), 'error');
     } finally {
+      runningRef.current.delete(type);
       setAiLoading(false);
     }
   };
@@ -287,7 +390,7 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
             <h1 className="text-xl font-black text-foreground">{isAr ? 'مركز الذكاء الاصطناعي' : 'AI Command Center'}</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {isAr ? `آخر تحديث: ${lastUpdate || 'لم يبدأ'}` : `Last: ${lastUpdate || 'Not started'}`}
+              {isAr ? `آخر تحديث: ${lastUpdate || 'لم يبدأ'} • تحديث تلقائي كل 5 دقائق` : `Last: ${lastUpdate || 'Not started'} • Auto-refresh every 5m`}
             </p>
           </div>
         </div>
@@ -297,11 +400,15 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             {isAr ? 'تحديث البيانات' : 'Refresh'}
           </button>
-          <button onClick={() => runAI(activeTab === 'analytics' ? 'full-analysis' : activeTab === 'decisions' ? 'decisions' : 'monitoring')}
+          <button onClick={() => {
+            runAI('full-analysis');
+            runAI('decisions');
+            runAI('monitoring');
+          }}
             disabled={aiLoading || !rawData}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-purple-500/25">
             {aiLoading ? <Loader size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {isAr ? 'تشغيل الذكاء الاصطناعي' : 'Run AI'}
+            {aiLoading ? (isAr ? 'جاري التحليل...' : 'Analyzing...') : (isAr ? 'تحديث التحليل' : 'Refresh Analysis')}
           </button>
         </div>
       </header>
@@ -342,6 +449,14 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                   <p className="text-[11px] font-semibold text-muted-foreground">{s.label}</p>
                 </motion.div>
               ))}
+            </div>
+          )}
+
+          {/* Loading state */}
+          {aiLoading && !analyticsResult && (
+            <div className="text-center py-20">
+              <Loader size={48} className="mx-auto text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري التحليل الذكي...' : 'Running AI analysis...'}</p>
             </div>
           )}
 
@@ -514,10 +629,10 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 )}
               </div>
             </div>
-          ) : (
+          ) : !aiLoading && (
             <div className="text-center py-20">
               <Brain size={48} className="mx-auto text-muted-foreground/20 mb-4" />
-              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'اضغط "تشغيل الذكاء الاصطناعي" لبدء التحليل' : 'Click "Run AI" to start analysis'}</p>
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحميل التحليلات...' : 'Loading analytics...'}</p>
             </div>
           )}
         </div>
@@ -526,6 +641,12 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
       {/* ═══════════════ DECISIONS TAB ═══════════════ */}
       {activeTab === 'decisions' && (
         <div className="space-y-5">
+          {aiLoading && !decisionsResult && (
+            <div className="text-center py-20">
+              <Loader size={48} className="mx-auto text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحليل القرارات...' : 'Analyzing decisions...'}</p>
+            </div>
+          )}
           {decisionsResult ? (
             <>
               {/* Decisions List */}
@@ -630,12 +751,13 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                   <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                     <FileText size={16} className="text-muted-foreground" />
                     {isAr ? 'سجل القرارات' : 'Decision Log'}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">{isAr ? 'محفوظ في قاعدة البيانات' : 'Saved in DB'}</span>
                   </h3>
                   <div className="max-h-[300px] overflow-y-auto space-y-1.5">
                     {decisionLog.map((d: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 text-[11px] p-2 bg-muted/30 rounded-lg">
                         <Clock size={10} className="text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">{new Date(d.timestamp).toLocaleString('ar-EG')}</span>
+                        <span className="text-muted-foreground">{new Date(d.timestamp || d.created_at).toLocaleString('ar-EG')}</span>
                         <span className="font-bold text-foreground flex-1 truncate">{d.title}</span>
                         <RiskBadge level={d.severity || 'info'} />
                       </div>
@@ -644,10 +766,10 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 </div>
               )}
             </>
-          ) : (
+          ) : !aiLoading && (
             <div className="text-center py-20">
               <Target size={48} className="mx-auto text-muted-foreground/20 mb-4" />
-              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'اضغط "تشغيل الذكاء الاصطناعي" للحصول على القرارات' : 'Click "Run AI" for decisions'}</p>
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحميل القرارات...' : 'Loading decisions...'}</p>
             </div>
           )}
         </div>
@@ -768,6 +890,12 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
       {/* ═══════════════ MONITORING TAB ═══════════════ */}
       {activeTab === 'monitoring' && (
         <div className="space-y-5">
+          {aiLoading && !monitoringResult && (
+            <div className="text-center py-20">
+              <Loader size={48} className="mx-auto text-primary animate-spin mb-4" />
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري المراقبة...' : 'Monitoring...'}</p>
+            </div>
+          )}
           {monitoringResult ? (
             <>
               {/* System Health */}
@@ -838,10 +966,10 @@ const AIAnalyticsPage: React.FC<Props> = ({ user }) => {
                 </div>
               )}
             </>
-          ) : (
+          ) : !aiLoading && (
             <div className="text-center py-20">
               <Eye size={48} className="mx-auto text-muted-foreground/20 mb-4" />
-              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'اضغط "تشغيل الذكاء الاصطناعي" لبدء المراقبة' : 'Click "Run AI" to start monitoring'}</p>
+              <p className="text-muted-foreground text-sm font-semibold">{isAr ? 'جاري تحميل المراقبة...' : 'Loading monitoring...'}</p>
             </div>
           )}
         </div>
