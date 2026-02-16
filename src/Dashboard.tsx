@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import InstallPage from "./InstallPage";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -23,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Brain,
+  Download,
 } from "lucide-react";
 import UsersPage from "./UsersPage";
 import PricingPage from "./PricingPage";
@@ -78,6 +80,7 @@ const translations = {
     expenses: "المصاريف والمرتبات",
     reports: "التقارير",
     aiAnalytics: "الذكاء الاصطناعي",
+    install: "تثبيت التطبيق",
   },
   en: {
     dashboard: "Dashboard",
@@ -110,6 +113,7 @@ const translations = {
     expenses: "Expenses & Payroll",
     reports: "Reports",
     aiAnalytics: "AI Analytics",
+    install: "Install App",
   },
 };
 
@@ -126,6 +130,7 @@ const navItems = [
   { icon: Brain, key: "aiAnalytics" as const },
   { icon: UserCog, key: "users" as const },
   { icon: Settings, key: "settings" as const },
+  { icon: Download, key: "install" as const },
 ];
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
@@ -168,7 +173,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     );
     if (activeNav === 10) return <UsersPage />;
     if (activeNav === 11) return <SettingsPage />;
-    if (activeNav === 12) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
+    if (activeNav === 12) return <InstallPage onBack={() => setActiveNav(0)} />;
+    if (activeNav === 13) return <AccountDetailsPage user={user} onUpdate={() => {}} />;
 
     return (
       <Suspense
