@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -129,6 +130,38 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'غير مصرح - يرجى تسجيل الدخول' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+
+    // Rate limiting: max 15 requests per hour per token
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const tokenHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))
+      .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join(""));
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { data: rateData } = await supabaseAdmin
+      .from("ai_rate_limits")
+      .select("id, request_count")
+      .eq("token_hash", tokenHash)
+      .gte("window_start", oneHourAgo)
+      .maybeSingle();
+
+    if (rateData && rateData.request_count >= 15) {
+      return new Response(JSON.stringify({ error: "تم تجاوز حد الطلبات (15 طلب/ساعة). حاول لاحقاً" }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (rateData) {
+      await supabaseAdmin.from("ai_rate_limits").update({ request_count: rateData.request_count + 1 }).eq("id", rateData.id);
+    } else {
+      await supabaseAdmin.from("ai_rate_limits").insert({ token_hash: tokenHash, request_count: 1 });
     }
 
     const { businessData, analysisType, externalModels } = await req.json();
