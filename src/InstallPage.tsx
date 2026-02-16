@@ -13,10 +13,13 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
-  const isInStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isInStandalone = window.matchMedia('(display-mode: standalone)').matches 
+    || (window.navigator as any).standalone === true;
 
   useEffect(() => {
-    if (isInStandalone) {
+    // Only mark as installed if truly running as standalone PWA (not in iframe/preview)
+    const isTopLevel = window.self === window.top;
+    if (isInStandalone && isTopLevel) {
       setIsInstalled(true);
       return;
     }
@@ -24,7 +27,6 @@ const InstallPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const unsub = onInstallPromptChange((prompt) => {
       setHasPrompt(!!prompt);
       if (!prompt && !isInstalling) {
-        // appinstalled fired
         setIsInstalled(true);
       }
     });
