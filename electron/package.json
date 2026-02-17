@@ -18,7 +18,8 @@
       "output": "release"
     },
     "files": [
-      "main.js"
+      "main.js",
+      "preload.js"
     ],
     "extraResources": [
       {
@@ -61,8 +62,7 @@
       "uninstallDisplayName": "ElTahan Studio",
       "license": "license.txt",
       "runAfterFinish": true,
-      "menuCategory": "ElTahan Studio",
-      "deleteAppDataOnUninstall": true
+      "menuCategory": "ElTahan Studio"
     }
   },
   "devDependencies": {

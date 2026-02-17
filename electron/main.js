@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { fork } = require('child_process');
 
 let mainWindow;
@@ -9,6 +10,37 @@ let whatsappServer;
 const isPackaged = app.isPackaged;
 const rootDir = isPackaged ? path.join(process.resourcesPath, 'app') : path.join(__dirname, '..');
 
+// مسار قاعدة البيانات في مجلد Documents (يبقى حتى لو التطبيق اتمسح)
+const dbDir = path.join(app.getPath('documents'), 'ElTahan-Studio');
+const dbPath = path.join(dbDir, 'offline.db');
+
+// ==================== IPC Handlers ====================
+ipcMain.handle('fs:getDbPath', () => dbPath);
+
+ipcMain.handle('fs:read', async (_, filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      const buffer = fs.readFileSync(filePath);
+      return buffer;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('fs:write', async (_, filePath, data) => {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, Buffer.from(data));
+    return true;
+  } catch (err) {
+    console.error('[DB] Failed to write:', err.message);
+    return false;
+  }
+});
+
+// ==================== WhatsApp Server ====================
 function startWhatsAppServer() {
   const serverPath = path.join(rootDir, 'whatsapp-server', 'server.cjs');
   const serverDir = path.join(rootDir, 'whatsapp-server');
@@ -36,6 +68,7 @@ function startWhatsAppServer() {
   });
 }
 
+// ==================== Window ====================
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -44,7 +77,8 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
