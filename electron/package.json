@@ -10,8 +10,9 @@
     "build-installer": "electron-builder --win nsis"
   },
   "build": {
-    "appId": "com.eltahan.desktop",
-    "productName": "ElTahan",
+    "appId": "com.eltahan.studio",
+    "productName": "ElTahan Studio",
+    "copyright": "© 2026 ElTahan Photography Studio",
     "directories": {
       "output": "release"
     },
@@ -33,7 +34,7 @@
       }
     ],
     "win": {
-      "target": ["portable"],
+      "target": ["portable", "nsis"],
       "icon": "../public/icon.png"
     },
     "portable": {
@@ -47,7 +48,14 @@
       "createStartMenuShortcut": true,
       "shortcutName": "ElTahan Studio",
       "artifactName": "ElTahan-Setup.exe",
-      "uninstallDisplayName": "ElTahan Studio"
+      "uninstallDisplayName": "ElTahan Studio",
+      "license": "license.txt",
+      "installerIcon": "../public/icon.png",
+      "uninstallerIcon": "../public/icon.png",
+      "installerSidebar": "installer-sidebar.bmp",
+      "installerHeader": "installer-header.bmp",
+      "runAfterFinish": true,
+      "menuCategory": "ElTahan Studio"
     }
   },
   "devDependencies": {
