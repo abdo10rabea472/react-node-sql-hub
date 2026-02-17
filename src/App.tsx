@@ -3,6 +3,7 @@ import Login from "./Login";
 import Dashboard from "./Dashboard";
 import { verifyToken } from "./api";
 import { SettingsProvider } from "./SettingsContext";
+import SyncStatusBar from "./components/SyncStatusBar";
 
 export interface User {
   id: number;
@@ -53,6 +54,7 @@ function App() {
   return (
     <SettingsProvider>
       {!user ? <Login onLogin={handleLogin} /> : <Dashboard user={user} onLogout={handleLogout} />}
+      <SyncStatusBar />
     </SettingsProvider>
   );
 }
