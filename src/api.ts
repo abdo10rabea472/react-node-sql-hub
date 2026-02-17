@@ -20,7 +20,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.code === 'ERR_NETWORK' || !error.response) {
-      console.error("API Network Error: لا يمكن الاتصال بالسيرفر", API_URL);
+      console.warn("📡 وضع أوفلاين - البيانات تُحفظ محلياً");
     } else {
       console.error("API Error:", error.response?.status, error.response?.data);
     }
