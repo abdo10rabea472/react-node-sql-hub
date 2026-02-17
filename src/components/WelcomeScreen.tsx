@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Zap, Shield, BarChart3, Send, ChevronRight, ChevronLeft, Globe, Smartphone, Check } from 'lucide-react';
 
-const WELCOME_KEY = 'eltahan_welcome_shown';
+const WELCOME_KEY = 'eltahan_welcome_v1.0.0';
 
 const pageTransition = {
   initial: { opacity: 0, x: 40 },

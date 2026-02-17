@@ -12,6 +12,7 @@ interface SyncToast {
 export default function SyncStatusBar() {
   const { isOnline, isSyncing, pendingCount, lastSyncResult, manualSync } = useSyncStatus();
   const [toasts, setToasts] = useState<SyncToast[]>([]);
+  const isFirstRender = useState(true);
 
   useEffect(() => {
     if (!lastSyncResult) return;
@@ -28,14 +29,24 @@ export default function SyncStatusBar() {
   }, [lastSyncResult]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (!isOnline) {
-        addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
-      } else {
-        addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
-      }
-    }, 100);
-    return () => clearTimeout(timeout);
+    // تجاهل أول رندر لمنع ظهور الإشعارين معاً
+    if (isFirstRender[0]) {
+      isFirstRender[0] = false;
+      // بعد 3 ثواني نعرض الحالة الأولية فقط مرة واحدة
+      const init = setTimeout(() => {
+        if (!isOnline) {
+          addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
+        } else {
+          addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
+        }
+      }, 3000);
+      return () => clearTimeout(init);
+    }
+    if (!isOnline) {
+      addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
+    } else {
+      addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
+    }
   }, [isOnline]);
 
   const addToast = (message: string, type: SyncToast['type']) => {

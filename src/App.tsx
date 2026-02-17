@@ -18,7 +18,7 @@ export interface User {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [welcomeDone, setWelcomeDone] = useState(() => !!localStorage.getItem('eltahan_welcome_shown'));
+  const [welcomeDone, setWelcomeDone] = useState(() => !!localStorage.getItem('eltahan_welcome_v1.0.0'));
 
   useEffect(() => {
     const token = localStorage.getItem("token");
