@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Zap, Shield, BarChart3, Send, ChevronRight, ChevronLeft, Globe, Smartphone, Check } from 'lucide-react';
 
 const WELCOME_KEY = 'eltahan_welcome_v1.0.0';
+const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
 
 const pageTransition = {
   initial: { opacity: 0, x: 40 },
@@ -263,9 +264,11 @@ export default function WelcomeScreen({ onComplete }: { onComplete: () => void }
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // مسح المفاتيح القديمة
     localStorage.removeItem('eltahan_welcome_shown');
-    const shown = localStorage.getItem(WELCOME_KEY);
+    // في الديسكتوب: نستخدم sessionStorage عشان يظهر كل مرة يفتح التطبيق
+    // في الويب: نستخدم localStorage عشان يظهر مرة واحدة بس
+    const storage = isElectron ? sessionStorage : localStorage;
+    const shown = storage.getItem(WELCOME_KEY);
     if (!shown) {
       setShow(true);
     } else {
@@ -274,7 +277,8 @@ export default function WelcomeScreen({ onComplete }: { onComplete: () => void }
   }, [onComplete]);
 
   const handleFinish = () => {
-    localStorage.setItem(WELCOME_KEY, 'true');
+    const storage = isElectron ? sessionStorage : localStorage;
+    storage.setItem(WELCOME_KEY, 'true');
     setShow(false);
     setTimeout(onComplete, 400);
   };
