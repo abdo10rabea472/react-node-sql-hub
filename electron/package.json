@@ -1,18 +1,19 @@
 {
   "name": "eltahan-desktop",
   "version": "1.0.0",
-  "description": "ElTahan Desktop App with WhatsApp Integration",
-  "author": "ElTahan",
+  "description": "ElTahan Photography Studio - نظام إدارة استوديو التصوير المتكامل",
+  "author": "AbdElrhman Rabea <abdorabea472@gmail.com>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build-exe": "electron-builder --win portable",
-    "build-installer": "electron-builder --win nsis"
+    "build-installer": "electron-builder --win nsis",
+    "build-all": "electron-builder --win portable nsis"
   },
   "build": {
     "appId": "com.eltahan.studio",
     "productName": "ElTahan Studio",
-    "copyright": "© 2026 ElTahan Photography Studio",
+    "copyright": "© 2026 AbdElrhman Rabea - ElTahan Photography Studio",
     "directories": {
       "output": "release"
     },
@@ -34,22 +35,35 @@
       }
     ],
     "win": {
-      "target": ["portable", "nsis"],
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ],
       "icon": "../public/icon.png"
     },
     "portable": {
-      "artifactName": "ElTahan.exe"
+      "artifactName": "ElTahan-${arch}.exe"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "perMachine": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ElTahan Studio",
-      "artifactName": "ElTahan-Setup.exe",
+      "artifactName": "ElTahan-Setup-${arch}.exe",
       "uninstallDisplayName": "ElTahan Studio",
+      "license": "license.txt",
       "runAfterFinish": true,
-      "menuCategory": "ElTahan Studio"
+      "menuCategory": "ElTahan Studio",
+      "installerIcon": "../public/icon.png",
+      "uninstallerIcon": "../public/icon.png"
     }
   },
   "devDependencies": {
