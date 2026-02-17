@@ -33,8 +33,7 @@
       }
     ],
     "win": {
-      "target": ["portable"],
-      "icon": "../public/favicon.ico"
+      "target": ["portable"]
     },
     "portable": {
       "artifactName": "ElTahan.exe"
@@ -46,12 +45,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ElTahan Studio",
-      "installerIcon": "../public/favicon.ico",
-      "uninstallerIcon": "../public/favicon.ico",
-      "installerHeaderIcon": "../public/favicon.ico",
-      "license": null,
       "artifactName": "ElTahan-Setup.exe",
-      "installerSidebar": null,
       "uninstallDisplayName": "ElTahan Studio"
     }
   },
