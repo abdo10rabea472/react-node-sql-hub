@@ -1,36 +1,56 @@
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Env & Secrets
-.env
-.env.local
-*.local
-.env.*.local
-
+# =========================
 # Logs
-logs
+# =========================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-# Ignore WhatsApp sessions & cache
-whatsapp-server/.wwebjs_auth/
-whatsapp-server/.wwebjs_cache/
-whatsapp-session/session/
 
-# Ignore Android build
-android/
+# =========================
+# Node
+# =========================
+node_modules/
+dist/
+dist-ssr/
+build/
 
-# Editor directories and files
+# =========================
+# Environment Files
+# =========================
+.env
+.env.*
+*.local
+api/config.php
+
+# =========================
+# WhatsApp Session & Cache
+# =========================
+whatsapp-session/
+.wwebjs_auth/
+.wwebjs_cache/
+server/whatsapp-session/
+server/.wwebjs_auth/
+server/.wwebjs_cache/
+_IGNORE_studio-whatsapp/
+server/_IGNORE_studio-whatsapp/
+
+# =========================
+# Editor Files
+# =========================
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# =========================
+# OS
+# =========================
+Thumbs.db
