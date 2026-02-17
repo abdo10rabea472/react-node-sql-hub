@@ -6,20 +6,29 @@ let mainWindow;
 let whatsappServer;
 
 function startWhatsAppServer() {
-  whatsappServer = fork(path.join(__dirname, '..', 'whatsapp-server', 'server.cjs'), [], {
-    stdio: ['pipe', 'pipe', 'pipe', 'ipc']
+  const serverPath = path.join(__dirname, '..', 'whatsapp-server', 'server.cjs');
+  const serverDir = path.join(__dirname, '..', 'whatsapp-server');
+
+  whatsappServer = fork(serverPath, [], {
+    cwd: serverDir,
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env }
   });
 
   whatsappServer.stdout.on('data', (data) => {
-    console.log('[WhatsApp Server]', data.toString());
+    console.log('[WA]', data.toString().trim());
   });
 
   whatsappServer.stderr.on('data', (data) => {
-    console.error('[WhatsApp Server Error]', data.toString());
+    console.error('[WA Error]', data.toString().trim());
+  });
+
+  whatsappServer.on('error', (err) => {
+    console.error('[WA] Failed to start:', err.message);
   });
 
   whatsappServer.on('exit', (code) => {
-    console.log(`WhatsApp server exited with code ${code}`);
+    console.log(`[WA] Server exited with code ${code}`);
   });
 }
 
