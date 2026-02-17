@@ -4,6 +4,7 @@ import Dashboard from "./Dashboard";
 import { verifyToken } from "./api";
 import { SettingsProvider } from "./SettingsContext";
 import SyncStatusBar from "./components/SyncStatusBar";
+import WelcomeScreen from "./components/WelcomeScreen";
 
 export interface User {
   id: number;
@@ -17,6 +18,7 @@ export interface User {
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [welcomeDone, setWelcomeDone] = useState(() => !!localStorage.getItem('eltahan_welcome_shown'));
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -53,7 +55,10 @@ function App() {
 
   return (
     <SettingsProvider>
-      {!user ? <Login onLogin={handleLogin} /> : <Dashboard user={user} onLogout={handleLogout} />}
+      {!welcomeDone && <WelcomeScreen onComplete={() => setWelcomeDone(true)} />}
+      {welcomeDone && (
+        !user ? <Login onLogin={handleLogin} /> : <Dashboard user={user} onLogout={handleLogout} />
+      )}
       <SyncStatusBar />
     </SettingsProvider>
   );
