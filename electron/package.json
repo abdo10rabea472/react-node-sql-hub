@@ -61,6 +61,8 @@
       "artifactName": "ElTahan-Setup-${arch}.exe",
       "uninstallDisplayName": "ElTahan Studio",
       "license": "license.txt",
+      "installerHeader": "installer-header.png",
+      "installerSidebar": "installer-sidebar.png",
       "runAfterFinish": true,
       "menuCategory": "ElTahan Studio"
     }
