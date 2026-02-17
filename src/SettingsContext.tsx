@@ -88,11 +88,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 setIsLoaded(true);
             }
 
-        } catch (err) {
-            console.error("Failed to load settings from DB:", err);
-            // Fallback to localStorage if server fails
+        } catch (err: any) {
+            // في حالة عدم الاتصال، نستخدم الإعدادات المحلية بدون إظهار خطأ
+            if (err?.code === 'ERR_NETWORK' || !err?.response) {
+                console.warn("📡 تحميل الإعدادات من التخزين المحلي (أوفلاين)");
+            } else {
+                console.error("Failed to load settings:", err);
+            }
             const saved = localStorage.getItem('app-settings');
             if (saved) setSettings(JSON.parse(saved));
+            setIsLoaded(true);
         }
     };
 
