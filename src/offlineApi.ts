@@ -44,19 +44,23 @@ async function offlineRequest(
 
   if (online) {
     try {
+      console.log(`🌐 [SQL Server] ${method.toUpperCase()} ${url}`, data || '');
       const response = method === 'get' || method === 'delete'
         ? await api[method](url)
         : await api[method](url, data);
+      console.log(`✅ [SQL Server] نجح الحفظ في السيرفر:`, response.data);
       return response;
     } catch (err: any) {
       // لو الخطأ شبكة → خزّن محلياً
       if (err.code === 'ERR_NETWORK' || !err.response) {
+        console.warn(`⚠️ [Offline] فشل الاتصال، يتم التخزين محلياً...`);
         return handleOffline(method, data, options);
       }
       throw err;
     }
   }
 
+  console.log(`💾 [IndexedDB] أوفلاين - يتم التخزين محلياً: ${options.tableName}`, data);
   return handleOffline(method, data, options);
 }
 
