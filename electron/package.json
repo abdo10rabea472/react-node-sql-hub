@@ -44,7 +44,8 @@
           "target": "nsis",
           "arch": ["x64", "ia32"]
         }
-      ]
+      ],
+      "icon": "../public/icon.ico"
     },
     "portable": {
       "artifactName": "ElTahan-${arch}.exe"
