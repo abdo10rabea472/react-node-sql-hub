@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download, Lock, Eye, Zap, X } from 'lucide-react';
 import { useSettings } from './SettingsContext';
 import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
-import { supabase } from './integrations/supabase/client';
+import { supabaseSafe } from './integrations/supabase/safe-client';
 import AccountDetailsPage from './AccountDetailsPage';
 
 const currencies = [
@@ -109,7 +109,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
     setTestingKey(testId);
     setTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('test-api-key', {
+      if (!supabaseSafe) {
+        setTestResult({ success: false, message: lang === 'ar' ? 'الخدمة غير متوفرة حالياً' : 'Service not available' });
+        return;
+      }
+      const { data, error } = await supabaseSafe.functions.invoke('test-api-key', {
         body: { provider, apiKey, endpoint, model },
       });
       if (error) {
