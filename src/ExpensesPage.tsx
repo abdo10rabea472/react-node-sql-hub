@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Loader, DollarSign, Wallet, Clock, CreditCard, FileText } from 'lucide-react';
-import { getExpenses, createExpense, deleteExpense, getSalaries, createSalary, deleteSalary, getAdvances, createAdvance, deleteAdvance, getAttendance, createAttendance, deleteAttendance, getSalaryReport, getUsers } from './api';
+import { getExpenses, getSalaries, getAdvances, getAttendance, getSalaryReport, getUsers } from './api';
+import { offlineCreateExpense, offlineDeleteExpense, offlineCreateSalary, offlineDeleteSalary, offlineCreateAdvance, offlineDeleteAdvance, offlineCreateAttendance, offlineDeleteAttendance } from './offlineApi';
 import { useSettings } from './SettingsContext';
 
 const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
@@ -102,7 +103,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
     try {
       const bonus = parseFloat(salBonus) || 0;
       const extraDed = parseFloat(salExtraDeductions) || 0;
-      await createSalary({
+      await offlineCreateSalary({
         user_id: salUserId,
         user_name: salUserName,
         base_salary: salReport.base_salary,
@@ -202,7 +203,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                       <td className="px-4 py-3"><span className="text-xs px-2 py-1 rounded-full bg-orange-500/10 text-orange-600 font-semibold">{exp.category}</span></td>
                       <td className="px-4 py-3 text-sm font-bold text-orange-600">{Number(exp.amount).toLocaleString()} {settings.currency}</td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{(exp.expense_date || exp.created_at || '').slice(0, 10)}</td>
-                      <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await deleteExpense(exp.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
+                      <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await offlineDeleteExpense(exp.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
                     </tr>
                   ))}
                 </tbody></table>
@@ -226,7 +227,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
               <button disabled={!expDesc || !expAmount || saving} onClick={async () => {
                 setSaving(true);
                 try {
-                  await createExpense({ description: expDesc, category: expCategory, amount: parseFloat(expAmount), expense_date: expDate, notes: expNotes, created_by: user?.name || 'Admin' });
+                  await offlineCreateExpense({ description: expDesc, category: expCategory, amount: parseFloat(expAmount), expense_date: expDate, notes: expNotes, created_by: user?.name || 'Admin' });
                   setExpDesc(''); setExpAmount(''); setExpNotes('');
                   await fetchData(); toast(isAr ? 'تم إضافة المصروف' : 'Added');
                 } catch { toast(isAr ? 'فشل' : 'Failed', 'error'); }
@@ -267,7 +268,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{(adv.advance_date || adv.created_at || '').slice(0, 10)}</td>
-                      <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await deleteAdvance(adv.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
+                      <td className="px-4 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await offlineDeleteAdvance(adv.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-7 h-7 rounded-lg text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={14} /></button></td>
                     </tr>
                   ))}
                 </tbody></table>
@@ -291,7 +292,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
               <button disabled={!advUserId || !advAmount || saving} onClick={async () => {
                 setSaving(true);
                 try {
-                  await createAdvance({ user_id: advUserId, user_name: advUserName, amount: parseFloat(advAmount), reason: advReason, advance_date: advDate, created_by: user?.name || 'Admin' });
+                  await offlineCreateAdvance({ user_id: advUserId, user_name: advUserName, amount: parseFloat(advAmount), reason: advReason, advance_date: advDate, created_by: user?.name || 'Admin' });
                   setAdvUserId(''); setAdvUserName(''); setAdvAmount(''); setAdvReason('');
                   await fetchData(); toast(isAr ? 'تم تسجيل السلفة' : 'Advance recorded');
                 } catch { toast(isAr ? 'فشل' : 'Failed', 'error'); }
@@ -344,7 +345,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                           {att.status === 'present' ? (isAr ? 'حاضر' : 'Present') : att.status === 'late' ? (isAr ? 'متأخر' : 'Late') : att.status === 'absent' ? (isAr ? 'غائب' : 'Absent') : att.status === 'vacation' ? (isAr ? 'إجازة' : 'Vacation') : att.status}
                         </span>
                       </td>
-                      <td className="px-3 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await deleteAttendance(att.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-6 h-6 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={12} /></button></td>
+                      <td className="px-3 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await offlineDeleteAttendance(att.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-6 h-6 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={12} /></button></td>
                     </tr>
                   ))}
                 </tbody></table>
@@ -390,7 +391,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
               <button disabled={!attUserId || saving} onClick={async () => {
                 setSaving(true);
                 try {
-                  await createAttendance({ user_id: attUserId, user_name: attUserName, attendance_date: attDate, check_in: attCheckIn || null, check_out: attCheckOut || null, scheduled_in: attScheduledIn, scheduled_out: attScheduledOut, status: attStatus, notes: attNotes, created_by: user?.name || 'Admin' });
+                  await offlineCreateAttendance({ user_id: attUserId, user_name: attUserName, attendance_date: attDate, check_in: attCheckIn || null, check_out: attCheckOut || null, scheduled_in: attScheduledIn, scheduled_out: attScheduledOut, status: attStatus, notes: attNotes, created_by: user?.name || 'Admin' });
                   setAttCheckIn(''); setAttCheckOut(''); setAttNotes('');
                   await fetchData(); toast(isAr ? 'تم التسجيل' : 'Recorded');
                 } catch { toast(isAr ? 'فشل' : 'Failed', 'error'); }
@@ -436,7 +437,7 @@ const ExpensesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
                       <td className="px-3 py-3 text-xs text-red-500">-{Number(sal.deductions || 0).toLocaleString()}</td>
                       <td className="px-3 py-3 text-xs font-black text-emerald-600">{Number(sal.net_salary).toLocaleString()} {settings.currency}</td>
                       <td className="px-3 py-3 text-xs text-muted-foreground">{sal.month}</td>
-                      <td className="px-3 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await deleteSalary(sal.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-6 h-6 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={12} /></button></td>
+                      <td className="px-3 py-3"><button onClick={async () => { if (window.confirm(isAr ? 'حذف؟' : 'Delete?')) { await offlineDeleteSalary(sal.id); await fetchData(); toast(isAr ? 'تم الحذف' : 'Deleted'); } }} className="w-6 h-6 rounded text-destructive/50 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"><Trash2 size={12} /></button></td>
                     </tr>
                   ))}
                 </tbody></table>

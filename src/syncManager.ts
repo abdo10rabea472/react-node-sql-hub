@@ -152,6 +152,15 @@ class SyncManager {
     // حل أي IDs مرجعية (مثل customer_id قد يكون local_id)
     const resolvedData = await this.resolveReferences(op.data);
 
+    // إزالة أي invoice_no مؤقت حتى يولّد السيرفر رقماً حقيقياً بدون تعارض
+    if (op.table_name === 'invoices' || op.table_name === 'wedding_invoices') {
+      delete resolvedData.invoice_no;
+    }
+
+    // إزالة أي ID محلي - السيرفر يولّد ID جديد
+    delete resolvedData.id;
+    delete resolvedData.local_id;
+
     try {
       const response = await api.post(endpoint.base, resolvedData);
       const serverId = response.data?.id || response.data?.insertId || response.data?.lastInsertId;

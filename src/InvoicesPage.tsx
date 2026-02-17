@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, User as UserIcon, Package, CheckCircle, Printer, Loader, DollarSign, X, Calendar, Plus, Trash2, Edit2, MessageCircle, Search, Hash, Camera, Minus, ShoppingCart, AlertTriangle } from 'lucide-react';
-import { getInvoices, createInvoice, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, deleteInvoice, updateInvoice, getWhatsAppStatus, sendWhatsAppMessage, getPackages } from './api';
+import { getInvoices, getCustomers, getInventoryItems, getInvoiceDetails, addCustomer, getWhatsAppStatus, sendWhatsAppMessage, getPackages } from './api';
+import { offlineCreateInvoice, offlineUpdateInvoice, offlineDeleteInvoice } from './offlineApi';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
@@ -323,7 +324,15 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
             };
 
             console.log('Sending invoice data:', invoiceData);
-            const res = await createInvoice(invoiceData);
+            const res = await offlineCreateInvoice(invoiceData);
+
+            // If saved offline, show message and reset form
+            if (res.data?.offline) {
+              showToastMessage(lang === 'ar' ? '📱 تم حفظ الفاتورة محلياً - ستتم المزامنة عند عودة الإنترنت' : '📱 Invoice saved locally - will sync when online');
+              setSelectedCustomerId(''); setSelectedPkgs([]); setParticipants(''); setPaidAmount('0');
+              setIsSaving(false);
+              return;
+            }
 
             await fetchData();
             await fetchData();
@@ -409,12 +418,12 @@ const InvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) => {
         }
     };
     const handleQuickAdd = async () => { if (!newCustName || !newCustPhone) return; setIsAddingCust(true); try { const cleanPhone = newCustPhone.replace(/[^0-9]/g, ''); const phoneWithCode = cleanPhone.startsWith(settings.countryCode) ? cleanPhone : settings.countryCode + cleanPhone; const res = await addCustomer({ name: newCustName, phone: phoneWithCode }); await fetchData(); setSelectedCustomerId(res.data.id); setShowQuickAdd(false); setNewCustName(''); setNewCustPhone(''); } catch (err) { console.error(err); } finally { setIsAddingCust(false); } };
-    const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; try { await deleteInvoice(id); await fetchData(); } catch (err: any) { console.error(err); } };
+    const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; try { await offlineDeleteInvoice(id); await fetchData(); } catch (err: any) { console.error(err); } };
     const handleEditInvoice = (inv: Invoice) => { setEditingInvoice(inv); setEditPaidAmount(inv.paid_amount.toString()); setEditParticipants(inv.participants || ''); };
     const handleUpdateInvoice = async () => {
         if (!editingInvoice) return;
         try {
-            await updateInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, participants: editParticipants });
+            await offlineUpdateInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, participants: editParticipants });
             setEditingInvoice(null); await fetchData();
             showToastMessage(lang === 'ar' ? 'تم تحديث الفاتورة بنجاح' : 'Invoice updated successfully');
         } catch (err: any) { showToastMessage(lang === 'ar' ? 'فشل التحديث' : 'Update failed', 'error'); }

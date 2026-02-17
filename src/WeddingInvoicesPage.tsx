@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, CheckCircle, Printer, Loader, X, Plus, Trash2, Edit2, MessageCircle, Search, Calendar, MapPin, Hash, User as UserIcon, Camera, Film, Minus } from 'lucide-react';
-import { getWeddingInvoices, createWeddingInvoice, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, deleteWeddingInvoice, updateWeddingInvoice, getWhatsAppStatus, sendWhatsAppMessage } from './api';
+import { getWeddingInvoices, getCustomers, getWeddingAlbums, getWeddingVideos, getWeddingInvoiceDetails, getWhatsAppStatus, sendWhatsAppMessage } from './api';
+import { offlineCreateWeddingInvoice, offlineUpdateWeddingInvoice, offlineDeleteWeddingInvoice } from './offlineApi';
 import { useSettings } from './SettingsContext';
 
 interface Customer { id: number; name: string; phone: string; }
@@ -157,7 +158,12 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
         price: item.price
       }));
 
-      const res = await createWeddingInvoice({ customer_id: Number(selectedCustomerId), items: formattedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
+      const res = await offlineCreateWeddingInvoice({ customer_id: Number(selectedCustomerId), items: formattedItems, total_amount: totalAmount, paid_amount: parseFloat(paidAmount) || 0, created_by: user?.name || 'Admin', wedding_date: weddingDate, venue, notes });
+      if (res.data?.offline) {
+        showToastMessage(lang === 'ar' ? '📱 تم حفظ الفاتورة محلياً - ستتم المزامنة عند عودة الإنترنت' : '📱 Saved locally - will sync when online');
+        setSelectedCustomerId(''); setSelectedItems([]); setPaidAmount('0'); setWeddingDate(''); setVenue(''); setNotes('');
+        setIsSaving(false); return;
+      }
       const invRes = await getWeddingInvoices(); setInvoices(invRes.data);
       const newInv = invRes.data.find((i: WeddingInvoice) => i.id === res.data?.id);
       if (newInv) await handleSendWhatsAppAuto(newInv);
@@ -173,12 +179,12 @@ const WeddingInvoicesPage: React.FC<{ user?: { name: string } }> = ({ user }) =>
   const handleUpdateInvoice = async () => {
     if (!editingInvoice) return;
     try {
-      await updateWeddingInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, wedding_date: editWeddingDate, venue: editVenue, notes: editNotes });
+      await offlineUpdateWeddingInvoice(editingInvoice.id, { paid_amount: parseFloat(editPaidAmount) || 0, total_amount: editingInvoice.total_amount, wedding_date: editWeddingDate, venue: editVenue, notes: editNotes });
       setEditingInvoice(null); fetchData();
       showToastMessage(lang === 'ar' ? 'تم التحديث' : 'Updated');
     } catch (err) { console.error(err); }
   };
-  const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; await deleteWeddingInvoice(id); fetchData(); };
+  const handleDeleteInvoice = async (id: number) => { if (!window.confirm(t.deleteConfirm)) return; await offlineDeleteWeddingInvoice(id); fetchData(); };
 
   const inputClass = "w-full px-3.5 py-2.5 bg-muted border border-border rounded-xl text-foreground text-sm outline-none focus:border-rose-400/50 focus:ring-2 focus:ring-rose-400/10 transition-all font-cairo";
 
