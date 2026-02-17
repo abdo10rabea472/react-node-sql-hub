@@ -1,0 +1,22 @@
+2026/02/10-06:42:52.145 6a30 Reusing MANIFEST C:\Users\pc\Desktop\Stodio\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/02/10-06:42:52.145 6a30 Recovering log #318
+2026/02/10-06:42:52.149 6a30 Reusing old log C:\Users\pc\Desktop\Stodio\whatsapp-session\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000318.log 
+2026/02/10-06:43:52.553 7d24 Level-0 table #328: started
+2026/02/10-06:43:52.568 7d24 Level-0 table #328: 1229853 bytes OK
+2026/02/10-06:43:52.570 7d24 Delete type=0 #318
+2026/02/10-06:43:55.842 aaf4 Compacting 1@1 + 6@2 files
+2026/02/10-06:43:55.872 aaf4 Generated table #329@1: 57945 keys, 2230960 bytes
+2026/02/10-06:43:55.909 aaf4 Generated table #330@1: 42716 keys, 2197766 bytes
+2026/02/10-06:43:55.946 aaf4 Generated table #331@1: 56590 keys, 2226094 bytes
+2026/02/10-06:43:55.966 aaf4 Generated table #332@1: 14468 keys, 2164910 bytes
+2026/02/10-06:43:55.999 aaf4 Generated table #333@1: 30601 keys, 2207878 bytes
+2026/02/10-06:43:56.027 aaf4 Generated table #334@1: 58584 keys, 2049714 bytes
+2026/02/10-06:43:56.027 aaf4 Compacted 1@1 + 6@2 files => 13077322 bytes
+2026/02/10-06:43:56.027 aaf4 compacted to: files[ 0 0 6 0 0 0 0 ]
+2026/02/10-06:43:56.027 aaf4 Delete type=2 #320
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #321
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #322
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #323
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #324
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #325
+2026/02/10-06:43:56.028 aaf4 Delete type=2 #328

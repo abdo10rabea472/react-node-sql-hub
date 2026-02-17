@@ -1,3 +1,13 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Env & Secrets
+.env
+.env.local
+*.local
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -6,30 +16,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# WhatsApp & Session Cache
-**/.wwebjs_cache/
-**/.wwebjs_auth/
-**/whatsapp-session/
-**/_IGNORE_*
-_IGNORE_studio-whatsapp/
-# WhatsApp Code (Sessions are still ignored below)
-# whatsapp-server/ (Removed this line to allow code upload)
-
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build outputs
-dist/
-dist-ssr/
-build/
-
-# Env & Secrets
-.env
-.env.local
-*.local
-.env.*.local
 
 # Editor directories and files
 .vscode/*
