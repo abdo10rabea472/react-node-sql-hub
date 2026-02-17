@@ -3,7 +3,7 @@ import { syncManager } from '../syncManager';
 import { getPendingOperations } from '../lib/offlineDb';
 
 export function useSyncStatus() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(syncManager.getOnlineStatus());
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSyncResult, setLastSyncResult] = useState<{ synced: number; failed: number; conflicts: number } | null>(null);
