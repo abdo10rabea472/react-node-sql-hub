@@ -3,6 +3,9 @@ import { login, getUsers } from './api';
 import { Loader, Mail, Lock, Aperture, Users, X, User, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
+const STAFF_CACHE_KEY = 'eltahan_staff_cache';
+
 interface LoginProps {
   onLogin: (user: any, token: string) => void;
 }
@@ -38,6 +41,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const res = await login(email, password);
       const { token, user } = res.data;
       localStorage.setItem('token', token);
+      // بعد الدخول بنجاح: نحدّث كاش الموظفين
+      if (isElectron) {
+        try {
+          const usersRes = await getUsers();
+          const activeUsers = (usersRes.data || []).filter((u: StaffUser) => u.status === 'active');
+          localStorage.setItem(STAFF_CACHE_KEY, JSON.stringify(activeUsers.map((u: StaffUser) => ({
+            id: u.id, name: u.name, email: u.email, role: u.role, status: u.status
+          }))));
+        } catch { /* ignore */ }
+      }
       onLogin(user, token);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'حدث خطأ في الاتصال بالخادم';
@@ -53,11 +66,28 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setStaffPassword('');
     setStaffError('');
     setStaffLoading(true);
+
+    // أولاً: نحاول نجيب من السيرفر
     try {
       const res = await getUsers();
-      setStaffList((res.data || []).filter((u: StaffUser) => u.status === 'active'));
+      const activeUsers = (res.data || []).filter((u: StaffUser) => u.status === 'active');
+      setStaffList(activeUsers);
+      // نحدّث الكاش
+      localStorage.setItem(STAFF_CACHE_KEY, JSON.stringify(activeUsers.map((u: StaffUser) => ({
+        id: u.id, name: u.name, email: u.email, role: u.role, status: u.status
+      }))));
     } catch {
-      setStaffList([]);
+      // فشل السيرفر: نستخدم الكاش المحلي
+      try {
+        const cached = localStorage.getItem(STAFF_CACHE_KEY);
+        if (cached) {
+          setStaffList(JSON.parse(cached));
+        } else {
+          setStaffList([]);
+        }
+      } catch {
+        setStaffList([]);
+      }
     } finally {
       setStaffLoading(false);
     }
@@ -157,15 +187,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               ) : 'دخول'}
             </button>
 
-            {/* Quick Staff Login Button */}
-            <button
-              type="button"
-              onClick={openStaffModal}
-              className="w-full py-3 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] hover:border-primary/30 text-slate-300 hover:text-white rounded-xl text-sm font-bold cursor-pointer font-cairo transition-all flex items-center justify-center gap-2"
-            >
-              <Users size={18} />
-              حسابات الموظفين - دخول سريع
-            </button>
+            {/* Quick Staff Login Button - Desktop Only */}
+            {isElectron && (
+              <button
+                type="button"
+                onClick={openStaffModal}
+                className="w-full py-3 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] hover:border-primary/30 text-slate-300 hover:text-white rounded-xl text-sm font-bold cursor-pointer font-cairo transition-all flex items-center justify-center gap-2"
+              >
+                <Users size={18} />
+                حسابات الموظفين - دخول سريع
+              </button>
+            )}
           </form>
         </div>
       </div>
