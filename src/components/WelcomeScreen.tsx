@@ -263,6 +263,8 @@ export default function WelcomeScreen({ onComplete }: { onComplete: () => void }
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    // مسح المفاتيح القديمة
+    localStorage.removeItem('eltahan_welcome_shown');
     const shown = localStorage.getItem(WELCOME_KEY);
     if (!shown) {
       setShow(true);
