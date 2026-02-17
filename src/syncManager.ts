@@ -69,16 +69,20 @@ class SyncManager {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       const baseURL = (await import('./api')).default.defaults.baseURL || '';
-      await fetch(baseURL + '/auth.php?path=verify', {
+      const res = await fetch(baseURL + '/auth.php?path=verify', {
         method: 'HEAD',
         signal: controller.signal,
-        mode: 'no-cors',
       });
       clearTimeout(timeout);
-      if (!this.isOnline) {
-        this.isOnline = true;
-        this.emit({ type: 'online' });
-        this.syncNow();
+      // فقط إذا حصلنا على رد فعلي من السيرفر
+      if (res.ok || res.status > 0) {
+        if (!this.isOnline) {
+          this.isOnline = true;
+          this.emit({ type: 'online' });
+          this.syncNow();
+        }
+      } else {
+        throw new Error('Server unreachable');
       }
     } catch {
       if (this.isOnline) {
