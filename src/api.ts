@@ -91,15 +91,36 @@ export const createWeddingInvoice = (data: any) => api.post("/weddingInvoices.ph
 export const updateWeddingInvoice = (id: number, data: any) => api.put(`/weddingInvoices.php?id=${id}`, data);
 export const deleteWeddingInvoice = (id: number) => api.delete(`/weddingInvoices.php?id=${id}`);
 
-// WhatsApp
-export const startWhatsAppSession = () => api.post("/whatsapp.php?path=start");
-export const getWhatsAppStatus = () => api.get("/whatsapp.php?path=status");
-export const stopWhatsAppSession = () => api.post("/whatsapp.php?path=stop");
-export const bootWhatsAppServer = () => api.post("/whatsapp.php?path=boot");
-export const sendWhatsAppMessage = (data: { phone: string; message: string }) =>
-  api.post("/whatsapp.php?path=send-message", data);
-export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) =>
-  api.post("/whatsapp.php?path=send-invoice", data);
+// WhatsApp - في الديسكتوب نتصل بالسيرفر المحلي مباشرة
+const isElectronEnv = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
+const waApi = axios.create({ baseURL: isElectronEnv ? 'http://localhost:3000' : API_URL });
+// Attach token for non-electron requests
+waApi.interceptors.request.use((config) => {
+  if (!isElectronEnv) {
+    const token = localStorage.getItem("token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const startWhatsAppSession = () => isElectronEnv
+  ? waApi.post("/start")
+  : api.post("/whatsapp.php?path=start");
+export const getWhatsAppStatus = () => isElectronEnv
+  ? waApi.get("/status")
+  : api.get("/whatsapp.php?path=status");
+export const stopWhatsAppSession = () => isElectronEnv
+  ? waApi.post("/stop")
+  : api.post("/whatsapp.php?path=stop");
+export const bootWhatsAppServer = () => isElectronEnv
+  ? waApi.post("/start")
+  : api.post("/whatsapp.php?path=boot");
+export const sendWhatsAppMessage = (data: { phone: string; message: string }) => isElectronEnv
+  ? waApi.post("/send-message", data)
+  : api.post("/whatsapp.php?path=send-message", data);
+export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) => isElectronEnv
+  ? waApi.post("/send-message", { phone: data.phone, message: data.invoiceText })
+  : api.post("/whatsapp.php?path=send-invoice", data);
 export const sendWhatsAppPDF = (data: { phone: string; pdfBase64: string; fileName: string; caption: string }) =>
   api.post("/whatsapp.php?path=send-invoice-pdf", data);
 export const sendWhatsAppPDFFromDocDef = (data: {
