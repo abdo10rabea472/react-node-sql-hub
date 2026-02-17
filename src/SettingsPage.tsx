@@ -61,13 +61,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
     try {
       const res = await getWhatsAppStatus();
       const s = res.data;
+      console.log('[WA UI] Status check:', JSON.stringify(s));
       if (s.message && s.message.includes('offline')) {
         setWaStatus('offline');
         return;
       }
       setWaStatus(s.connected ? 'connected' : s.status === 'qr' ? 'qr' : s.status === 'starting' ? 'starting' : 'disconnected');
       setQrCode(s.qrCode || null);
-    } catch {
+    } catch (err: any) {
+      console.error('[WA UI] Status check failed:', err?.message);
       setWaStatus('offline');
       setQrCode(null);
     }
@@ -75,15 +77,26 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
   useEffect(() => { checkWaStatus(); }, []);
   useEffect(() => { if (waStatus === 'starting' || waStatus === 'qr') { const interval = setInterval(checkWaStatus, 3000); return () => clearInterval(interval); } }, [waStatus]);
 
+  const [waError, setWaError] = useState<string | null>(null);
+
   const handleStartWa = async () => {
     setWaLoading(true);
+    setWaError(null);
     try {
+      console.log('[WA UI] Starting WhatsApp session...');
       const res = await startWhatsAppSession();
       const s = res.data;
+      console.log('[WA UI] Start response:', JSON.stringify(s));
       setWaStatus(s.status === 'qr' ? 'qr' : s.connected ? 'connected' : 'starting');
       setQrCode(s.qrCode || null);
-    } catch (err) {
-      console.error(err);
+      if (s.status === 'starting' && !s.qrCode) {
+        // Keep polling - QR might come later
+        setTimeout(checkWaStatus, 3000);
+      }
+    } catch (err: any) {
+      console.error('[WA UI] Start error:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Connection failed';
+      setWaError(msg);
       setWaStatus('disconnected');
     } finally {
       setWaLoading(false);
@@ -639,6 +652,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
                       </button>
                     )}
                   </div>
+                  {/* Error Display */}
+                  {waError && (
+                    <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                      <span className="font-semibold">{lang === 'ar' ? 'خطأ: ' : 'Error: '}</span>{waError}
+                    </div>
+                  )}
                   {/* Active QR Display */}
                   {qrCode && (
                     <div className="flex flex-col items-center gap-4 my-6 p-6 bg-white rounded-xl border-4 border-emerald-500/10 shadow-xl animate-in fade-in zoom-in duration-300">

@@ -78,20 +78,34 @@ app.post('/start', async (req, res) => {
   try {
     status = 'starting';
     currentQR = null;
+    console.log('[WA] Creating client...');
     createClient();
-    client.initialize();
+    console.log('[WA] Initializing client...');
+    client.initialize().catch(err => {
+      console.error('[WA] Initialize failed:', err.message);
+      status = 'disconnected';
+      currentQR = null;
+      client = null;
+    });
 
-    // Wait a bit for QR to generate
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Wait for QR to generate (up to 15 seconds with polling)
+    let waited = 0;
+    while (waited < 15000 && status === 'starting') {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      waited += 1000;
+      if (currentQR || status === 'connected' || status === 'disconnected') break;
+    }
+
+    console.log('[WA] Start result - status:', status, 'hasQR:', !!currentQR);
 
     res.json({
       connected: status === 'connected',
       status: status,
       qrCode: currentQR,
-      message: status === 'qr' ? 'Scan the QR code' : 'Starting...'
+      message: status === 'qr' ? 'Scan the QR code' : status === 'connected' ? 'Connected' : 'Starting... (check logs if no QR appears)'
     });
   } catch (err) {
-    console.error('Start error:', err);
+    console.error('[WA] Start error:', err);
     status = 'disconnected';
     res.status(500).json({ connected: false, status: 'disconnected', message: err.message });
   }
