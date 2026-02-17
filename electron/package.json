@@ -1,0 +1,13 @@
+{
+  "name": "eltahan-desktop",
+  "version": "1.0.0",
+  "description": "ElTahan Desktop App with WhatsApp Integration",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron ."
+  },
+  "dependencies": {
+    "electron": "^33.0.0"
+  }
+}

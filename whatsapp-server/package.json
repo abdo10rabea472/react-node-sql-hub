@@ -1,0 +1,14 @@
+{
+  "name": "whatsapp-server",
+  "version": "1.0.0",
+  "description": "WhatsApp Web.js server for desktop app",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "whatsapp-web.js": "^1.26.0"
+  }
+}
