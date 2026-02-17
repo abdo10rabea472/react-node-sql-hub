@@ -2,6 +2,7 @@
   "name": "eltahan-desktop",
   "version": "1.0.0",
   "description": "ElTahan Desktop App with WhatsApp Integration",
+  "author": "ElTahan",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -32,9 +33,7 @@
       }
     ],
     "win": {
-      "target": [
-        "portable"
-      ],
+      "target": ["portable"],
       "icon": "../public/favicon.ico"
     },
     "portable": {
@@ -45,10 +44,8 @@
       "artifactName": "ElTahan-Setup.exe"
     }
   },
-  "dependencies": {
-    "electron": "^33.0.0"
-  },
   "devDependencies": {
+    "electron": "^33.0.0",
     "electron-builder": "^25.0.0"
   }
 }
