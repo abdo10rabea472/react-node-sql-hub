@@ -16,6 +16,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# Ignore WhatsApp sessions & cache
+whatsapp-server/.wwebjs_auth/
+whatsapp-server/.wwebjs_cache/
+whatsapp-session/session/
+
+# Ignore Android build
+android/
 
 # Editor directories and files
 .vscode/*
