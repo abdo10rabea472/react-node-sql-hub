@@ -44,8 +44,7 @@
           "target": "nsis",
           "arch": ["x64", "ia32"]
         }
-      ],
-      "icon": "../public/icon.png"
+      ]
     },
     "portable": {
       "artifactName": "ElTahan-${arch}.exe"
@@ -61,9 +60,7 @@
       "uninstallDisplayName": "ElTahan Studio",
       "license": "license.txt",
       "runAfterFinish": true,
-      "menuCategory": "ElTahan Studio",
-      "installerIcon": "../public/icon.png",
-      "uninstallerIcon": "../public/icon.png"
+      "menuCategory": "ElTahan Studio"
     }
   },
   "devDependencies": {
