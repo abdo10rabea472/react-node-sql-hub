@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Wifi, WifiOff, RefreshCw, CloudOff, X, Cloud, HardDrive, CheckCircle } from 'lucide-react';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +12,8 @@ interface SyncToast {
 export default function SyncStatusBar() {
   const { isOnline, isSyncing, pendingCount, lastSyncResult, manualSync } = useSyncStatus();
   const [toasts, setToasts] = useState<SyncToast[]>([]);
-  const isFirstRender = useState(true);
+  const stabilized = useRef(false);
+  const lastStatus = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (!lastSyncResult) return;
@@ -28,24 +29,28 @@ export default function SyncStatusBar() {
     }
   }, [lastSyncResult]);
 
+  // ننتظر 4 ثواني للاستقرار ثم نعرض إشعار واحد فقط
   useEffect(() => {
-    // تجاهل أول رندر لمنع ظهور الإشعارين معاً
-    if (isFirstRender[0]) {
-      isFirstRender[0] = false;
-      // بعد 3 ثواني نعرض الحالة الأولية فقط مرة واحدة
-      const init = setTimeout(() => {
+    if (!stabilized.current) {
+      const timer = setTimeout(() => {
+        stabilized.current = true;
+        lastStatus.current = isOnline;
         if (!isOnline) {
           addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
         } else {
           addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
         }
-      }, 3000);
-      return () => clearTimeout(init);
+      }, 4000);
+      return () => clearTimeout(timer);
     }
-    if (!isOnline) {
-      addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
-    } else {
-      addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
+    // بعد الاستقرار، نعرض التغييرات فقط لو الحالة فعلاً اتغيرت
+    if (lastStatus.current !== null && lastStatus.current !== isOnline) {
+      lastStatus.current = isOnline;
+      if (!isOnline) {
+        addToast('📡 انقطع الإنترنت - البيانات تُحفظ محلياً في IndexedDB', 'warning');
+      } else {
+        addToast('🌐 متصل بالإنترنت - البيانات تُرسل مباشرة إلى SQL Server', 'info');
+      }
     }
   }, [isOnline]);
 

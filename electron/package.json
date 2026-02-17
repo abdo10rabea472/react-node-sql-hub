@@ -61,7 +61,8 @@
       "uninstallDisplayName": "ElTahan Studio",
       "license": "license.txt",
       "runAfterFinish": true,
-      "menuCategory": "ElTahan Studio"
+      "menuCategory": "ElTahan Studio",
+      "deleteAppDataOnUninstall": true
     }
   },
   "devDependencies": {
