@@ -11,46 +11,59 @@ let client = null;
 let currentQR = null;
 let status = 'disconnected'; // disconnected | starting | qr | connected
 
+// Get Chrome path from environment variable (set by Electron)
+const CHROME_PATH = process.env.CHROME_EXECUTABLE_PATH || null;
+
 function createClient() {
+  const puppeteerConfig = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+  };
+
+  // Use bundled Chrome if path is provided
+  if (CHROME_PATH) {
+    puppeteerConfig.executablePath = CHROME_PATH;
+    console.log('[WA] Using Chrome at:', CHROME_PATH);
+  } else {
+    console.log('[WA] No CHROME_EXECUTABLE_PATH set, puppeteer will try to find Chrome automatically');
+  }
+
   client = new Client({
     authStrategy: new LocalAuth({ dataPath: '../_IGNORE_studio-whatsapp' }),
-    puppeteer: {
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-    }
+    puppeteer: puppeteerConfig
   });
 
   client.on('qr', async (qr) => {
-    console.log('QR Code received');
+    console.log('[WA] QR Code received');
     status = 'qr';
     try {
       currentQR = await qrcode.toDataURL(qr, { width: 300, margin: 2 });
     } catch (err) {
-      console.error('QR generation error:', err);
+      console.error('[WA] QR generation error:', err);
     }
   });
 
   client.on('ready', () => {
-    console.log('WhatsApp client is ready!');
+    console.log('[WA] WhatsApp client is ready!');
     status = 'connected';
     currentQR = null;
   });
 
   client.on('authenticated', () => {
-    console.log('WhatsApp authenticated');
+    console.log('[WA] WhatsApp authenticated');
     status = 'connected';
     currentQR = null;
   });
 
   client.on('auth_failure', (msg) => {
-    console.error('Auth failure:', msg);
+    console.error('[WA] Auth failure:', msg);
     status = 'disconnected';
     currentQR = null;
     client = null;
   });
 
   client.on('disconnected', (reason) => {
-    console.log('WhatsApp disconnected:', reason);
+    console.log('[WA] WhatsApp disconnected:', reason);
     status = 'disconnected';
     currentQR = null;
     client = null;
@@ -121,7 +134,7 @@ app.post('/stop', async (req, res) => {
     currentQR = null;
     res.json({ connected: false, status: 'disconnected', message: 'Disconnected' });
   } catch (err) {
-    console.error('Stop error:', err);
+    console.error('[WA] Stop error:', err);
     status = 'disconnected';
     currentQR = null;
     client = null;
@@ -140,18 +153,20 @@ app.post('/send-message', async (req, res) => {
   }
 
   try {
-    // Clean phone number and format for WhatsApp
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     const chatId = cleanPhone + '@c.us';
     await client.sendMessage(chatId, message);
     res.json({ success: true, message: 'Message sent' });
   } catch (err) {
-    console.error('Send error:', err);
+    console.error('[WA] Send error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`WhatsApp server running on http://localhost:${PORT}`);
+  console.log(`[WA] WhatsApp server running on http://localhost:${PORT}`);
+  if (CHROME_PATH) {
+    console.log(`[WA] Chrome path: ${CHROME_PATH}`);
+  }
 });

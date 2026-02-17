@@ -7,9 +7,10 @@
     "start": "node server.cjs"
   },
   "dependencies": {
+    "@puppeteer/browsers": "^2.4.0",
     "cors": "^2.8.5",
     "express": "^4.21.0",
-    "puppeteer": "^24.0.0",
+    "puppeteer-core": "^24.0.0",
     "qrcode": "^1.5.4",
     "whatsapp-web.js": "^1.26.0"
   }
