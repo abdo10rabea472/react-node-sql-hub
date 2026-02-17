@@ -3,7 +3,6 @@ import {
   getPendingOperations,
   markAsSynced,
   resolveServerId,
-  cleanSyncedOperations,
   type OfflineRecord,
 } from './lib/offlineDb';
 
@@ -34,16 +33,17 @@ interface SyncEvent {
 type SyncListener = (event: SyncEvent) => void;
 
 class SyncManager {
-  private isOnline: boolean = navigator.onLine;
+  private isOnline: boolean = false;
   private isSyncing: boolean = false;
   private syncInterval: ReturnType<typeof setInterval> | null = null;
-  private listeners: SyncListener[] = [];
+  private listeners: Array<(event: SyncEvent) => void> = [];
 
   constructor() {
+    // فحص الاتصال الفعلي عند البدء
+    this.checkRealConnection();
+
     window.addEventListener('online', () => {
-      this.isOnline = true;
-      this.emit({ type: 'online' });
-      this.syncNow();
+      this.checkRealConnection();
     });
 
     window.addEventListener('offline', () => {
@@ -51,13 +51,41 @@ class SyncManager {
       this.emit({ type: 'offline' });
     });
 
-    // مزامنة دورية كل 30 ثانية
+    // فحص دوري كل 15 ثانية للتأكد من الاتصال الفعلي
     this.syncInterval = setInterval(() => {
-      if (this.isOnline) this.syncNow();
-    }, 30000);
+      this.checkRealConnection();
+    }, 15000);
+  }
 
-    // تنظيف العمليات القديمة كل ساعة
-    setInterval(() => cleanSyncedOperations(24), 3600000);
+  private async checkRealConnection(): Promise<void> {
+    if (!navigator.onLine) {
+      if (this.isOnline) {
+        this.isOnline = false;
+        this.emit({ type: 'offline' });
+      }
+      return;
+    }
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const baseURL = (await import('./api')).default.defaults.baseURL || '';
+      await fetch(baseURL + '/auth.php?path=verify', {
+        method: 'HEAD',
+        signal: controller.signal,
+        mode: 'no-cors',
+      });
+      clearTimeout(timeout);
+      if (!this.isOnline) {
+        this.isOnline = true;
+        this.emit({ type: 'online' });
+        this.syncNow();
+      }
+    } catch {
+      if (this.isOnline) {
+        this.isOnline = false;
+        this.emit({ type: 'offline' });
+      }
+    }
   }
 
   getOnlineStatus(): boolean {
