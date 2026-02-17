@@ -5,9 +5,13 @@ const { fork } = require('child_process');
 let mainWindow;
 let whatsappServer;
 
+// Detect if running from packaged EXE or development
+const isPackaged = app.isPackaged;
+const rootDir = isPackaged ? path.join(process.resourcesPath, 'app') : path.join(__dirname, '..');
+
 function startWhatsAppServer() {
-  const serverPath = path.join(__dirname, '..', 'whatsapp-server', 'server.cjs');
-  const serverDir = path.join(__dirname, '..', 'whatsapp-server');
+  const serverPath = path.join(rootDir, 'whatsapp-server', 'server.cjs');
+  const serverDir = path.join(rootDir, 'whatsapp-server');
 
   whatsappServer = fork(serverPath, [], {
     cwd: serverDir,
@@ -36,21 +40,16 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    icon: path.join(__dirname, '..', 'public', 'favicon.ico'),
+    icon: path.join(rootDir, 'public', 'favicon.ico'),
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true
     }
   });
 
-  // Load the Vite dev server or built files
-  const isDev = process.env.NODE_ENV === 'development';
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
-  }
+  // Always load from dist (built files)
+  mainWindow.loadFile(path.join(rootDir, 'dist', 'index.html'));
 
   mainWindow.on('closed', () => {
     mainWindow = null;
