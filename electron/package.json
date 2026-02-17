@@ -41,19 +41,13 @@
       "artifactName": "ElTahan.exe"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
       "perMachine": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ElTahan Studio",
       "artifactName": "ElTahan-Setup.exe",
       "uninstallDisplayName": "ElTahan Studio",
-      "license": "license.txt",
-      "installerIcon": "../public/icon.png",
-      "uninstallerIcon": "../public/icon.png",
-      "installerSidebar": "installer-sidebar.bmp",
-      "installerHeader": "installer-header.bmp",
       "runAfterFinish": true,
       "menuCategory": "ElTahan Studio"
     }
