@@ -56,6 +56,18 @@ if ($action === 'stop') {
     sendResponse($response);
 }
 
+if ($action === 'boot') {
+    $dir = realpath(__DIR__ . '/../whatsapp-server');
+    if (!$dir) {
+        sendResponse(["message" => "Could not find server directory"], 404);
+    }
+    // Launch node in a background window on Windows, moving to the right directory first
+    $cmd = "cd /d \"$dir\" && start /min node server.cjs";
+    pclose(popen($cmd, "r"));
+    sendResponse(["message" => "جاري بدء تشغيل السيرفر...", "status" => "booting"]);
+}
+
+
 if ($action === 'send-message' || $action === 'send-invoice') {
     $input = json_decode(file_get_contents("php://input"), true);
     require_once 'activity_helper.php';

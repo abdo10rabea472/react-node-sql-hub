@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Store, Globe, Moon, Sun, DollarSign, Save, CheckCircle, Smartphone, Mail, MapPin, Camera, MessageCircle, Loader, Wifi, WifiOff, RefreshCw, Clock, Brain, Plus, Trash2, Download, Lock, Eye, Zap, X } from 'lucide-react';
 import { useSettings } from './SettingsContext';
-import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession } from './api';
+import { startWhatsAppSession, getWhatsAppStatus, stopWhatsAppSession, bootWhatsAppServer } from './api';
 import { supabaseSafe } from './integrations/supabase/safe-client';
 import AccountDetailsPage from './AccountDetailsPage';
 
@@ -31,8 +31,8 @@ const countries = [
 ];
 
 const translations = {
-  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟', country: 'البلد', countryHint: 'سيتم إضافة رمز الدولة تلقائياً لأرقام العملاء عند الإرسال', deductions: 'الخصومات والحوافز', aiModels: 'نماذج الذكاء الاصطناعي', deductionMode: 'وضع الخصم', perMinute: 'لكل دقيقة', perHour: 'لكل ساعة', perHalfDay: 'لكل نصف يوم', graceMinutes: 'فترة السماح (دقائق)', overtimeMultiplier: 'معامل الوقت الإضافي', deductionAmount: 'مبلغ الخصم' },
-  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending', deductions: 'Deductions & Incentives', aiModels: 'AI Models', deductionMode: 'Deduction Mode', perMinute: 'Per Minute', perHour: 'Per Hour', perHalfDay: 'Per Half Day', graceMinutes: 'Grace Period (minutes)', overtimeMultiplier: 'Overtime Multiplier', deductionAmount: 'Deduction Amount' },
+  ar: { title: 'الإعدادات', subtitle: 'تخصيص تفاصيل الاستوديو وإعدادات النظام والعملات', profile: 'الملف الشخصي', studio: 'إعدادات الاستوديو', system: 'النظام والعملات', studioName: 'اسم الاستوديو', studioEmail: 'البريد الإلكتروني للعمل', studioAddress: 'العنوان الرسمي', currency: 'العملة الافتراضية', currencyHint: 'سيتم استخدامه في جميع الفواتير والأسعار', language: 'لغة النظام', theme: 'المظهر الخارجي', save: 'حفظ التغييرات', success: 'تم حفظ الإعدادات بنجاح', phone: 'رقم الهاتف', adminName: 'اسم المدير', dark: 'داكن', light: 'فاتح', whatsapp: 'واتساب', waTitle: 'ربط الواتساب', waSubtitle: 'ربط جلسة الواتساب لإرسال الفواتير للعملاء', waStart: 'بدء الجلسة', waStop: 'فصل الجلسة وتغيير الحساب', waConnected: 'متصل ✓', waDisconnected: 'غير متصل', waStarting: 'جاري الاتصال...', waHint: 'بعد بدء الجلسة، سيظهر رمز QR هنا. افتح واتساب على هاتفك > الأجهزة المرتبطة > ربط جهاز > امسح الرمز.', waChangeHint: 'لتغيير الحساب: اضغط "فصل الجلسة وتغيير الحساب" ثم ابدأ جلسة جديدة وامسح رمز QR بالحساب الجديد.', waDisconnectConfirm: 'سيتم فصل الواتساب وحذف بيانات الجلسة. هل تريد المتابعة؟', country: 'البلد', countryHint: 'سيتم إضافة رمز الدولة تلقائياً لأرقام العملاء عند الإرسال', deductions: 'الخصومات والحوافز', aiModels: 'نماذج الذكاء الاصطناعي', deductionMode: 'وضع الخصم', perMinute: 'لكل دقيقة', perHour: 'لكل ساعة', perHalfDay: 'لكل نصف يوم', graceMinutes: 'فترة السماح (دقائق)', overtimeMultiplier: 'معامل الوقت الإضافي', deductionAmount: 'مبلغ الخصم', waServiceOffline: 'محرك الواتساب متوقف' },
+  en: { title: 'Settings', subtitle: 'Customize studio details, system preferences, and currencies', profile: 'Personal Profile', studio: 'Studio Settings', system: 'System & Currency', studioName: 'Studio Name', studioEmail: 'Business Email', studioAddress: 'Official Address', currency: 'Default Currency', currencyHint: 'This will be used for all invoices and pricing', language: 'System Language', theme: 'Appearance', save: 'Save Changes', success: 'Settings saved successfully', phone: 'Phone Number', adminName: 'Admin Name', dark: 'Dark', light: 'Light', whatsapp: 'WhatsApp', waTitle: 'WhatsApp Connection', waSubtitle: 'Connect WhatsApp session to send invoices to customers', waStart: 'Start Session', waStop: 'Disconnect & Change Account', waConnected: 'Connected ✓', waDisconnected: 'Disconnected', waStarting: 'Connecting...', waHint: 'After starting, a QR code will appear here. Open WhatsApp > Linked Devices > Link a Device > Scan the code.', waChangeHint: 'To change account: Click "Disconnect & Change Account" then start a new session and scan QR with the new account.', waDisconnectConfirm: 'This will disconnect WhatsApp and delete session data. Continue?', country: 'Country', countryHint: 'Country code will be automatically added to customer numbers when sending', deductions: 'Deductions & Incentives', aiModels: 'AI Models', deductionMode: 'Deduction Mode', perMinute: 'Per Minute', perHour: 'Per Hour', perHalfDay: 'Per Half Day', graceMinutes: 'Grace Period (minutes)', overtimeMultiplier: 'Overtime Multiplier', deductionAmount: 'Deduction Amount', waServiceOffline: 'WhatsApp Engine Offline' },
 };
 
 interface SettingsPageProps {
@@ -53,11 +53,25 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
 
   useEffect(() => { setStudioName(settings.studioName); setSelectedCurrency(settings.currency); setSelectedCountry(settings.countryCode); }, [settings]);
 
-  const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'qr' | 'connected'>('disconnected');
+  const [waStatus, setWaStatus] = useState<'disconnected' | 'starting' | 'qr' | 'connected' | 'offline'>('disconnected');
   const [waLoading, setWaLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
 
-  const checkWaStatus = async () => { try { const res = await getWhatsAppStatus(); const s = res.data; setWaStatus(s.connected ? 'connected' : s.status === 'qr' ? 'qr' : s.status === 'starting' ? 'starting' : 'disconnected'); setQrCode(s.qrCode || null); } catch { setWaStatus('disconnected'); setQrCode(null); } };
+  const checkWaStatus = async () => {
+    try {
+      const res = await getWhatsAppStatus();
+      const s = res.data;
+      if (s.message && s.message.includes('offline')) {
+        setWaStatus('offline');
+        return;
+      }
+      setWaStatus(s.connected ? 'connected' : s.status === 'qr' ? 'qr' : s.status === 'starting' ? 'starting' : 'disconnected');
+      setQrCode(s.qrCode || null);
+    } catch {
+      setWaStatus('offline');
+      setQrCode(null);
+    }
+  };
   useEffect(() => { checkWaStatus(); }, []);
   useEffect(() => { if (waStatus === 'starting' || waStatus === 'qr') { const interval = setInterval(checkWaStatus, 3000); return () => clearInterval(interval); } }, [waStatus]);
 
@@ -83,6 +97,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
       await stopWhatsAppSession();
       setWaStatus('disconnected');
       setQrCode(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const handleBootWa = async () => {
+    setWaLoading(true);
+    try {
+      await bootWhatsAppServer();
+      setWaStatus('starting');
+      setTimeout(checkWaStatus, 3000);
     } catch (err) {
       console.error(err);
     } finally {
@@ -166,7 +193,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
             {activeTab === 'profile' && (
               <div className="p-7">
                 {user ? (
-                  <AccountDetailsPage user={user} onUpdate={() => {}} />
+                  <AccountDetailsPage user={user} onUpdate={() => { }} />
                 ) : (
                   <div>
                     <div className="flex items-center gap-2.5 text-primary mb-6"><User size={20} /><h3 className="text-base font-bold text-foreground">{t.profile}</h3></div>
@@ -308,207 +335,207 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
               };
 
               return (
-              <div className="p-7">
-                <div className="flex items-center gap-2.5 text-primary mb-2"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
-                <p className="text-xs text-muted-foreground mb-6">{lang === 'ar' ? 'اربط حسابك الخاص بمزود الذكاء الاصطناعي لاستخدام رصيدك الشخصي بدلاً من رصيد النظام' : 'Connect your own AI provider account to use your personal credits instead of the system credits'}</p>
+                <div className="p-7">
+                  <div className="flex items-center gap-2.5 text-primary mb-2"><Brain size={20} /><h3 className="text-base font-bold text-foreground">{t.aiModels}</h3></div>
+                  <p className="text-xs text-muted-foreground mb-6">{lang === 'ar' ? 'اربط حسابك الخاص بمزود الذكاء الاصطناعي لاستخدام رصيدك الشخصي بدلاً من رصيد النظام' : 'Connect your own AI provider account to use your personal credits instead of the system credits'}</p>
 
-                {/* Built-in Lovable AI models */}
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
-                    <div>
-                      <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (مجانية محدودة)' : 'Built-in Models (Limited Free)'}</span>
-                      <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'تعمل تلقائياً - اختر النموذج المفضل' : 'Works automatically - choose preferred model'}</p>
+                  {/* Built-in Lovable AI models */}
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle size={14} className="text-emerald-600" /></div>
+                      <div>
+                        <span className="text-xs font-bold text-emerald-600">{lang === 'ar' ? 'النماذج المدمجة (مجانية محدودة)' : 'Built-in Models (Limited Free)'}</span>
+                        <p className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'تعمل تلقائياً - اختر النموذج المفضل' : 'Works automatically - choose preferred model'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
-                      { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning', cost: '💰💰💰' },
-                      { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context', cost: '💰💰💰' },
-                      { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost', cost: '💰' },
-                      { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest', cost: '💰' },
-                      { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning', cost: '💰💰💰' },
-                      { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost', cost: '💰💰' },
-                      { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical', cost: '💰' },
-                      { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning', cost: '💰💰💰' },
-                    ].map(m => (
-                      <button key={m.name} onClick={() => updateSettings({ selectedLovableModel: m.name } as any)}
-                        className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start transition-all ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500/10 border-2 border-emerald-500/50 ring-1 ring-emerald-500/20' : 'bg-background/50 border border-border/50 hover:border-primary/30'}`}>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}></div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{m.desc} {m.cost}</p>
-                        </div>
-                        {(settings as any).selectedLovableModel === m.name && <CheckCircle size={14} className="text-emerald-500 shrink-0" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* External AI Providers Section */}
-                <div className="mb-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? '🔗 ربط حساب خارجي' : '🔗 Connect External Account'}</h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{lang === 'ar' ? 'استخدم مفتاح API الخاص بك - الاستهلاك من رصيدك' : 'Use your own API key - usage from your balance'}</p>
-                    </div>
-                  </div>
-
-                  {/* Provider Cards */}
-                  {!addingProvider && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                      {providerPresets.map(p => (
-                        <button key={p.key} onClick={() => handleAddFromProvider(p.key)}
-                          className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group">
-                          <span className="text-2xl">{p.icon}</span>
-                          <span className="text-xs font-bold text-foreground group-hover:text-primary">{p.label}</span>
-                          <span className="text-[9px] text-muted-foreground text-center">{p.models}</span>
-                          <span className="text-[10px] text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"><Plus size={10} />{lang === 'ar' ? 'ربط' : 'Connect'}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        { name: 'google/gemini-3-flash-preview', desc: lang === 'ar' ? 'الافتراضي - سريع ومتوازن' : 'Default - Fast & balanced', cost: '💰' },
+                        { name: 'google/gemini-3-pro-preview', desc: lang === 'ar' ? 'الجيل التالي - استدلال معقد' : 'Next-gen - Complex reasoning', cost: '💰💰💰' },
+                        { name: 'google/gemini-2.5-pro', desc: lang === 'ar' ? 'أقوى Gemini - سياق كبير' : 'Strongest Gemini - Big context', cost: '💰💰💰' },
+                        { name: 'google/gemini-2.5-flash', desc: lang === 'ar' ? 'متوازن - تكلفة أقل' : 'Balanced - Lower cost', cost: '💰' },
+                        { name: 'google/gemini-2.5-flash-lite', desc: lang === 'ar' ? 'الأسرع والأرخص' : 'Fastest & cheapest', cost: '💰' },
+                        { name: 'openai/gpt-5', desc: lang === 'ar' ? 'قوي - استدلال ممتاز' : 'Powerful - Excellent reasoning', cost: '💰💰💰' },
+                        { name: 'openai/gpt-5-mini', desc: lang === 'ar' ? 'متوسط - تكلفة أقل' : 'Mid-tier - Lower cost', cost: '💰💰' },
+                        { name: 'openai/gpt-5-nano', desc: lang === 'ar' ? 'سريع واقتصادي' : 'Fast & economical', cost: '💰' },
+                        { name: 'openai/gpt-5.2', desc: lang === 'ar' ? 'الأحدث - استدلال محسّن' : 'Latest - Enhanced reasoning', cost: '💰💰💰' },
+                      ].map(m => (
+                        <button key={m.name} onClick={() => updateSettings({ selectedLovableModel: m.name } as any)}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-start transition-all ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500/10 border-2 border-emerald-500/50 ring-1 ring-emerald-500/20' : 'bg-background/50 border border-border/50 hover:border-primary/30'}`}>
+                          <div className={`w-2 h-2 rounded-full shrink-0 ${(settings as any).selectedLovableModel === m.name ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`}></div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-semibold text-foreground truncate">{m.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{m.desc} {m.cost}</p>
+                          </div>
+                          {(settings as any).selectedLovableModel === m.name && <CheckCircle size={14} className="text-emerald-500 shrink-0" />}
                         </button>
                       ))}
                     </div>
-                  )}
+                  </div>
 
-                  {/* Add New Model Form */}
-                  {addingProvider && (() => {
-                    const preset = providerPresets.find(p => p.key === addingProvider)!;
-                    return (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 mb-5">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{preset.icon}</span>
-                            <div>
-                              <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? `ربط حساب ${preset.label}` : `Connect ${preset.label} Account`}</h4>
-                              <p className="text-[10px] text-muted-foreground">{preset.guide[lang]}</p>
-                            </div>
-                          </div>
-                          <button onClick={() => setAddingProvider(null)} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground"><X size={14} /></button>
-                        </div>
+                  {/* External AI Providers Section */}
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? '🔗 ربط حساب خارجي' : '🔗 Connect External Account'}</h4>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{lang === 'ar' ? 'استخدم مفتاح API الخاص بك - الاستهلاك من رصيدك' : 'Use your own API key - usage from your balance'}</p>
+                      </div>
+                    </div>
 
-                        {/* Step-by-step guide */}
-                        <div className="bg-background/60 rounded-lg p-3 mb-4 border border-border/50">
-                          <p className="text-[10px] font-bold text-foreground mb-1.5">{lang === 'ar' ? '📋 كيف تحصل على المفتاح؟' : '📋 How to get your key?'}</p>
-                          <p className="text-[10px] text-muted-foreground leading-relaxed">{preset.guide[lang]}</p>
-                        </div>
+                    {/* Provider Cards */}
+                    {!addingProvider && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        {providerPresets.map(p => (
+                          <button key={p.key} onClick={() => handleAddFromProvider(p.key)}
+                            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-all group">
+                            <span className="text-2xl">{p.icon}</span>
+                            <span className="text-xs font-bold text-foreground group-hover:text-primary">{p.label}</span>
+                            <span className="text-[9px] text-muted-foreground text-center">{p.models}</span>
+                            <span className="text-[10px] text-primary font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"><Plus size={10} />{lang === 'ar' ? 'ربط' : 'Connect'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'اسم النموذج (اختياري)' : 'Model Name (optional)'}</label>
-                              <input value={newModelName} onChange={e => setNewModelName(e.target.value)} className={inputClass} placeholder={preset.models.split(',')[0].trim()} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold text-foreground mb-1 flex items-center gap-1">
-                                <Lock size={10} />{lang === 'ar' ? 'مفتاح API *' : 'API Key *'}
-                              </label>
-                              <input type="password" value={newApiKey} onChange={e => setNewApiKey(e.target.value)} className={inputClass} placeholder={preset.placeholder} />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
-                            <input value={newEndpoint} onChange={e => setNewEndpoint(e.target.value)} className={inputClass} />
-                            <p className="text-[9px] text-muted-foreground mt-1">{lang === 'ar' ? 'تم ملؤها تلقائياً - غيّرها فقط إذا كان لديك endpoint مخصص' : 'Auto-filled - change only if you have a custom endpoint'}</p>
-                          </div>
-                          <div className="flex items-center gap-3 pt-2">
-                            <button onClick={() => testApiKey(addingProvider || 'custom', newApiKey, newEndpoint, newModelName, 'new')} disabled={!newApiKey.trim() || testingKey === 'new'}
-                              className="flex items-center gap-2 px-4 py-2.5 bg-muted border border-border text-foreground rounded-lg text-xs font-bold hover:bg-muted/80 transition-all disabled:opacity-40">
-                              {testingKey === 'new' ? <Loader size={14} className="animate-spin" /> : <Wifi size={14} />}
-                              {lang === 'ar' ? 'اختبار الاتصال' : 'Test Connection'}
-                            </button>
-                            <button onClick={handleSaveNewModel} disabled={!newApiKey.trim()}
-                              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20">
-                              <CheckCircle size={14} />{lang === 'ar' ? 'ربط الحساب وتفعيله' : 'Connect & Activate'}
-                            </button>
-                            <button onClick={() => { setAddingProvider(null); setTestResult(null); }} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
-                              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                            </button>
-                          </div>
-                          {testResult && testingKey === null && (
-                            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-                              className={`mt-3 p-3 rounded-lg border text-xs font-semibold ${testResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
-                              {testResult.message}
-                            </motion.div>
-                          )}
-                        </div>
-                      </motion.div>
-                    );
-                  })()}
-                </div>
-
-                {/* Connected External Models */}
-                {settings.aiModels.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                      <Zap size={14} className="text-primary" />
-                      {lang === 'ar' ? 'الحسابات المربوطة' : 'Connected Accounts'}
-                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{settings.aiModels.length}</span>
-                    </h4>
-                    <div className="space-y-3">
-                      {settings.aiModels.map((model) => {
-                        const preset = providerPresets.find(p => p.key === model.provider);
-                        return (
-                          <div key={model.id} className={`rounded-xl p-4 border transition-all ${model.isActive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-muted/30 border-border'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-lg">{preset?.icon || '⚙️'}</span>
-                                <div>
-                                  <p className="text-sm font-bold text-foreground">{preset?.label || model.provider}</p>
-                                  <p className="text-[10px] text-muted-foreground">{model.name || preset?.models.split(',')[0].trim()}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => {
-                                  const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
-                                  updateSettings({ aiModels: updated });
-                                }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${model.isActive ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-muted text-muted-foreground border border-border'}`}>
-                                  {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
-                                </button>
-                                <button onClick={() => updateSettings({ aiModels: settings.aiModels.filter(m => m.id !== model.id) })}
-                                  className="w-8 h-8 rounded-lg text-destructive/40 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all">
-                                  <Trash2 size={14} />
-                                </button>
+                    {/* Add New Model Form */}
+                    {addingProvider && (() => {
+                      const preset = providerPresets.find(p => p.key === addingProvider)!;
+                      return (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-primary/5 border-2 border-primary/20 rounded-xl p-5 mb-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{preset.icon}</span>
+                              <div>
+                                <h4 className="text-sm font-bold text-foreground">{lang === 'ar' ? `ربط حساب ${preset.label}` : `Connect ${preset.label} Account`}</h4>
+                                <p className="text-[10px] text-muted-foreground">{preset.guide[lang]}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                              <span className="flex items-center gap-1"><Lock size={10} />
-                                {showApiKey[model.id] ? model.apiKey : '••••••••' + model.apiKey.slice(-4)}
-                              </span>
-                              <button onClick={() => setShowApiKey(prev => ({ ...prev, [model.id]: !prev[model.id] }))}
-                                className="text-primary hover:underline flex items-center gap-0.5">
-                                {showApiKey[model.id] ? <><Eye size={10} />{lang === 'ar' ? 'إخفاء' : 'Hide'}</> : <><Eye size={10} />{lang === 'ar' ? 'إظهار' : 'Show'}</>}
-                              </button>
-                              <span className="text-muted-foreground/50">|</span>
-                              <button onClick={() => testApiKey(model.provider, model.apiKey, model.endpoint, model.name, model.id)}
-                                disabled={testingKey === model.id || !model.apiKey}
-                                className="text-primary hover:underline flex items-center gap-1">
-                                {testingKey === model.id ? <Loader size={10} className="animate-spin" /> : <Wifi size={10} />}
-                                {lang === 'ar' ? 'اختبار' : 'Test'}
-                              </button>
-                              <span className="text-muted-foreground/50">|</span>
-                              <span className="truncate max-w-[200px]">{model.endpoint}</span>
+                            <button onClick={() => setAddingProvider(null)} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground"><X size={14} /></button>
+                          </div>
+
+                          {/* Step-by-step guide */}
+                          <div className="bg-background/60 rounded-lg p-3 mb-4 border border-border/50">
+                            <p className="text-[10px] font-bold text-foreground mb-1.5">{lang === 'ar' ? '📋 كيف تحصل على المفتاح؟' : '📋 How to get your key?'}</p>
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">{preset.guide[lang]}</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'اسم النموذج (اختياري)' : 'Model Name (optional)'}</label>
+                                <input value={newModelName} onChange={e => setNewModelName(e.target.value)} className={inputClass} placeholder={preset.models.split(',')[0].trim()} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-semibold text-foreground mb-1 flex items-center gap-1">
+                                  <Lock size={10} />{lang === 'ar' ? 'مفتاح API *' : 'API Key *'}
+                                </label>
+                                <input type="password" value={newApiKey} onChange={e => setNewApiKey(e.target.value)} className={inputClass} placeholder={preset.placeholder} />
+                              </div>
                             </div>
-                            {testResult && testingKey === null && testResult.message && (
-                              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                className={`mt-2 p-2 rounded-lg text-[10px] font-semibold ${testResult.success ? 'bg-emerald-500/10 text-emerald-600' : 'bg-destructive/10 text-destructive'}`}>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-foreground mb-1">{lang === 'ar' ? 'نقطة النهاية (Endpoint)' : 'Endpoint URL'}</label>
+                              <input value={newEndpoint} onChange={e => setNewEndpoint(e.target.value)} className={inputClass} />
+                              <p className="text-[9px] text-muted-foreground mt-1">{lang === 'ar' ? 'تم ملؤها تلقائياً - غيّرها فقط إذا كان لديك endpoint مخصص' : 'Auto-filled - change only if you have a custom endpoint'}</p>
+                            </div>
+                            <div className="flex items-center gap-3 pt-2">
+                              <button onClick={() => testApiKey(addingProvider || 'custom', newApiKey, newEndpoint, newModelName, 'new')} disabled={!newApiKey.trim() || testingKey === 'new'}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-muted border border-border text-foreground rounded-lg text-xs font-bold hover:bg-muted/80 transition-all disabled:opacity-40">
+                                {testingKey === 'new' ? <Loader size={14} className="animate-spin" /> : <Wifi size={14} />}
+                                {lang === 'ar' ? 'اختبار الاتصال' : 'Test Connection'}
+                              </button>
+                              <button onClick={handleSaveNewModel} disabled={!newApiKey.trim()}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20">
+                                <CheckCircle size={14} />{lang === 'ar' ? 'ربط الحساب وتفعيله' : 'Connect & Activate'}
+                              </button>
+                              <button onClick={() => { setAddingProvider(null); setTestResult(null); }} className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all">
+                                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                              </button>
+                            </div>
+                            {testResult && testingKey === null && (
+                              <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                                className={`mt-3 p-3 rounded-lg border text-xs font-semibold ${testResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600' : 'bg-destructive/10 border-destructive/30 text-destructive'}`}>
                                 {testResult.message}
                               </motion.div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </motion.div>
+                      );
+                    })()}
                   </div>
-                )}
 
-                {settings.aiModels.length === 0 && !addingProvider && (
-                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-                    <div className="text-3xl mb-2">🔌</div>
-                    <p className="text-sm font-semibold">{lang === 'ar' ? 'لم يتم ربط حساب خارجي بعد' : 'No external account connected yet'}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">{lang === 'ar' ? 'اختر مزود من الأعلى لربط حسابك الشخصي' : 'Choose a provider above to connect your personal account'}</p>
-                  </div>
-                )}
-              </div>
+                  {/* Connected External Models */}
+                  {settings.aiModels.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
+                        <Zap size={14} className="text-primary" />
+                        {lang === 'ar' ? 'الحسابات المربوطة' : 'Connected Accounts'}
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">{settings.aiModels.length}</span>
+                      </h4>
+                      <div className="space-y-3">
+                        {settings.aiModels.map((model) => {
+                          const preset = providerPresets.find(p => p.key === model.provider);
+                          return (
+                            <div key={model.id} className={`rounded-xl p-4 border transition-all ${model.isActive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-muted/30 border-border'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2.5">
+                                  <span className="text-lg">{preset?.icon || '⚙️'}</span>
+                                  <div>
+                                    <p className="text-sm font-bold text-foreground">{preset?.label || model.provider}</p>
+                                    <p className="text-[10px] text-muted-foreground">{model.name || preset?.models.split(',')[0].trim()}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => {
+                                    const updated = settings.aiModels.map(m => m.id === model.id ? { ...m, isActive: !m.isActive } : m);
+                                    updateSettings({ aiModels: updated });
+                                  }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${model.isActive ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-muted text-muted-foreground border border-border'}`}>
+                                    {model.isActive ? (lang === 'ar' ? '✓ مفعّل' : '✓ Active') : (lang === 'ar' ? 'معطّل' : 'Inactive')}
+                                  </button>
+                                  <button onClick={() => updateSettings({ aiModels: settings.aiModels.filter(m => m.id !== model.id) })}
+                                    className="w-8 h-8 rounded-lg text-destructive/40 hover:text-destructive hover:bg-destructive/10 flex items-center justify-center transition-all">
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                <span className="flex items-center gap-1"><Lock size={10} />
+                                  {showApiKey[model.id] ? model.apiKey : '••••••••' + model.apiKey.slice(-4)}
+                                </span>
+                                <button onClick={() => setShowApiKey(prev => ({ ...prev, [model.id]: !prev[model.id] }))}
+                                  className="text-primary hover:underline flex items-center gap-0.5">
+                                  {showApiKey[model.id] ? <><Eye size={10} />{lang === 'ar' ? 'إخفاء' : 'Hide'}</> : <><Eye size={10} />{lang === 'ar' ? 'إظهار' : 'Show'}</>}
+                                </button>
+                                <span className="text-muted-foreground/50">|</span>
+                                <button onClick={() => testApiKey(model.provider, model.apiKey, model.endpoint, model.name, model.id)}
+                                  disabled={testingKey === model.id || !model.apiKey}
+                                  className="text-primary hover:underline flex items-center gap-1">
+                                  {testingKey === model.id ? <Loader size={10} className="animate-spin" /> : <Wifi size={10} />}
+                                  {lang === 'ar' ? 'اختبار' : 'Test'}
+                                </button>
+                                <span className="text-muted-foreground/50">|</span>
+                                <span className="truncate max-w-[200px]">{model.endpoint}</span>
+                              </div>
+                              {testResult && testingKey === null && testResult.message && (
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                  className={`mt-2 p-2 rounded-lg text-[10px] font-semibold ${testResult.success ? 'bg-emerald-500/10 text-emerald-600' : 'bg-destructive/10 text-destructive'}`}>
+                                  {testResult.message}
+                                </motion.div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {settings.aiModels.length === 0 && !addingProvider && (
+                    <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
+                      <div className="text-3xl mb-2">🔌</div>
+                      <p className="text-sm font-semibold">{lang === 'ar' ? 'لم يتم ربط حساب خارجي بعد' : 'No external account connected yet'}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">{lang === 'ar' ? 'اختر مزود من الأعلى لربط حسابك الشخصي' : 'Choose a provider above to connect your personal account'}</p>
+                    </div>
+                  )}
+                </div>
               );
             })()}
 
@@ -516,7 +543,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
               <div className="p-7">
                 <div className="flex items-center gap-2.5 text-primary mb-6"><Download size={20} /><h3 className="text-base font-bold text-foreground">{lang === 'ar' ? 'إعدادات التطبيق (PWA)' : 'App Settings (PWA)'}</h3></div>
                 <p className="text-xs text-muted-foreground mb-6">{lang === 'ar' ? 'تحكم في اسم التطبيق والأيقونة التي تظهر عند التثبيت على الهاتف أو سطح المكتب' : 'Control the app name and icon shown when installed on mobile or desktop'}</p>
-                
+
                 <div className="space-y-6">
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-2">{lang === 'ar' ? 'اسم التطبيق الكامل' : 'Full App Name'}</label>
@@ -591,14 +618,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
                 <div className="bg-muted rounded-xl p-5 border border-border">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      {waStatus === 'connected' ? <Wifi size={20} className="text-green-500" /> : waStatus === 'qr' ? <Smartphone size={20} className="text-amber-500 animate-pulse" /> : <WifiOff size={20} className="text-muted-foreground" />}
-                      <span className={`text-sm font-bold ${waStatus === 'connected' ? 'text-green-500' : (waStatus === 'starting' || waStatus === 'qr') ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                        {waStatus === 'connected' ? t.waConnected : waStatus === 'qr' ? (lang === 'ar' ? 'امسح رمز QR من واتساب' : 'Scan QR from WhatsApp') : waStatus === 'starting' ? t.waStarting : t.waDisconnected}
+                      {waStatus === 'connected' ? <Wifi size={20} className="text-green-500" /> : waStatus === 'qr' ? <Smartphone size={20} className="text-amber-500 animate-pulse" /> : waStatus === 'offline' ? <WifiOff size={20} className="text-destructive" /> : <WifiOff size={20} className="text-muted-foreground" />}
+                      <span className={`text-sm font-bold ${waStatus === 'connected' ? 'text-green-500' : (waStatus === 'starting' || waStatus === 'qr') ? 'text-amber-500' : waStatus === 'offline' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {waStatus === 'connected' ? t.waConnected : waStatus === 'qr' ? (lang === 'ar' ? 'امسح رمز QR من واتساب' : 'Scan QR from WhatsApp') : waStatus === 'starting' ? t.waStarting : waStatus === 'offline' ? t.waServiceOffline : t.waDisconnected}
                       </span>
                     </div>
                     {waStatus === 'connected' ? (
                       <button onClick={handleStopWa} disabled={waLoading} className="px-4 py-2 bg-destructive/10 text-destructive rounded-lg text-sm font-semibold hover:bg-destructive/20 transition-all disabled:opacity-50 flex items-center gap-2">
                         {waLoading && <Loader size={14} className="animate-spin" />}<RefreshCw size={14} />{t.waStop}
+                      </button>
+                    ) : waStatus === 'offline' ? (
+                      <button onClick={handleBootWa} disabled={waLoading} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2">
+                        {waLoading ? <Loader size={14} className="animate-spin" /> : <Zap size={14} />}
+                        {lang === 'ar' ? 'تشغيل المحرك' : 'Boot Server'}
                       </button>
                     ) : (
                       <button onClick={handleStartWa} disabled={waLoading || waStatus === 'starting'} className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition-all disabled:opacity-50 flex items-center gap-2">

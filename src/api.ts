@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://eltahan.vip472.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -95,6 +95,7 @@ export const deleteWeddingInvoice = (id: number) => api.delete(`/weddingInvoices
 export const startWhatsAppSession = () => api.post("/whatsapp.php?path=start");
 export const getWhatsAppStatus = () => api.get("/whatsapp.php?path=status");
 export const stopWhatsAppSession = () => api.post("/whatsapp.php?path=stop");
+export const bootWhatsAppServer = () => api.post("/whatsapp.php?path=boot");
 export const sendWhatsAppMessage = (data: { phone: string; message: string }) =>
   api.post("/whatsapp.php?path=send-message", data);
 export const sendWhatsAppInvoice = (data: { phone: string; invoiceText: string }) =>

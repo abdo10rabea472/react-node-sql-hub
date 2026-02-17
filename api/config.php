@@ -4,30 +4,22 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-// Dynamic CORS - allow specific domains
-$allowedOrigins = [];
+// --- Robust CORS ---
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
-// Allow lovable.app and lovableproject.com domains
-if (preg_match('/^https?:\/\/.*\.(lovable\.app|lovableproject\.com)$/', $origin)) {
-    $allowedOrigins[] = $origin;
+// Allow all local development origins
+if (empty($origin) || preg_match('/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/', $origin)) {
+    header("Access-Control-Allow-Origin: " . ($origin ?: '*'));
 }
-// Allow localhost for development
-if (preg_match('/^https?:\/\/localhost(:\d+)?$/', $origin)) {
-    $allowedOrigins[] = $origin;
-}
-// Allow the main domain
-if (preg_match('/^https?:\/\/(www\.)?vip472\.com$/', $origin)) {
-    $allowedOrigins[] = $origin;
+// Allow production domains
+else if (
+    preg_match('/^https?:\/\/.*\.(lovable\.app|lovableproject\.com)$/', $origin) ||
+    preg_match('/^https?:\/\/(www\.)?(vip472\.com|eltahan\.vip472\.com)$/', $origin)
+) {
+    header("Access-Control-Allow-Origin: $origin");
 }
 
-$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : '';
-if ($corsOrigin) {
-    header("Access-Control-Allow-Origin: $corsOrigin");
-    header("Vary: Origin");
-}
-// No fallback wildcard - unknown origins are denied
-
+header("Vary: Origin");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=UTF-8");
@@ -36,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
 
 // 1. Load .env values with better parsing
 function getEnvValue($key, $default = null)
@@ -70,12 +63,13 @@ if (empty($host)) {
     $host = 'localhost';
 }
 
-if (empty($db_name) || empty($username) || empty($password) || empty($jwt_secret)) {
-    error_log("CRITICAL: Missing required environment variables (DB_NAME, DB_USER, DB_PASSWORD, JWT_SECRET)");
+if (empty($db_name) || empty($username) || empty($jwt_secret)) {
+    error_log("CRITICAL: Missing required environment variables (DB_NAME, DB_USER, JWT_SECRET)");
     http_response_code(500);
-    echo json_encode(["message" => "خطأ في إعدادات الخادم"]);
+    echo json_encode(["message" => "خطأ في إعدادات الخادم - متغيرات البيئة ناقصة"]);
     exit();
 }
+
 
 try {
     $pdo = new PDO("mysql:host=$host", $username, $password);
