@@ -5,9 +5,50 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron ."
+    "build-exe": "electron-builder --win portable",
+    "build-installer": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.eltahan.desktop",
+    "productName": "ElTahan",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "app/dist"
+      },
+      {
+        "from": "../whatsapp-server",
+        "to": "app/whatsapp-server"
+      },
+      {
+        "from": "../public",
+        "to": "app/public"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "../public/favicon.ico"
+    },
+    "portable": {
+      "artifactName": "ElTahan.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "artifactName": "ElTahan-Setup.exe"
+    }
   },
   "dependencies": {
     "electron": "^33.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.0.0"
   }
 }
